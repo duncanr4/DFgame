@@ -21568,7 +21568,7 @@ function createWorld(seedString) {
   if (hasLavaTile && lavaTileKey) {
     landBaseKeys.add(lavaTileKey);
   }
-  const snowLatitudeStart = 0.7;
+  const snowLatitudeStart = 0.5;
   const snowLatitudeFull = 0.86;
   const snowLatitudeRange = Math.max(snowLatitudeFull - snowLatitudeStart, 0.0001);
   const snowNoiseSeed = (seedNumber + 0x27d4eb2d) >>> 0;
@@ -24622,9 +24622,6 @@ function createWorld(seedString) {
       for (let x = 0; x < width; x += 1) {
         const idx = y * width + x;
         if (!waterMask[idx]) {
-          continue;
-        }
-        if (snowPresenceField && !snowPresenceField[idx]) {
           continue;
         }
         const tile = tiles[y][x];
