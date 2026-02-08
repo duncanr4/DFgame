@@ -24554,7 +24554,7 @@ function createWorld(seedString) {
     }
   }
 
-  if (hasSnowTile && hasIcebergOverlay && waterTileKey) {
+  if (hasIcebergOverlay && waterTileKey) {
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         const idx = y * width + x;
@@ -24615,13 +24615,16 @@ function createWorld(seedString) {
     }
   }
 
-  if (hasSnowTile && hasIcebergOverlay && waterTileKey) {
+  if (hasIcebergOverlay && waterTileKey) {
     const shorelineIcebergSeed = (seedNumber + 0x91bd4a2f) >>> 0;
     const shorelineIcebergChance = 0.18;
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         const idx = y * width + x;
         if (!waterMask[idx]) {
+          continue;
+        }
+        if (snowPresenceField && !snowPresenceField[idx]) {
           continue;
         }
         const tile = tiles[y][x];
