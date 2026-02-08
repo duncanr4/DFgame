@@ -18,6 +18,9 @@ extends Node2D
 @export var map_seed: int = 0
 @export var tile_size: int = 32
 @export var globe_rotation_speed: float = 0.25
+@export_range(0.0, 1.0, 0.01) var iceberg_temperature_threshold: float = 0.32
+@export_range(0.0, 1.0, 0.01) var iceberg_density: float = 0.12
+@export var iceberg_tile_coords: Vector2i = Vector2i(3, 2)
 
 @export_group("Biomes")
 @export_range(0.0, 1.0, 0.01) var tundra_threshold: float = 0.28
@@ -141,6 +144,7 @@ const TREE_BASE_BIOMES: Array[String] = [
 ]
 
 @onready var map_layer: TileMapLayer = $MapLayer
+@onready var iceberg_layer: TileMapLayer = get_node_or_null("IcebergLayer")
 @onready var map_overlays: Node2D = get_node_or_null("MapOverlays")
 @onready var elevation_overlay: Sprite2D = get_node_or_null("MapOverlays/ElevationOverlay")
 @onready var temperature_overlay: Sprite2D = get_node_or_null("MapOverlays/TemperatureOverlay")
@@ -180,6 +184,8 @@ var _world_settings: Dictionary = {}
 var _landmass_centers: Array[Vector2] = []
 var _map_layer_original_parent: Node = null
 var _map_layer_original_index := -1
+var _iceberg_layer_original_parent: Node = null
+var _iceberg_layer_original_index := -1
 var _overlays_original_parent: Node = null
 var _overlays_original_index := -1
 var _is_globe_view := false
@@ -210,6 +216,7 @@ func _ready() -> void:
 		elevation_map_button.toggled.connect(_on_elevation_map_toggled)
 		elevation_map_button.button_pressed = false
 	_cache_map_layer_parent()
+	_cache_iceberg_layer_parent()
 	_cache_overlay_parent()
 	_configure_globe_viewport()
 	_set_globe_view(false)
@@ -264,6 +271,8 @@ func _generate_map() -> void:
 		push_error("Overworld map tileset is missing a valid atlas source.")
 		return
 	map_layer.clear()
+	if iceberg_layer != null:
+		iceberg_layer.clear()
 	_tile_data.clear()
 	_last_hovered_tile = Vector2i(-9999, -9999)
 	_hide_tooltip()
@@ -384,6 +393,7 @@ func _generate_map() -> void:
 				"resources": _resources_for_biome(biome),
 				"region_name": ""
 			}
+	_place_icebergs(biome_map, temperature_map, height_map, rng)
 	_place_settlements(biome_map, rng)
 	_height_map = height_map.duplicate()
 	_temperature_map = temperature_map.duplicate()
@@ -724,8 +734,56 @@ func _biome_to_tile(biome: String) -> Vector2i:
 			return TREE_TILE
 		BIOME_JUNGLE:
 			return JUNGLE_TREE_TILE
-		_:
-			return GRASS_TILE
+	_:
+		return GRASS_TILE
+
+func _place_icebergs(
+	biome_map: Dictionary,
+	temperature_map: Dictionary,
+	height_map: Dictionary,
+	rng: RandomNumberGenerator
+) -> void:
+	if iceberg_layer == null:
+		return
+	if map_layer != null:
+		iceberg_layer.tile_set = map_layer.tile_set
+	iceberg_layer.clear()
+	var candidates: Array[Vector2i] = []
+	var coldest_coord := Vector2i(-1, -1)
+	var coldest_temp := 1.0
+	for coord: Vector2i in biome_map.keys():
+		if biome_map.get(coord, "") != BIOME_WATER:
+			continue
+		var temp := float(temperature_map.get(coord, 1.0))
+		if temp < coldest_temp:
+			coldest_temp = temp
+			coldest_coord = coord
+		if temp <= iceberg_temperature_threshold and _is_iceberg_candidate(coord, height_map):
+			candidates.append(coord)
+	var placed := 0
+	for coord: Vector2i in candidates:
+		if rng.randf() <= iceberg_density:
+			iceberg_layer.set_cell(coord, _atlas_source_id, iceberg_tile_coords)
+			placed += 1
+	if placed == 0 and coldest_coord != Vector2i(-1, -1):
+		iceberg_layer.set_cell(coldest_coord, _atlas_source_id, iceberg_tile_coords)
+
+func _is_iceberg_candidate(coord: Vector2i, height_map: Dictionary) -> bool:
+	for offset: Vector2i in [
+		Vector2i.LEFT,
+		Vector2i.RIGHT,
+		Vector2i.UP,
+		Vector2i.DOWN,
+		Vector2i(-1, -1),
+		Vector2i(1, -1),
+		Vector2i(-1, 1),
+		Vector2i(1, 1)
+	]:
+		var neighbor := coord + offset
+		var neighbor_height: float = height_map.get(neighbor, 1.0)
+		if neighbor_height >= water_level:
+			return false
+	return true
 
 func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> void:
 	var settings := _world_settings
@@ -989,6 +1047,13 @@ func _cache_map_layer_parent() -> void:
 	if _map_layer_original_parent != null:
 		_map_layer_original_index = map_layer.get_index()
 
+func _cache_iceberg_layer_parent() -> void:
+	if iceberg_layer == null:
+		return
+	_iceberg_layer_original_parent = iceberg_layer.get_parent()
+	if _iceberg_layer_original_parent != null:
+		_iceberg_layer_original_index = iceberg_layer.get_index()
+
 func _cache_overlay_parent() -> void:
 	if map_overlays == null:
 		return
@@ -1032,6 +1097,11 @@ func _move_map_layer_to_viewport() -> void:
 	map_layer.get_parent().remove_child(map_layer)
 	map_viewport_root.add_child(map_layer)
 	map_layer.position = Vector2.ZERO
+	if iceberg_layer != null:
+		if iceberg_layer.get_parent() != null:
+			iceberg_layer.get_parent().remove_child(iceberg_layer)
+		map_viewport_root.add_child(iceberg_layer)
+		iceberg_layer.position = Vector2.ZERO
 	if map_overlays != null:
 		if map_overlays.get_parent() != null:
 			map_overlays.get_parent().remove_child(map_overlays)
@@ -1050,6 +1120,15 @@ func _restore_map_layer_parent() -> void:
 	else:
 		_map_layer_original_parent.add_child(map_layer)
 	map_layer.position = Vector2.ZERO
+	if iceberg_layer != null and _iceberg_layer_original_parent != null:
+		if iceberg_layer.get_parent() != null:
+			iceberg_layer.get_parent().remove_child(iceberg_layer)
+		if _iceberg_layer_original_index >= 0:
+			_iceberg_layer_original_parent.add_child(iceberg_layer)
+			_iceberg_layer_original_parent.move_child(iceberg_layer, _iceberg_layer_original_index)
+		else:
+			_iceberg_layer_original_parent.add_child(iceberg_layer)
+		iceberg_layer.position = Vector2.ZERO
 	if map_overlays == null or _overlays_original_parent == null:
 		return
 	if map_overlays.get_parent() == _overlays_original_parent:
@@ -1090,6 +1169,8 @@ func _configure_tileset() -> void:
 		_atlas_source_id = -1
 		if map_layer != null:
 			map_layer.tile_set = tile_set
+		if iceberg_layer != null:
+			iceberg_layer.tile_set = tile_set
 		return
 	var texture_size := atlas_texture.get_size()
 	var tile_coords_list := [
@@ -1159,7 +1240,8 @@ func _configure_tileset() -> void:
 		BANDIT_CAMP_TILE,
 		TRAVELERS_CAMP_TILE,
 		DUNGEON_TILE,
-		CENTAUR_ENCAMPMENT_TILE
+		CENTAUR_ENCAMPMENT_TILE,
+		iceberg_tile_coords
 	]
 	var max_tile := Vector2i(0, 0)
 	for tile_coords: Vector2i in tile_coords_list:
@@ -1192,6 +1274,8 @@ func _configure_tileset() -> void:
 		_atlas_source_id = -1
 		if map_layer != null:
 			map_layer.tile_set = tile_set
+		if iceberg_layer != null:
+			iceberg_layer.tile_set = tile_set
 		return
 	if max_columns < required_columns or max_rows < required_rows:
 		push_error(
@@ -1216,6 +1300,9 @@ func _configure_tileset() -> void:
 	_atlas_source_id = tile_set.add_source(overworld_atlas)
 	map_layer.tile_set = tile_set
 	map_layer.position = Vector2.ZERO
+	if iceberg_layer != null:
+		iceberg_layer.tile_set = tile_set
+		iceberg_layer.position = Vector2.ZERO
 
 func _update_temperature_overlay() -> void:
 	if temperature_overlay == null:

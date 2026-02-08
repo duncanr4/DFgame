@@ -44,6 +44,9 @@ script = ExtResource("1_1r0ns")
 
 [node name="MapLayer" type="TileMapLayer" parent="."]
 
+[node name="IcebergLayer" type="TileMapLayer" parent="."]
+z_index = 2
+
 [node name="MapOverlays" type="Node2D" parent="."]
 
 [node name="ElevationOverlay" type="Sprite2D" parent="MapOverlays"]
