@@ -24615,6 +24615,50 @@ function createWorld(seedString) {
     }
   }
 
+  if (hasSnowTile && hasIcebergOverlay && waterTileKey) {
+    const shorelineIcebergSeed = (seedNumber + 0x91bd4a2f) >>> 0;
+    const shorelineIcebergChance = 0.18;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const idx = y * width + x;
+        if (!waterMask[idx]) {
+          continue;
+        }
+        const tile = tiles[y][x];
+        if (!tile || tile.overlay) {
+          continue;
+        }
+        let touchesSnow = false;
+        for (let i = 0; i < neighborOffsets8.length; i += 1) {
+          const nx = x + neighborOffsets8[i][0];
+          const ny = y + neighborOffsets8[i][1];
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
+            continue;
+          }
+          const neighborTile = tiles[ny][nx];
+          if (neighborTile && neighborTile.base === snowTileKey) {
+            touchesSnow = true;
+            break;
+          }
+        }
+        if (!touchesSnow) {
+          continue;
+        }
+        const presenceNoise = hashCoords(x, y, shorelineIcebergSeed);
+        if (presenceNoise >= shorelineIcebergChance) {
+          continue;
+        }
+        const variantNoise = hashCoords(x, y, icebergVariantSeed);
+        const variantIndex = Math.min(
+          icebergOverlayKeys.length - 1,
+          Math.floor(variantNoise * icebergOverlayKeys.length)
+        );
+        const overlayKey = icebergOverlayKeys[Math.max(0, variantIndex)];
+        tile.overlay = overlayKey;
+      }
+    }
+  }
+
   if (hasIcebergOverlay && snowPresenceField) {
     const icebergChance = 1 / 50;
     for (let y = 0; y < height; y += 1) {
