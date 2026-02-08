@@ -24628,22 +24628,6 @@ function createWorld(seedString) {
         if (!tile || tile.overlay) {
           continue;
         }
-        let touchesSnow = false;
-        for (let i = 0; i < neighborOffsets8.length; i += 1) {
-          const nx = x + neighborOffsets8[i][0];
-          const ny = y + neighborOffsets8[i][1];
-          if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
-            continue;
-          }
-          const neighborTile = tiles[ny][nx];
-          if (neighborTile && neighborTile.base === snowTileKey) {
-            touchesSnow = true;
-            break;
-          }
-        }
-        if (!touchesSnow) {
-          continue;
-        }
         const presenceNoise = hashCoords(x, y, shorelineIcebergSeed);
         if (presenceNoise >= shorelineIcebergChance) {
           continue;
