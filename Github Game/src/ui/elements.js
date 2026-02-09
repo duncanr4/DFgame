@@ -29,7 +29,6 @@ const elementInitialisers = {
   regenerate: () => getElementById('regenerate-button'),
   canvas: () => getElementById('world-canvas'),
   canvasWrapper: () => (typeof document === 'undefined' ? null : document.querySelector('.canvas-wrapper')),
-  mapTooltip: () => getElementById('world-tooltip'),
   structureContextMenu: () => getElementById('structure-context-menu'),
   structureContextMenuBegin: () => getElementById('structure-context-menu-begin'),
   structureContextMenuMoreInfo: () => getElementById('structure-context-menu-more-info'),
