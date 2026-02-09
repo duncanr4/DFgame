@@ -669,49 +669,64 @@ func _apply_tree_overlays(
 	var next_map := biome_map.duplicate()
 	var tree_source_map := biome_map
 	var has_existing_trees := false
+	var moisture_threshold := forest_threshold * 0.6
+	var vegetation_threshold := 0.35
 	for coord: Vector2i in biome_map.keys():
 		if TREE_BIOMES.has(biome_map[coord]):
 			has_existing_trees = true
 			break
 	if not has_existing_trees:
-		var best_seed_score := -1.0
-		var seed_coord := Vector2i(-1, -1)
+		var best_seeds: Array[Vector2i] = []
+		var best_scores: Array[float] = []
 		for coord: Vector2i in biome_map.keys():
 			if not TREE_BASE_BIOMES.has(biome_map[coord]):
 				continue
 			var moisture: float = moisture_map.get(coord, 0.0)
-			if moisture < forest_threshold:
+			if moisture < moisture_threshold:
 				continue
 			var vegetation: float = vegetation_map.get(coord, 0.0)
-			if vegetation < 0.52:
+			if vegetation < vegetation_threshold:
 				continue
 			var temperature: float = temperature_map.get(coord, 0.0)
 			var seed_score := moisture + vegetation + temperature
-			if seed_score > best_seed_score:
-				best_seed_score = seed_score
-				seed_coord = coord
-		if best_seed_score >= 0.0:
+			if best_scores.size() < 6:
+				best_scores.append(seed_score)
+				best_seeds.append(coord)
+			else:
+				var lowest_index := 0
+				var lowest_score := best_scores[0]
+				for index in range(1, best_scores.size()):
+					if best_scores[index] < lowest_score:
+						lowest_score = best_scores[index]
+						lowest_index = index
+				if seed_score > lowest_score:
+					best_scores[lowest_index] = seed_score
+					best_seeds[lowest_index] = coord
+		if not best_seeds.is_empty():
 			tree_source_map = biome_map.duplicate()
-			var seed_moisture: float = moisture_map.get(seed_coord, 0.0)
-			var seed_temperature: float = temperature_map.get(seed_coord, 0.0)
-			var seeded_biome := _tree_overlay_biome(seed_temperature, seed_moisture)
-			tree_source_map[seed_coord] = seeded_biome
-			next_map[seed_coord] = seeded_biome
-			tree_map[seed_coord] = seeded_biome
-	for coord: Vector2i in biome_map.keys():
-		if not TREE_BASE_BIOMES.has(biome_map[coord]):
-			continue
-		var moisture: float = moisture_map.get(coord, 0.0)
-		if moisture < forest_threshold:
-			continue
-		var vegetation: float = vegetation_map.get(coord, 0.0)
-		if vegetation < 0.52:
-			continue
-		if _has_tree_neighbor(coord, tree_source_map):
-			var temperature: float = temperature_map.get(coord, 0.0)
-			var tree_biome := _tree_overlay_biome(temperature, moisture)
-			next_map[coord] = tree_biome
-			tree_map[coord] = tree_biome
+			for seed_coord: Vector2i in best_seeds:
+				var seed_moisture: float = moisture_map.get(seed_coord, 0.0)
+				var seed_temperature: float = temperature_map.get(seed_coord, 0.0)
+				var seeded_biome := _tree_overlay_biome(seed_temperature, seed_moisture)
+				tree_source_map[seed_coord] = seeded_biome
+				next_map[seed_coord] = seeded_biome
+				tree_map[seed_coord] = seeded_biome
+	for _spread_pass in range(2):
+		for coord: Vector2i in biome_map.keys():
+			if not TREE_BASE_BIOMES.has(biome_map[coord]):
+				continue
+			var moisture: float = moisture_map.get(coord, 0.0)
+			if moisture < moisture_threshold:
+				continue
+			var vegetation: float = vegetation_map.get(coord, 0.0)
+			if vegetation < vegetation_threshold:
+				continue
+			if _has_tree_neighbor(coord, tree_source_map):
+				var temperature: float = temperature_map.get(coord, 0.0)
+				var tree_biome := _tree_overlay_biome(temperature, moisture)
+				next_map[coord] = tree_biome
+				tree_map[coord] = tree_biome
+		tree_source_map = next_map.duplicate()
 	biome_map.clear()
 	for coord: Vector2i in next_map.keys():
 		biome_map[coord] = next_map[coord]
@@ -723,7 +738,13 @@ func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void
 		return
 	for coord: Vector2i in tree_map.keys():
 		if map_layer.get_cell_source_id(coord) == -1:
-			continue
+			var fallback_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
+			if fallback_biome == BIOME_GRASSLAND:
+				map_layer.set_cell(coord, _atlas_source_id, GRASS_TILE)
+			elif fallback_biome == BIOME_TUNDRA:
+				map_layer.set_cell(coord, _atlas_source_id, SNOW_TILE)
+			else:
+				continue
 		var base_tile := map_layer.get_cell_atlas_coords(coord)
 		if base_tile != GRASS_TILE and base_tile != SNOW_TILE:
 			continue
