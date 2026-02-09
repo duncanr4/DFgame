@@ -3319,6 +3319,12 @@ button:hover:not(:disabled) {
   box-shadow: 0 0.75rem 1.8rem rgba(0, 0, 0, 0.4);
 }
 
+.gender-toggle-button:active img {
+  transform: translateY(1px);
+  filter: brightness(1.18);
+  box-shadow: 0 0.95rem 2.1rem rgba(0, 0, 0, 0.6);
+}
+
 .gender-toggle-button.active img,
 .gender-toggle-button[aria-checked='true'] img {
   filter: brightness(1.18);
