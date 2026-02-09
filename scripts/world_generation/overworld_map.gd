@@ -1194,7 +1194,7 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			var tile_info: Dictionary = {}
 			if _tile_data.has(chosen):
 				tile_info = _tile_data[chosen] as Dictionary
-			var settlement_name := SETTLEMENT_NAMES.get(civilization, "Settlement")
+			var settlement_name: String = String(SETTLEMENT_NAMES.get(civilization, "Settlement"))
 			if civilization == "dwarves" and not DWARFHOLD_NAMES.is_empty():
 				settlement_name = DWARFHOLD_NAMES[rng.randi_range(0, DWARFHOLD_NAMES.size() - 1)]
 			tile_info["region_name"] = settlement_name
