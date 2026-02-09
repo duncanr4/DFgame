@@ -20,7 +20,7 @@ extends Node2D
 @export var globe_rotation_speed: float = 0.25
 @export_range(0.0, 1.0, 0.01) var iceberg_temperature_threshold: float = 0.32
 @export_range(0.0, 1.0, 0.01) var iceberg_density: float = 0.12
-@export var iceberg_tile_coords: Vector2i = Vector2i(3, 2)
+@export var iceberg_tile_options: Array[Vector2i] = [Vector2i(4, 3), Vector2i(5, 3)]
 
 @export_group("Biomes")
 @export_range(0.0, 1.0, 0.01) var tundra_threshold: float = 0.28
@@ -793,6 +793,7 @@ func _place_icebergs(
 	var candidates: Array[Vector2i] = []
 	var coldest_coord := Vector2i(-1, -1)
 	var coldest_temp := 1.0
+	var selected_iceberg_tile := _pick_iceberg_tile(rng)
 	for coord: Vector2i in biome_map.keys():
 		if biome_map.get(coord, "") != BIOME_WATER:
 			continue
@@ -805,10 +806,15 @@ func _place_icebergs(
 	var placed := 0
 	for coord: Vector2i in candidates:
 		if rng.randf() <= iceberg_density:
-			iceberg_layer.set_cell(coord, _atlas_source_id, iceberg_tile_coords)
+			iceberg_layer.set_cell(coord, _atlas_source_id, selected_iceberg_tile)
 			placed += 1
 	if placed == 0 and coldest_coord != Vector2i(-1, -1):
-		iceberg_layer.set_cell(coldest_coord, _atlas_source_id, iceberg_tile_coords)
+		iceberg_layer.set_cell(coldest_coord, _atlas_source_id, selected_iceberg_tile)
+
+func _pick_iceberg_tile(rng: RandomNumberGenerator) -> Vector2i:
+	if iceberg_tile_options.is_empty():
+		return Vector2i(4, 3)
+	return iceberg_tile_options[rng.randi_range(0, iceberg_tile_options.size() - 1)]
 
 func _is_iceberg_candidate(coord: Vector2i, height_map: Dictionary) -> bool:
 	for offset: Vector2i in [
