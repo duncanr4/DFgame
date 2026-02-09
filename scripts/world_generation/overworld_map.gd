@@ -1343,7 +1343,9 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	var biome := String(data.get("biome_type", ""))
 	var temperature := float(data.get("temperature", 0.0))
 	var moisture := float(data.get("moisture", 0.0))
-	var resources := data.get("resources", [])
+	var resources: Array[String] = []
+	for entry in data.get("resources", []):
+		resources.append(String(entry))
 	var region_name := String(data.get("region_name", "")).strip_edges()
 	var biome_label := _humanize_biome(biome)
 	if region_name.is_empty():
