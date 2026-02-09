@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" uid="uid://wfjoy5r4lanh" path="res://scripts/portrait_creator/portrait_creator.gd" id="1_6txqo"]
 [ext_resource type="Shader" uid="uid://4lcdr2y6p0s1" path="res://shaders/character_creator.gdshader" id="2_0yffs"]
-[ext_resource type="Texture2D" uid="uid://2xtdssvab7rl" path="res://resources/images/character_creator/portraits/head_default.png" id="2_6txqo"]
+[ext_resource type="Texture2D" uid="uid://bluxwn8eugee0" path="res://resources/images/character_creator/portraits/head_default.png" id="2_6txqo"]
 [ext_resource type="Theme" uid="uid://bspkc326ak7q3" path="res://resources/theme.tres" id="3_0yffs"]
-[ext_resource type="Texture2D" uid="uid://tcflchddb6ca" path="res://resources/images/character_creator/beards/beard_1.png" id="3_ucp7b"]
-[ext_resource type="Texture2D" uid="uid://b8niqhq7by8hx" path="res://resources/images/character_creator/hair/hair_1.png" id="4_oy0w6"]
+[ext_resource type="Texture2D" uid="uid://b3wurppsddt36" path="res://resources/images/character_creator/beards/beard_1.png" id="3_ucp7b"]
+[ext_resource type="Texture2D" uid="uid://bfot4xh5h1s40" path="res://resources/images/character_creator/hair/hair_1.png" id="4_oy0w6"]
 [ext_resource type="Texture2D" uid="uid://dqi3qywv65w0p" path="res://resources/images/character_creator/ui/backgroundmenu.png" id="5_f0wb7"]
 [ext_resource type="Texture2D" uid="uid://i33vje5jf0bn" path="res://resources/images/character_creator/ui/frame.png" id="6_22p58"]
 [ext_resource type="Texture2D" uid="uid://ba1cesxmlnkwb" path="res://resources/images/character_creator/ui/z76b6jwd36se1.png" id="6_s8202"]

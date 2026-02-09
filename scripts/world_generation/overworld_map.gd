@@ -1291,7 +1291,7 @@ func _hide_tooltip() -> void:
 
 func _set_default_tooltip_tile() -> void:
 	_default_tooltip_tile = Vector2i(-9999, -9999)
-	for coord in _tile_data.keys():
+	for coord: Vector2i in _tile_data.keys():
 		_default_tooltip_tile = coord
 		break
 	_last_hovered_tile = Vector2i(-9999, -9999)
