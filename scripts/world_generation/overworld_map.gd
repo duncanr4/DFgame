@@ -417,6 +417,9 @@ func _generate_map() -> void:
 			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
 
 	_smooth_biomes(base_biome_map, 2)
+	if _count_biome(base_biome_map, BIOME_DESERT) == 0:
+		_seed_desert_biomes(base_biome_map, temperature_map, moisture_map, height_map)
+		_smooth_biomes(base_biome_map, 1)
 	var tree_biome_map: Dictionary = base_biome_map.duplicate()
 	var tree_map := _apply_tree_overlays(
 		tree_biome_map,
@@ -898,6 +901,39 @@ func _smooth_biomes(biome_map: Dictionary, passes: int) -> void:
 		biome_map.clear()
 		for coord: Vector2i in next_map.keys():
 			biome_map[coord] = next_map[coord]
+
+
+func _count_biome(biome_map: Dictionary, biome: String) -> int:
+	var count := 0
+	for coord: Vector2i in biome_map.keys():
+		if biome_map.get(coord, "") == biome:
+			count += 1
+	return count
+
+
+func _seed_desert_biomes(
+	biome_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary,
+	height_map: Dictionary
+) -> void:
+	var candidates: Array[Vector2i] = []
+	for coord: Vector2i in biome_map.keys():
+		if biome_map.get(coord, "") == BIOME_WATER:
+			continue
+		if height_map.get(coord, 0.0) < water_level:
+			continue
+		if temperature_map.get(coord, 0.0) < warm_threshold:
+			continue
+		candidates.append(coord)
+	if candidates.is_empty():
+		return
+	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return moisture_map.get(a, 1.0) < moisture_map.get(b, 1.0)
+	)
+	var target_count := maxi(1, int(round(float(candidates.size()) * 0.015)))
+	for index in range(mini(target_count, candidates.size())):
+		biome_map[candidates[index]] = BIOME_DESERT
 
 
 func _biome_to_tile(biome: String) -> Vector2i:
