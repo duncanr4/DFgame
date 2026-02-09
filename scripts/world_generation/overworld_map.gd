@@ -418,7 +418,13 @@ func _generate_map() -> void:
 
 	_smooth_biomes(base_biome_map, 2)
 	var tree_biome_map: Dictionary = base_biome_map.duplicate()
-	var tree_map := _apply_tree_overlays(tree_biome_map, temperature_map, moisture_map, vegetation_map)
+	var tree_map := _apply_tree_overlays(
+		tree_biome_map,
+		temperature_map,
+		moisture_map,
+		vegetation_map,
+		height_map
+	)
 	highland_map = _build_highland_overlays(base_biome_map, height_map)
 	var biome_map: Dictionary = tree_biome_map.duplicate()
 	for coord: Vector2i in highland_map.keys():
@@ -708,7 +714,8 @@ func _apply_tree_overlays(
 	biome_map: Dictionary,
 	temperature_map: Dictionary,
 	moisture_map: Dictionary,
-	vegetation_map: Dictionary
+	vegetation_map: Dictionary,
+	height_map: Dictionary
 ) -> Dictionary:
 	var tree_map: Dictionary = {}
 	var next_map := biome_map.duplicate()
@@ -717,6 +724,8 @@ func _apply_tree_overlays(
 	var moisture_threshold := forest_threshold * 0.6
 	var vegetation_threshold := 0.35
 	for coord: Vector2i in biome_map.keys():
+		if height_map.get(coord, 0.0) > mountain_level:
+			continue
 		if TREE_BIOMES.has(biome_map[coord]):
 			has_existing_trees = true
 			break
@@ -724,6 +733,8 @@ func _apply_tree_overlays(
 		var best_seeds: Array[Vector2i] = []
 		var best_scores: Array[float] = []
 		for coord: Vector2i in biome_map.keys():
+			if height_map.get(coord, 0.0) > mountain_level:
+				continue
 			if not TREE_BASE_BIOMES.has(biome_map[coord]):
 				continue
 			var moisture: float = moisture_map.get(coord, 0.0)
@@ -758,6 +769,8 @@ func _apply_tree_overlays(
 				tree_map[seed_coord] = seeded_biome
 	for _spread_pass in range(2):
 		for coord: Vector2i in biome_map.keys():
+			if height_map.get(coord, 0.0) > mountain_level:
+				continue
 			if not TREE_BASE_BIOMES.has(biome_map[coord]):
 				continue
 			var moisture: float = moisture_map.get(coord, 0.0)
