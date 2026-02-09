@@ -974,7 +974,16 @@ func _build_settlement_candidates(biome_map: Dictionary) -> Array:
 	var candidates: Array = []
 	for coord: Vector2i in biome_map.keys():
 		var biome := _settlement_biome_label(biome_map.get(coord, BIOME_GRASSLAND))
-		candidates.append({"coord": coord, "biome": biome})
+		var tree_overlay := Vector2i(-1, -1)
+		if tree_layer != null:
+			tree_overlay = tree_layer.get_cell_atlas_coords(coord)
+		candidates.append({
+			"coord": coord,
+			"biome": biome,
+			"tree_overlay": tree_overlay,
+			"has_forest_tree_overlay": tree_overlay == TREE_TILE,
+			"has_jungle_tree_overlay": tree_overlay == JUNGLE_TREE_TILE
+		})
 	return candidates
 
 func _filter_settlement_candidates(
