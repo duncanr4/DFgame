@@ -64,6 +64,8 @@ static func evaluate_tile_suitability(faction_type: String, tile: Dictionary) ->
 	var is_forest := biome == "forest"
 	var is_marsh := biome == "marsh"
 	var is_water := biome == "water"
+	var has_forest_tree_overlay := bool(tile.get("has_forest_tree_overlay", false))
+	var has_jungle_tree_overlay := bool(tile.get("has_jungle_tree_overlay", false))
 
 	match faction_type:
 		"dwarfhold":
@@ -75,12 +77,16 @@ static func evaluate_tile_suitability(faction_type: String, tile: Dictionary) ->
 				return 1.0
 			return 0.0
 		"woodElfGrove":
+			if not has_forest_tree_overlay:
+				return 0.0
 			if is_forest:
 				return 1.0
 			if biome == "grass":
 				return 0.35
 			return 0.0
 		"lizardmenCity":
+			if not has_jungle_tree_overlay:
+				return 0.0
 			if is_water:
 				return 0.0
 			if is_marsh:
