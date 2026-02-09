@@ -166,6 +166,11 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
 @onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
+@onready var tooltip_panel: PanelContainer = get_node_or_null("MapUi/MapTooltip")
+@onready var tooltip_title: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipTitle")
+@onready var tooltip_biome: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipBiome")
+@onready var tooltip_climate: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipClimate")
+@onready var tooltip_resources: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipResources")
 
 var _atlas_source_id := -1
 var _temperature_noise: FastNoiseLite
@@ -195,6 +200,7 @@ var _elevation_overlay_enabled := false
 var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
 var _biome_overlay_enabled := false
+var _hovered_tile := Vector2i(-999, -999)
 
 func _ready() -> void:
 	if map_layer == null:
@@ -243,6 +249,7 @@ func _hide_loading_screen() -> void:
 		loading_screen.visible = false
 
 func _process(delta: float) -> void:
+	_update_map_tooltip()
 	if _is_globe_view:
 		_rotate_globe(delta)
 
@@ -1266,6 +1273,8 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_temperature_overlay_visibility()
 	_update_moisture_overlay_visibility()
 	_update_biome_overlay_visibility()
+	if enabled:
+		_hide_map_tooltip()
 
 func _move_map_layer_to_viewport() -> void:
 	if map_layer == null or map_viewport_root == null:
@@ -1300,6 +1309,125 @@ func _move_map_layer_to_viewport() -> void:
 			map_overlays.get_parent().remove_child(map_overlays)
 		map_viewport_root.add_child(map_overlays)
 		map_overlays.position = Vector2.ZERO
+
+func _update_map_tooltip() -> void:
+	if tooltip_panel == null or map_layer == null:
+		return
+	if _is_globe_view:
+		_hide_map_tooltip()
+		return
+	var global_mouse := get_global_mouse_position()
+	var local_mouse := map_layer.to_local(global_mouse)
+	var coord := map_layer.local_to_map(local_mouse)
+	if coord.x < 0 or coord.y < 0 or coord.x >= map_size.x or coord.y >= map_size.y:
+		_hide_map_tooltip()
+		return
+	if not _tile_data.has(coord):
+		_hide_map_tooltip()
+		return
+	if coord != _hovered_tile:
+		_hovered_tile = coord
+		_refresh_map_tooltip(coord)
+	tooltip_panel.visible = true
+	_position_map_tooltip()
+
+func _refresh_map_tooltip(coord: Vector2i) -> void:
+	if tooltip_panel == null:
+		return
+	var data: Dictionary = _tile_data.get(coord, {})
+	var biome := String(data.get("biome_type", ""))
+	var temperature := float(data.get("temperature", 0.0))
+	var moisture := float(data.get("moisture", 0.0))
+	var resources := data.get("resources", [])
+	var region_name := String(data.get("region_name", "")).strip_edges()
+	var biome_label := _humanize_biome(biome)
+	if region_name.is_empty():
+		if biome_label.is_empty():
+			region_name = "Unnamed Region"
+		else:
+			region_name = "Unnamed %s" % biome_label
+	if tooltip_title != null:
+		tooltip_title.text = region_name
+	if tooltip_biome != null:
+		tooltip_biome.text = "Biome: %s" % biome_label
+	if tooltip_climate != null:
+		tooltip_climate.text = "Climate: %s" % _describe_climate(temperature, moisture)
+	if tooltip_resources != null:
+		var resource_text := _format_resource_list(resources)
+		tooltip_resources.text = "Resources: %s" % (resource_text if not resource_text.is_empty() else "None")
+	tooltip_panel.size = tooltip_panel.get_combined_minimum_size()
+
+func _position_map_tooltip() -> void:
+	if tooltip_panel == null:
+		return
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+	var cursor_pos := viewport.get_mouse_position()
+	var tooltip_size := tooltip_panel.get_combined_minimum_size()
+	tooltip_panel.size = tooltip_size
+	var offset := Vector2(16, 16)
+	var viewport_size := viewport.get_visible_rect().size
+	var max_pos := Vector2(
+		maxf(0.0, viewport_size.x - tooltip_size.x),
+		maxf(0.0, viewport_size.y - tooltip_size.y)
+	)
+	var target_pos := cursor_pos + offset
+	target_pos.x = clampf(target_pos.x, 0.0, max_pos.x)
+	target_pos.y = clampf(target_pos.y, 0.0, max_pos.y)
+	tooltip_panel.position = target_pos
+
+func _hide_map_tooltip() -> void:
+	if tooltip_panel != null:
+		tooltip_panel.visible = false
+	_hovered_tile = Vector2i(-999, -999)
+
+func _humanize_biome(biome: String) -> String:
+	if biome.is_empty():
+		return ""
+	var words := biome.replace("_", " ").split(" ", false)
+	for index in range(words.size()):
+		words[index] = String(words[index]).capitalize()
+	return " ".join(words)
+
+func _describe_climate(temperature: float, moisture: float) -> String:
+	var temp_label := ""
+	if temperature < 0.25:
+		temp_label = "Frigid"
+	elif temperature < 0.45:
+		temp_label = "Cool"
+	elif temperature < 0.7:
+		temp_label = "Temperate"
+	else:
+		temp_label = "Hot"
+	var rainfall := ""
+	if moisture < 0.25:
+		rainfall = "arid conditions"
+	elif moisture < 0.5:
+		rainfall = "light rainfall"
+	elif moisture < 0.75:
+		rainfall = "moderate rainfall"
+	else:
+		rainfall = "heavy rainfall"
+	return "%s climate with %s" % [temp_label, rainfall]
+
+func _format_resource_list(resources: Variant) -> String:
+	var items: Array[String] = []
+	if resources is Array:
+		for item in resources:
+			var label := String(item).strip_edges()
+			if not label.is_empty():
+				items.append(label)
+	elif resources is String:
+		return String(resources).strip_edges()
+	if items.is_empty():
+		return ""
+	if items.size() == 1:
+		return items[0]
+	if items.size() == 2:
+		return "%s and %s" % [items[0], items[1]]
+	var head := ", ".join(items.slice(0, items.size() - 1))
+	return "%s, and %s" % [head, items[items.size() - 1]]
 
 func _restore_map_layer_parent() -> void:
 	if map_layer == null or _map_layer_original_parent == null:
