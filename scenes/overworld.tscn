@@ -44,14 +44,17 @@ script = ExtResource("1_1r0ns")
 
 [node name="MapLayer" type="TileMapLayer" parent="."]
 
-[node name="HighlandLayer" type="TileMapLayer" parent="."]
+[node name="TreeLayer" type="TileMapLayer" parent="."]
 z_index = 1
 
-[node name="IcebergLayer" type="TileMapLayer" parent="."]
+[node name="HighlandLayer" type="TileMapLayer" parent="."]
 z_index = 2
 
-[node name="SettlementLayer" type="TileMapLayer" parent="."]
+[node name="IcebergLayer" type="TileMapLayer" parent="."]
 z_index = 3
+
+[node name="SettlementLayer" type="TileMapLayer" parent="."]
+z_index = 4
 
 [node name="MapOverlays" type="Node2D" parent="."]
 

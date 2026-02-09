@@ -142,6 +142,7 @@ const TREE_BASE_BIOMES: Array[String] = [
 ]
 
 @onready var map_layer: TileMapLayer = $MapLayer
+@onready var tree_layer: TileMapLayer = get_node_or_null("TreeLayer")
 @onready var highland_layer: TileMapLayer = get_node_or_null("HighlandLayer")
 @onready var iceberg_layer: TileMapLayer = get_node_or_null("IcebergLayer")
 @onready var settlement_layer: TileMapLayer = get_node_or_null("SettlementLayer")
@@ -184,6 +185,8 @@ var _world_settings: Dictionary = {}
 var _landmass_centers: Array[Vector2] = []
 var _map_layer_original_parent: Node = null
 var _map_layer_original_index := -1
+var _tree_layer_original_parent: Node = null
+var _tree_layer_original_index := -1
 var _highland_layer_original_parent: Node = null
 var _highland_layer_original_index := -1
 var _iceberg_layer_original_parent: Node = null
@@ -220,6 +223,7 @@ func _ready() -> void:
 		elevation_map_button.toggled.connect(_on_elevation_map_toggled)
 		elevation_map_button.button_pressed = false
 	_cache_map_layer_parent()
+	_cache_tree_layer_parent()
 	_cache_highland_layer_parent()
 	_cache_iceberg_layer_parent()
 	_cache_settlement_layer_parent()
@@ -276,10 +280,14 @@ func _generate_map() -> void:
 		return
 	if map_layer.tile_set == null:
 		_configure_tileset()
+	if tree_layer != null and tree_layer.tile_set == null and map_layer.tile_set != null:
+		tree_layer.tile_set = map_layer.tile_set
 	if _atlas_source_id < 0:
 		push_error("Overworld map tileset is missing a valid atlas source.")
 		return
 	map_layer.clear()
+	if tree_layer != null:
+		tree_layer.clear()
 	if highland_layer != null:
 		highland_layer.clear()
 	if iceberg_layer != null:
@@ -734,7 +742,7 @@ func _apply_tree_overlays(
 
 
 func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void:
-	if map_layer == null:
+	if map_layer == null or tree_layer == null:
 		return
 	for coord: Vector2i in tree_map.keys():
 		if map_layer.get_cell_source_id(coord) == -1:
@@ -757,7 +765,7 @@ func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void
 			tile_coords = JUNGLE_TREE_TILE
 		elif base_biome == BIOME_TUNDRA:
 			tile_coords = TREE_SNOW_TILE
-		map_layer.set_cell(coord, _atlas_source_id, tile_coords)
+		tree_layer.set_cell(coord, _atlas_source_id, tile_coords)
 
 
 func _has_tree_neighbor(coord: Vector2i, biome_map: Dictionary) -> bool:
@@ -1188,6 +1196,13 @@ func _cache_map_layer_parent() -> void:
 	if _map_layer_original_parent != null:
 		_map_layer_original_index = map_layer.get_index()
 
+func _cache_tree_layer_parent() -> void:
+	if tree_layer == null:
+		return
+	_tree_layer_original_parent = tree_layer.get_parent()
+	if _tree_layer_original_parent != null:
+		_tree_layer_original_index = tree_layer.get_index()
+
 func _cache_highland_layer_parent() -> void:
 	if highland_layer == null:
 		return
@@ -1263,6 +1278,11 @@ func _move_map_layer_to_viewport() -> void:
 	map_layer.get_parent().remove_child(map_layer)
 	map_viewport_root.add_child(map_layer)
 	map_layer.position = Vector2.ZERO
+	if tree_layer != null:
+		if tree_layer.get_parent() != null:
+			tree_layer.get_parent().remove_child(tree_layer)
+		map_viewport_root.add_child(tree_layer)
+		tree_layer.position = Vector2.ZERO
 	if highland_layer != null:
 		if highland_layer.get_parent() != null:
 			highland_layer.get_parent().remove_child(highland_layer)
@@ -1296,6 +1316,15 @@ func _restore_map_layer_parent() -> void:
 	else:
 		_map_layer_original_parent.add_child(map_layer)
 	map_layer.position = Vector2.ZERO
+	if tree_layer != null and _tree_layer_original_parent != null:
+		if tree_layer.get_parent() != null:
+			tree_layer.get_parent().remove_child(tree_layer)
+		if _tree_layer_original_index >= 0:
+			_tree_layer_original_parent.add_child(tree_layer)
+			_tree_layer_original_parent.move_child(tree_layer, _tree_layer_original_index)
+		else:
+			_tree_layer_original_parent.add_child(tree_layer)
+		tree_layer.position = Vector2.ZERO
 	if highland_layer != null and _highland_layer_original_parent != null:
 		if highland_layer.get_parent() != null:
 			highland_layer.get_parent().remove_child(highland_layer)
@@ -1363,6 +1392,8 @@ func _configure_tileset() -> void:
 		_atlas_source_id = -1
 		if map_layer != null:
 			map_layer.tile_set = tile_set
+		if tree_layer != null:
+			tree_layer.tile_set = tile_set
 		if highland_layer != null:
 			highland_layer.tile_set = tile_set
 		if iceberg_layer != null:
@@ -1473,6 +1504,8 @@ func _configure_tileset() -> void:
 		_atlas_source_id = -1
 		if map_layer != null:
 			map_layer.tile_set = tile_set
+		if tree_layer != null:
+			tree_layer.tile_set = tile_set
 		if highland_layer != null:
 			highland_layer.tile_set = tile_set
 		if iceberg_layer != null:
@@ -1501,6 +1534,9 @@ func _configure_tileset() -> void:
 	_atlas_source_id = tile_set.add_source(overworld_atlas)
 	map_layer.tile_set = tile_set
 	map_layer.position = Vector2.ZERO
+	if tree_layer != null:
+		tree_layer.tile_set = tile_set
+		tree_layer.position = Vector2.ZERO
 	if highland_layer != null:
 		highland_layer.tile_set = tile_set
 		highland_layer.position = Vector2.ZERO
