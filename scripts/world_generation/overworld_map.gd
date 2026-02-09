@@ -1190,7 +1190,12 @@ func _format_resource_list(resources: Array[String]) -> String:
 	return combined
 
 func _humanize_biome(biome: String) -> String:
-	return biome.replace("_", " ").capitalize()
+	if biome.is_empty():
+		return ""
+	var words := biome.replace("_", " ").split(" ", false)
+	for index in range(words.size()):
+		words[index] = String(words[index]).capitalize()
+	return " ".join(words)
 
 func _cache_map_layer_parent() -> void:
 	if map_layer == null:
@@ -1381,14 +1386,6 @@ func _hide_map_tooltip() -> void:
 	if tooltip_panel != null:
 		tooltip_panel.visible = false
 	_hovered_tile = Vector2i(-999, -999)
-
-func _humanize_biome(biome: String) -> String:
-	if biome.is_empty():
-		return ""
-	var words := biome.replace("_", " ").split(" ", false)
-	for index in range(words.size()):
-		words[index] = String(words[index]).capitalize()
-	return " ".join(words)
 
 func _describe_climate(temperature: float, moisture: float) -> String:
 	var temp_label := ""
