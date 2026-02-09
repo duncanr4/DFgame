@@ -171,12 +171,6 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var tooltip_biome_value: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/BiomeValueLabel")
 @onready var tooltip_climate_value: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/ClimateValueLabel")
 @onready var tooltip_resources_value: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/ResourcesValueLabel")
-@onready var tooltip_major_population_value: Label = get_node_or_null(
-	"MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/MajorPopulationValueLabel"
-)
-@onready var tooltip_minor_population_value: Label = get_node_or_null(
-	"MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/MinorPopulationValueLabel"
-)
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 
 var _atlas_source_id := -1
@@ -1177,13 +1171,9 @@ func _update_tooltip() -> void:
 	var local_mouse := map_layer.get_local_mouse_position()
 	var tile_coords := map_layer.local_to_map(local_mouse)
 	if not _tile_data.has(tile_coords):
-		if _tile_data.has(_default_tooltip_tile):
-			tile_coords = _default_tooltip_tile
-		else:
-			_hide_tooltip()
-			return
-	else:
-		_default_tooltip_tile = tile_coords
+		_hide_tooltip()
+		return
+	_default_tooltip_tile = tile_coords
 	if tile_coords != _last_hovered_tile:
 		_last_hovered_tile = tile_coords
 		_update_tooltip_content(_tile_data[tile_coords])
@@ -1194,31 +1184,36 @@ func _update_tooltip() -> void:
 		tooltip_control.size = panel_size
 	tooltip_control.visible = true
 	var viewport_rect := get_viewport().get_visible_rect()
-	tooltip_control.position = viewport_rect.position + (viewport_rect.size - panel_size) * 0.5
+	var mouse_pos := get_viewport().get_mouse_position()
+	var tooltip_offset := Vector2(16.0, 18.0)
+	var target_pos := mouse_pos + tooltip_offset
+	var max_x := viewport_rect.position.x + maxf(0.0, viewport_rect.size.x - panel_size.x)
+	var max_y := viewport_rect.position.y + maxf(0.0, viewport_rect.size.y - panel_size.y)
+	tooltip_control.position = Vector2(
+		clampf(target_pos.x, viewport_rect.position.x, max_x),
+		clampf(target_pos.y, viewport_rect.position.y, max_y)
+	)
 
 func _update_tooltip_content(tile_info: Dictionary) -> void:
 	if tooltip_title == null or tooltip_biome_value == null or tooltip_climate_value == null:
 		return
-	if tooltip_resources_value == null or tooltip_major_population_value == null or tooltip_minor_population_value == null:
+	if tooltip_resources_value == null:
 		return
 	var region_name := String(tile_info.get("region_name", "")).strip_edges()
 	var biome_type := String(tile_info.get("biome_type", BIOME_GRASSLAND))
 	if region_name.is_empty():
-		tooltip_title.text = ("Unnamed %s" % _humanize_biome(biome_type)).to_upper()
+		if biome_type.is_empty():
+			tooltip_title.text = "Unnamed Region"
+		else:
+			tooltip_title.text = "Unnamed %s" % _humanize_biome(biome_type)
 	else:
-		tooltip_title.text = region_name.to_upper()
+		tooltip_title.text = region_name
 	tooltip_biome_value.text = _humanize_biome(biome_type)
 	var temperature := float(tile_info.get("temperature", 0.0))
 	var moisture := float(tile_info.get("moisture", 0.0))
 	tooltip_climate_value.text = _describe_climate(temperature, moisture)
 	var resources: Array[String] = tile_info.get("resources", []) as Array[String]
 	tooltip_resources_value.text = _format_resource_list(resources)
-	tooltip_major_population_value.text = _format_population_list(
-		tile_info.get("major_population_groups", "Unknown")
-	)
-	tooltip_minor_population_value.text = _format_population_list(
-		tile_info.get("minor_population_groups", "Unknown")
-	)
 
 func _describe_climate(temperature: float, moisture: float) -> String:
 	var temp_label := "Mild"
@@ -1256,31 +1251,6 @@ func _format_resource_list(resources: Array[String]) -> String:
 		else:
 			combined += "%s, " % items[index]
 	return combined
-
-func _format_population_list(value: Variant) -> String:
-	if value is Array:
-		var entries: Array[String] = []
-		for entry: Variant in value:
-			entries.append(String(entry))
-		if entries.is_empty():
-			return "Unknown"
-		if entries.size() == 1:
-			return entries[0]
-		if entries.size() == 2:
-			return "%s and %s" % [entries[0], entries[1]]
-		var combined := ""
-		for index in range(entries.size()):
-			if index == entries.size() - 1:
-				combined += "and %s" % entries[index]
-			else:
-				combined += "%s, " % entries[index]
-		return combined
-	if value is String:
-		var text := String(value).strip_edges()
-		if text.is_empty():
-			return "Unknown"
-		return text
-	return "Unknown"
 
 func _humanize_biome(biome: String) -> String:
 	return biome.replace("_", " ").capitalize()
