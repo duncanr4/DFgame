@@ -1,5 +1,7 @@
 extends Camera2D
 
+class_name OverworldCamera
+
 @export var zoom_step: float = 0.1
 @export var min_zoom: float = 0.2
 @export var max_zoom: float = 4.0
