@@ -159,59 +159,136 @@ theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 10
 
 [node name="TooltipVBox" type="VBoxContainer" parent="MapUi/MapTooltip/TooltipMargin"]
-theme_override_constants/separation = 6
+theme_override_constants/separation = 10
 
 [node name="TooltipTitle" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
 theme_override_font_sizes/font_size = 16
 text = "Unnamed Region"
 
-[node name="TooltipBiome" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
-autowrap_mode = 3
-text = "Biome: —"
+[node name="TooltipGrid" type="GridContainer" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 6
+columns = 2
 
-[node name="TooltipClimate" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
-autowrap_mode = 3
-text = "Climate: —"
+[node name="TooltipBiomeLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "BIOME"
 
-[node name="TooltipResources" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+[node name="TooltipBiome" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
 autowrap_mode = 3
-text = "Resources: —"
+horizontal_alignment = 2
+text = "—"
 
-[node name="TooltipSettlement" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
-autowrap_mode = 3
-text = "Settlement: —"
+[node name="TooltipClimateLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "CLIMATE"
 
-[node name="TooltipPopulation" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+[node name="TooltipClimate" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
 autowrap_mode = 3
-text = "Population: —"
+horizontal_alignment = 2
+text = "—"
 
-[node name="TooltipRuler" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
-autowrap_mode = 3
-text = "Ruler: —"
+[node name="TooltipResourcesLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "RESOURCES"
 
-[node name="TooltipFounded" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+[node name="TooltipResources" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
 autowrap_mode = 3
-text = "Founded: —"
+horizontal_alignment = 2
+text = "—"
 
-[node name="TooltipProminentClan" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
-autowrap_mode = 3
-text = "Prominent Clan: —"
+[node name="TooltipSettlementLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "SETTLEMENT"
 
-[node name="TooltipMajorClans" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+[node name="TooltipSettlement" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
 autowrap_mode = 3
-text = "Major Clans: —"
+horizontal_alignment = 2
+text = "—"
 
-[node name="TooltipMajorGuilds" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
-autowrap_mode = 3
-text = "Major Guilds: —"
+[node name="TooltipPopulationLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "POPULATION"
 
-[node name="TooltipMajorExports" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+[node name="TooltipPopulation" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
 autowrap_mode = 3
-text = "Major Exports: —"
+horizontal_alignment = 2
+text = "—"
 
-[node name="TooltipHallmark" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+[node name="TooltipRulerLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "RULER"
+
+[node name="TooltipRuler" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
 autowrap_mode = 3
-text = "Hallmark: —"
+horizontal_alignment = 2
+text = "—"
+
+[node name="TooltipFoundedLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "FOUNDED"
+
+[node name="TooltipFounded" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
+
+[node name="TooltipProminentClanLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "PROMINENT CLAN"
+
+[node name="TooltipProminentClan" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
+
+[node name="TooltipMajorClansLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "MAJOR CLANS"
+
+[node name="TooltipMajorClans" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
+
+[node name="TooltipMajorGuildsLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "MAJOR GUILDS"
+
+[node name="TooltipMajorGuilds" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
+
+[node name="TooltipMajorExportsLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "MAJOR EXPORTS"
+
+[node name="TooltipMajorExports" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
+
+[node name="TooltipHallmarkLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+text = "HALLMARK"
+
+[node name="TooltipHallmark" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
 
 [node name="LoadingScreen" type="Control" parent="MapUi"]
 visible = false
