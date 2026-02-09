@@ -535,9 +535,6 @@ var _gender_button_normal_shadow: StyleBoxFlat
 const GENDER_BUTTON_BRIGHTNESS_NORMAL := 0.85
 const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
 const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
-const GENDER_BUTTON_ICON_Y_NORMAL := 0.0
-const GENDER_BUTTON_ICON_Y_HOVER := -2.0
-const GENDER_BUTTON_ICON_Y_PRESSED := 1.0
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
 
 func _enter_tree() -> void:
@@ -586,8 +583,6 @@ func _setup_gender_button(button: Button) -> void:
 	button.add_theme_stylebox_override("hover_pressed", _gender_button_pressed_shadow)
 
 	button.self_modulate = Color(GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, 1.0)
-	if button.has_method("set_icon_offset"):
-		button.set_icon_offset(Vector2(0.0, GENDER_BUTTON_ICON_Y_NORMAL))
 
 	button.mouse_entered.connect(_on_gender_button_hover.bind(button))
 	button.mouse_exited.connect(_on_gender_button_unhover.bind(button))
@@ -596,10 +591,10 @@ func _setup_gender_button(button: Button) -> void:
 	button.button_down.connect(_on_gender_button_pressed.bind(button))
 	button.button_up.connect(_on_gender_button_released.bind(button))
 
-func _build_gender_shadow_style(size: int, color: Color, offset: Vector2) -> StyleBoxFlat:
+func _build_gender_shadow_style(shadow_size: int, color: Color, offset: Vector2) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0, 0, 0, 0)
-	style.shadow_size = size
+	style.shadow_size = shadow_size
 	style.shadow_color = color
 	style.shadow_offset = offset
 	return style
@@ -607,28 +602,26 @@ func _build_gender_shadow_style(size: int, color: Color, offset: Vector2) -> Sty
 func _on_gender_button_hover(button: Button) -> void:
 	if button.is_pressed():
 		return
-	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER, GENDER_BUTTON_ICON_Y_HOVER)
+	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
 
 func _on_gender_button_unhover(button: Button) -> void:
 	if button.is_pressed():
 		return
-	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_ICON_Y_NORMAL)
+	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL)
 
 func _on_gender_button_pressed(button: Button) -> void:
-	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED, GENDER_BUTTON_ICON_Y_PRESSED)
+	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED)
 
 func _on_gender_button_released(button: Button) -> void:
 	if button.is_hovered() or button.has_focus():
-		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER, GENDER_BUTTON_ICON_Y_HOVER)
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
 	else:
-		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_ICON_Y_NORMAL)
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL)
 
-func _animate_gender_button(button: Button, brightness: float, icon_y: float) -> void:
+func _animate_gender_button(button: Button, brightness: float) -> void:
 	var tween := button.create_tween()
 	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.tween_property(button, "self_modulate", Color(brightness, brightness, brightness, 1.0), GENDER_BUTTON_TWEEN_DURATION)
-	if button.has_method("set_icon_offset"):
-		tween.tween_property(button, "icon_offset", Vector2(0.0, icon_y), GENDER_BUTTON_TWEEN_DURATION)
 
 func _refresh_random_name() -> void:
 	if character_name.text.strip_edges().is_empty():
