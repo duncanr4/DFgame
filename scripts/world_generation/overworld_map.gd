@@ -722,6 +722,8 @@ func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void
 	if map_layer == null:
 		return
 	for coord: Vector2i in tree_map.keys():
+		if map_layer.get_cell_source_id(coord) == -1:
+			continue
 		var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
 		if base_biome != BIOME_GRASSLAND and base_biome != BIOME_TUNDRA:
 			continue
