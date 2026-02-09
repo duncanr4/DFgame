@@ -189,6 +189,7 @@ var _temperature_map: Dictionary = {}
 var _moisture_map: Dictionary = {}
 var _biome_map: Dictionary = {}
 var _last_hovered_tile := Vector2i(-9999, -9999)
+var _default_tooltip_tile := Vector2i(-9999, -9999)
 var _world_settings: Dictionary = {}
 var _landmass_centers: Array[Vector2] = []
 var _map_layer_original_parent: Node = null
@@ -445,6 +446,7 @@ func _generate_map() -> void:
 	_temperature_map = temperature_map.duplicate()
 	_moisture_map = moisture_map.duplicate()
 	_biome_map = biome_map.duplicate()
+	_set_default_tooltip_tile()
 	_update_elevation_overlay()
 	_update_temperature_overlay()
 	_update_moisture_overlay()
@@ -1175,8 +1177,13 @@ func _update_tooltip() -> void:
 	var local_mouse := map_layer.get_local_mouse_position()
 	var tile_coords := map_layer.local_to_map(local_mouse)
 	if not _tile_data.has(tile_coords):
-		_hide_tooltip()
-		return
+		if _tile_data.has(_default_tooltip_tile):
+			tile_coords = _default_tooltip_tile
+		else:
+			_hide_tooltip()
+			return
+	else:
+		_default_tooltip_tile = tile_coords
 	if tile_coords != _last_hovered_tile:
 		_last_hovered_tile = tile_coords
 		_update_tooltip_content(_tile_data[tile_coords])
@@ -1187,15 +1194,7 @@ func _update_tooltip() -> void:
 		tooltip_control.size = panel_size
 	tooltip_control.visible = true
 	var viewport_rect := get_viewport().get_visible_rect()
-	var margin := 16.0
-	var max_x := viewport_rect.position.x + viewport_rect.size.x - panel_size.x - margin
-	var min_x := viewport_rect.position.x + margin
-	var max_y := viewport_rect.position.y + viewport_rect.size.y - panel_size.y - margin
-	var min_y := viewport_rect.position.y + margin
-	tooltip_control.position = Vector2(
-		clampf(max_x, min_x, max_x),
-		clampf(min_y, min_y, max_y)
-	)
+	tooltip_control.position = viewport_rect.position + (viewport_rect.size - panel_size) * 0.5
 
 func _update_tooltip_content(tile_info: Dictionary) -> void:
 	if tooltip_title == null or tooltip_biome_value == null or tooltip_climate_value == null:
@@ -1289,6 +1288,13 @@ func _humanize_biome(biome: String) -> String:
 func _hide_tooltip() -> void:
 	if tooltip_control != null:
 		tooltip_control.visible = false
+
+func _set_default_tooltip_tile() -> void:
+	_default_tooltip_tile = Vector2i(-9999, -9999)
+	for coord in _tile_data.keys():
+		_default_tooltip_tile = coord
+		break
+	_last_hovered_tile = Vector2i(-9999, -9999)
 
 func _cache_map_layer_parent() -> void:
 	if map_layer == null:

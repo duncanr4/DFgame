@@ -148,7 +148,7 @@ toggle_mode = true
 text = "Biome Map"
 
 [node name="MapTooltip" type="Control" parent="MapUi"]
-visible = false
+visible = true
 mouse_filter = 2
 
 [node name="Panel" type="Panel" parent="MapUi/MapTooltip"]
