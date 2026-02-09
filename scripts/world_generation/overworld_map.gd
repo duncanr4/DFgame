@@ -1244,7 +1244,7 @@ func _configure_tileset() -> void:
 			iceberg_layer.tile_set = tile_set
 		return
 	var texture_size := atlas_texture.get_size()
-	var tile_coords_list := [
+	var tile_coords_list: Array[Vector2i] = [
 		SAND_TILE,
 		GRASS_TILE,
 		BADLANDS_TILE,
@@ -1311,9 +1311,10 @@ func _configure_tileset() -> void:
 		BANDIT_CAMP_TILE,
 		TRAVELERS_CAMP_TILE,
 		DUNGEON_TILE,
-		CENTAUR_ENCAMPMENT_TILE,
-		iceberg_tile_coords
+		CENTAUR_ENCAMPMENT_TILE
 	]
+	for iceberg_tile_coord: Vector2i in iceberg_tile_options:
+		tile_coords_list.append(iceberg_tile_coord)
 	var max_tile := Vector2i(0, 0)
 	for tile_coords: Vector2i in tile_coords_list:
 		max_tile.x = max(max_tile.x, tile_coords.x)
