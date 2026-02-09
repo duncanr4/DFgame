@@ -204,26 +204,6 @@ horizontal_alignment = 2
 text = "Hardwood timber, Game animals, and Medicinal herbs"
 autowrap_mode = 3
 
-[node name="MajorPopulationTitleLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-text = "MAJOR POPULATION GROUPS"
-
-[node name="MajorPopulationValueLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-custom_minimum_size = Vector2(200, 0)
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "Beastmen (63%) and Humans (27%)"
-autowrap_mode = 3
-
-[node name="MinorPopulationTitleLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-text = "MINOR POPULATION GROUPS"
-
-[node name="MinorPopulationValueLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-custom_minimum_size = Vector2(200, 0)
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "Trolls (7%) and Dwarves (6%)"
-autowrap_mode = 3
-
 [node name="LoadingScreen" type="Control" parent="MapUi"]
 visible = false
 layout_mode = 1
