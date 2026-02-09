@@ -526,7 +526,13 @@ func _sample_continent_bias(x: int, y: int) -> float:
 	var nx := float(x) / denom_x
 	var ny := float(y) / denom_y
 	var mask_value := _sample_landmass_mask(nx, ny)
-	return (mask_value - 0.5) * landmass_mask_strength
+	var base_bias := (mask_value - 0.5) * landmass_mask_strength
+	var ocean_weight := clampf(1.0 - mask_value * 1.25, 0.0, 1.0)
+	var base_seed := map_seed + 0x6a09e667
+	var fractal := (_value_noise(nx * 18.0 + 2.3, ny * 18.0 + 9.7, base_seed) - 0.5) * 0.18
+	fractal += (_value_noise(nx * 42.0 + 13.1, ny * 42.0 + 5.4, base_seed + 0xbb67ae85) - 0.5) * 0.08
+	var ocean_boost := fractal * ocean_weight
+	return base_bias + ocean_boost
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
