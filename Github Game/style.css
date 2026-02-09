@@ -3138,9 +3138,9 @@ button:hover:not(:disabled) {
   left: 50%;
   bottom: calc(100% + 0.5rem);
   transform: translateX(-50%);
-  min-width: 400px;
+  min-width: 460px;
   padding: 0.75rem;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   line-height: 1.4;
   color: #f5f0e6;
   background: rgba(18, 22, 33, 0.95);
@@ -3175,9 +3175,9 @@ button:hover:not(:disabled) {
 
 #dwarf-customizer .trait-attribute__tooltip {
   bottom: calc(100% + 0.5rem * var(--customizer-scale));
-  min-width: calc(400px * var(--customizer-scale));
+  min-width: calc(460px * var(--customizer-scale));
   padding: calc(0.75rem * var(--customizer-scale));
-  font-size: calc(0.85rem * var(--customizer-scale));
+  font-size: calc(0.78rem * var(--customizer-scale));
   border-radius: calc(10px * var(--customizer-scale));
   box-shadow: 0 calc(0.75rem * var(--customizer-scale))
     calc(1.5rem * var(--customizer-scale)) rgba(0, 0, 0, 0.4);
