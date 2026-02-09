@@ -165,12 +165,6 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var elevation_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/ElevationMapButton")
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
 @onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
-@onready var tooltip_control: Control = get_node_or_null("MapUi/MapTooltip")
-@onready var tooltip_panel: Panel = get_node_or_null("MapUi/MapTooltip/Panel")
-@onready var tooltip_title: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TitleLabel")
-@onready var tooltip_biome_value: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/BiomeValueLabel")
-@onready var tooltip_climate_value: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/ClimateValueLabel")
-@onready var tooltip_resources_value: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid/ResourcesValueLabel")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 
 var _atlas_source_id := -1
@@ -182,8 +176,6 @@ var _height_map: Dictionary = {}
 var _temperature_map: Dictionary = {}
 var _moisture_map: Dictionary = {}
 var _biome_map: Dictionary = {}
-var _last_hovered_tile := Vector2i(-9999, -9999)
-var _default_tooltip_tile := Vector2i(-9999, -9999)
 var _world_settings: Dictionary = {}
 var _landmass_centers: Array[Vector2] = []
 var _map_layer_original_parent: Node = null
@@ -241,7 +233,6 @@ func _ready() -> void:
 	_cache_overlay_parent()
 	_configure_globe_viewport()
 	_set_globe_view(false)
-	_hide_tooltip()
 
 func _show_loading_screen() -> void:
 	if loading_screen != null:
@@ -254,8 +245,6 @@ func _hide_loading_screen() -> void:
 func _process(delta: float) -> void:
 	if _is_globe_view:
 		_rotate_globe(delta)
-	else:
-		_update_tooltip()
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
@@ -314,8 +303,6 @@ func _generate_map() -> void:
 	if settlement_layer != null:
 		settlement_layer.clear()
 	_tile_data.clear()
-	_last_hovered_tile = Vector2i(-9999, -9999)
-	_hide_tooltip()
 
 	var height_map: Dictionary = {}
 	var temperature_map: Dictionary = {}
@@ -440,7 +427,6 @@ func _generate_map() -> void:
 	_temperature_map = temperature_map.duplicate()
 	_moisture_map = moisture_map.duplicate()
 	_biome_map = biome_map.duplicate()
-	_set_default_tooltip_tile()
 	_update_elevation_overlay()
 	_update_temperature_overlay()
 	_update_moisture_overlay()
@@ -1159,62 +1145,6 @@ func _resources_for_biome(biome: String) -> Array[String]:
 		_:
 			return ["grain", "livestock", "herbs"]
 
-func _update_tooltip() -> void:
-	if _is_globe_view:
-		_hide_tooltip()
-		return
-	if tooltip_control == null or tooltip_panel == null:
-		return
-	if map_layer == null:
-		_hide_tooltip()
-		return
-	var local_mouse := map_layer.get_local_mouse_position()
-	var tile_coords := map_layer.local_to_map(local_mouse)
-	if not _tile_data.has(tile_coords):
-		_hide_tooltip()
-		return
-	_default_tooltip_tile = tile_coords
-	if tile_coords != _last_hovered_tile:
-		_last_hovered_tile = tile_coords
-		_update_tooltip_content(_tile_data[tile_coords])
-	tooltip_panel.reset_size()
-	var panel_size := tooltip_panel.get_combined_minimum_size()
-	tooltip_panel.size = panel_size
-	if tooltip_control != null:
-		tooltip_control.size = panel_size
-	tooltip_control.visible = true
-	var viewport_rect := get_viewport().get_visible_rect()
-	var mouse_pos := get_viewport().get_mouse_position()
-	var tooltip_offset := Vector2(16.0, 18.0)
-	var target_pos := mouse_pos + tooltip_offset
-	var max_x := viewport_rect.position.x + maxf(0.0, viewport_rect.size.x - panel_size.x)
-	var max_y := viewport_rect.position.y + maxf(0.0, viewport_rect.size.y - panel_size.y)
-	tooltip_control.position = Vector2(
-		clampf(target_pos.x, viewport_rect.position.x, max_x),
-		clampf(target_pos.y, viewport_rect.position.y, max_y)
-	)
-
-func _update_tooltip_content(tile_info: Dictionary) -> void:
-	if tooltip_title == null or tooltip_biome_value == null or tooltip_climate_value == null:
-		return
-	if tooltip_resources_value == null:
-		return
-	var region_name := String(tile_info.get("region_name", "")).strip_edges()
-	var biome_type := String(tile_info.get("biome_type", BIOME_GRASSLAND))
-	if region_name.is_empty():
-		if biome_type.is_empty():
-			tooltip_title.text = "Unnamed Region"
-		else:
-			tooltip_title.text = "Unnamed %s" % _humanize_biome(biome_type)
-	else:
-		tooltip_title.text = region_name
-	tooltip_biome_value.text = _humanize_biome(biome_type)
-	var temperature := float(tile_info.get("temperature", 0.0))
-	var moisture := float(tile_info.get("moisture", 0.0))
-	tooltip_climate_value.text = _describe_climate(temperature, moisture)
-	var resources: Array[String] = tile_info.get("resources", []) as Array[String]
-	tooltip_resources_value.text = _format_resource_list(resources)
-
 func _describe_climate(temperature: float, moisture: float) -> String:
 	var temp_label := "Mild"
 	if temperature < 0.3:
@@ -1254,17 +1184,6 @@ func _format_resource_list(resources: Array[String]) -> String:
 
 func _humanize_biome(biome: String) -> String:
 	return biome.replace("_", " ").capitalize()
-
-func _hide_tooltip() -> void:
-	if tooltip_control != null:
-		tooltip_control.visible = false
-
-func _set_default_tooltip_tile() -> void:
-	_default_tooltip_tile = Vector2i(-9999, -9999)
-	for coord: Vector2i in _tile_data.keys():
-		_default_tooltip_tile = coord
-		break
-	_last_hovered_tile = Vector2i(-9999, -9999)
 
 func _cache_map_layer_parent() -> void:
 	if map_layer == null:
@@ -1339,7 +1258,6 @@ func _set_globe_view(enabled: bool) -> void:
 	if globe_camera != null:
 		globe_camera.current = enabled
 	if enabled:
-		_hide_tooltip()
 		_move_map_layer_to_viewport()
 		_update_globe_texture()
 	else:

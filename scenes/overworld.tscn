@@ -147,63 +147,6 @@ layout_mode = 2
 toggle_mode = true
 text = "Biome Map"
 
-[node name="MapTooltip" type="Control" parent="MapUi"]
-visible = true
-mouse_filter = 2
-
-[node name="Panel" type="Panel" parent="MapUi/MapTooltip"]
-anchors_preset = 0
-clip_contents = true
-
-[node name="TooltipLayout" type="VBoxContainer" parent="MapUi/MapTooltip/Panel"]
-anchors_preset = 15
-offset_left = 0.0
-offset_top = 8.0
-offset_right = 0.0
-offset_bottom = 0.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 10
-
-[node name="TitleLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout"]
-text = "Unnamed Region"
-
-[node name="TooltipGrid" type="GridContainer" parent="MapUi/MapTooltip/Panel/TooltipLayout"]
-columns = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 16
-theme_override_constants/v_separation = 6
-
-[node name="BiomeTitleLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-text = "BIOME"
-
-[node name="BiomeValueLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-custom_minimum_size = Vector2(200, 0)
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "Forest"
-autowrap_mode = 3
-
-[node name="ClimateTitleLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-text = "CLIMATE"
-
-[node name="ClimateValueLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-custom_minimum_size = Vector2(200, 0)
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "Warm climate with humid air"
-autowrap_mode = 3
-
-[node name="ResourcesTitleLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-text = "RESOURCES"
-
-[node name="ResourcesValueLabel" type="Label" parent="MapUi/MapTooltip/Panel/TooltipLayout/TooltipGrid"]
-custom_minimum_size = Vector2(200, 0)
-size_flags_horizontal = 3
-horizontal_alignment = 2
-text = "Hardwood timber, Game animals, and Medicinal herbs"
-autowrap_mode = 3
-
 [node name="LoadingScreen" type="Control" parent="MapUi"]
 visible = false
 layout_mode = 1
