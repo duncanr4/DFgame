@@ -464,7 +464,9 @@ func _apply_overlays_and_metadata(
 			var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
 			if highland_layer != null:
 				if highland_map.has(coord):
-					highland_layer.set_cell(coord, _atlas_source_id, _biome_to_tile(highland_map[coord]))
+					var highland_biome := highland_map[coord] as String
+					var highland_tile := _highland_tile_for_biome(highland_biome, base_biome)
+					highland_layer.set_cell(coord, _atlas_source_id, highland_tile)
 				else:
 					highland_layer.erase_cell(coord)
 			var biome := biome_map.get(coord, base_biome) as String
@@ -475,6 +477,11 @@ func _apply_overlays_and_metadata(
 				"resources": _resources_for_biome(biome),
 				"region_name": ""
 			}
+
+func _highland_tile_for_biome(highland_biome: String, base_biome: String) -> Vector2i:
+	if highland_biome == BIOME_HILLS and base_biome == BIOME_TUNDRA:
+		return Vector2i(HILLS_TILE.x + 1, HILLS_TILE.y)
+	return _biome_to_tile(highland_biome)
 
 func _yield_generation_wave() -> void:
 	if is_inside_tree():
