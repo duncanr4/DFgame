@@ -12,12 +12,6 @@ enum Images {
 	HAIR
 }
 const AMOUNT_OF_IMAGES := 3
-const GENDER_BUTTON_NORMAL_BRIGHTNESS := 0.85
-const GENDER_BUTTON_HOVER_BRIGHTNESS := 1.08
-const GENDER_BUTTON_PRESSED_BRIGHTNESS := 1.18
-const GENDER_BUTTON_HOVER_OFFSET_Y := -2.0
-const GENDER_BUTTON_PRESSED_OFFSET_Y := 1.0
-const GENDER_BUTTON_TWEEN_DURATION := 0.12
 
 static var instance: PortraitCreator
 
@@ -534,7 +528,6 @@ var _is_female := false
 var _rng := RandomNumberGenerator.new()
 
 var _available_beards: Array[CompressedTexture2D]
-var _gender_button_states: Dictionary = {}
 
 func _enter_tree() -> void:
 	instance = self
@@ -554,10 +547,8 @@ func _ready() -> void:
 	character_name.text_changed.connect(_on_name_changed)
 	if female_button:
 		female_button.pressed.connect(_set_gender.bind(true))
-		_setup_gender_button(female_button)
 	if male_button:
 		male_button.pressed.connect(_set_gender.bind(false))
-		_setup_gender_button(male_button)
 
 	clan_name.clear()
 	for clan: String in CLAN_OPTIONS:
@@ -568,98 +559,6 @@ func _ready() -> void:
 	_images.resize(3)
 	_colors.resize(3)
 	_refresh_random_name()
-
-func _setup_gender_button(button: Button) -> void:
-	_gender_button_states[button] = {
-		"hovered": false,
-		"focused": false,
-		"pressed": false,
-		"tween": null
-	}
-
-	var normal_style := _make_gender_button_style(0, Color(0, 0, 0, 0), Vector2.ZERO)
-	var hover_style := _make_gender_button_style(6, Color(0, 0, 0, 0.35), Vector2(0, 2))
-	var pressed_style := _make_gender_button_style(10, Color(0, 0, 0, 0.5), Vector2(0, 3))
-
-	button.add_theme_stylebox_override("normal", normal_style)
-	button.add_theme_stylebox_override("hover", hover_style)
-	button.add_theme_stylebox_override("focus", hover_style)
-	button.add_theme_stylebox_override("pressed", pressed_style)
-
-	button.mouse_entered.connect(_on_gender_button_mouse_entered.bind(button))
-	button.mouse_exited.connect(_on_gender_button_mouse_exited.bind(button))
-	button.focus_entered.connect(_on_gender_button_focus_entered.bind(button))
-	button.focus_exited.connect(_on_gender_button_focus_exited.bind(button))
-	button.button_down.connect(_on_gender_button_down.bind(button))
-	button.button_up.connect(_on_gender_button_up.bind(button))
-
-	_update_gender_button_visuals(button, true)
-
-func _make_gender_button_style(shadow_size: int, shadow_color: Color, shadow_offset: Vector2) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.draw_center = false
-	style.bg_color = Color(0, 0, 0, 0)
-	style.shadow_size = shadow_size
-	style.shadow_color = shadow_color
-	style.shadow_offset = shadow_offset
-	return style
-
-func _on_gender_button_mouse_entered(button: Button) -> void:
-	_set_gender_button_state(button, "hovered", true)
-
-func _on_gender_button_mouse_exited(button: Button) -> void:
-	_set_gender_button_state(button, "hovered", false)
-
-func _on_gender_button_focus_entered(button: Button) -> void:
-	_set_gender_button_state(button, "focused", true)
-
-func _on_gender_button_focus_exited(button: Button) -> void:
-	_set_gender_button_state(button, "focused", false)
-
-func _on_gender_button_down(button: Button) -> void:
-	_set_gender_button_state(button, "pressed", true)
-
-func _on_gender_button_up(button: Button) -> void:
-	_set_gender_button_state(button, "pressed", false)
-
-func _set_gender_button_state(button: Button, key: String, value: bool) -> void:
-	var state: Dictionary = _gender_button_states.get(button, {})
-	state[key] = value
-	_gender_button_states[button] = state
-	_update_gender_button_visuals(button)
-
-func _update_gender_button_visuals(button: Button, instant := false) -> void:
-	var state: Dictionary = _gender_button_states.get(button, {})
-	var is_pressed: bool = state.get("pressed", false)
-	var is_hovered: bool = state.get("hovered", false) or state.get("focused", false)
-	var target_brightness := GENDER_BUTTON_NORMAL_BRIGHTNESS
-	var target_offset_y := 0.0
-
-	if is_pressed:
-		target_brightness = GENDER_BUTTON_PRESSED_BRIGHTNESS
-		target_offset_y = GENDER_BUTTON_PRESSED_OFFSET_Y
-	elif is_hovered:
-		target_brightness = GENDER_BUTTON_HOVER_BRIGHTNESS
-		target_offset_y = GENDER_BUTTON_HOVER_OFFSET_Y
-
-	var target_modulate := Color(target_brightness, target_brightness, target_brightness, 1.0)
-	var target_offset := Vector2(0, target_offset_y)
-
-	if instant:
-		button.icon_offset = target_offset
-		button.self_modulate = target_modulate
-		return
-
-	var previous_tween: Tween = state.get("tween", null)
-	if previous_tween and previous_tween.is_running():
-		previous_tween.kill()
-
-	var tween := button.create_tween()
-	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(button, "icon_offset", target_offset, GENDER_BUTTON_TWEEN_DURATION)
-	tween.parallel().tween_property(button, "self_modulate", target_modulate, GENDER_BUTTON_TWEEN_DURATION)
-	state["tween"] = tween
-	_gender_button_states[button] = state
 
 func _refresh_random_name() -> void:
 	if character_name.text.strip_edges().is_empty():
