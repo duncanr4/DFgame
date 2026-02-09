@@ -73,6 +73,11 @@ visible = false
 z_index = 6
 centered = false
 
+[node name="BiomeOverlay" type="Sprite2D" parent="MapOverlays"]
+visible = false
+z_index = 3
+centered = false
+
 [node name="OverworldCamera" type="Camera2D" parent="."]
 position = Vector2(512, 384)
 current = true
@@ -136,6 +141,11 @@ text = "Moisture Map"
 layout_mode = 2
 toggle_mode = true
 text = "Elevation Map"
+
+[node name="BiomeMapButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
+layout_mode = 2
+toggle_mode = true
+text = "Biome Map"
 
 [node name="MapTooltip" type="Control" parent="MapUi"]
 visible = false
