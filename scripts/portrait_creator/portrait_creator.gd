@@ -528,6 +528,17 @@ var _is_female := false
 var _rng := RandomNumberGenerator.new()
 
 var _available_beards: Array[CompressedTexture2D]
+var _gender_button_hover_shadow: StyleBoxFlat
+var _gender_button_pressed_shadow: StyleBoxFlat
+var _gender_button_normal_shadow: StyleBoxFlat
+
+const GENDER_BUTTON_BRIGHTNESS_NORMAL := 0.85
+const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
+const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
+const GENDER_BUTTON_ICON_Y_NORMAL := 0.0
+const GENDER_BUTTON_ICON_Y_HOVER := -2.0
+const GENDER_BUTTON_ICON_Y_PRESSED := 1.0
+const GENDER_BUTTON_TWEEN_DURATION := 0.12
 
 func _enter_tree() -> void:
 	instance = self
@@ -547,8 +558,10 @@ func _ready() -> void:
 	character_name.text_changed.connect(_on_name_changed)
 	if female_button:
 		female_button.pressed.connect(_set_gender.bind(true))
+		_setup_gender_button(female_button)
 	if male_button:
 		male_button.pressed.connect(_set_gender.bind(false))
+		_setup_gender_button(male_button)
 
 	clan_name.clear()
 	for clan: String in CLAN_OPTIONS:
@@ -559,6 +572,63 @@ func _ready() -> void:
 	_images.resize(3)
 	_colors.resize(3)
 	_refresh_random_name()
+
+func _setup_gender_button(button: Button) -> void:
+	if !_gender_button_normal_shadow:
+		_gender_button_normal_shadow = _build_gender_shadow_style(0, Color(0, 0, 0, 0), Vector2.ZERO)
+		_gender_button_hover_shadow = _build_gender_shadow_style(10, Color(0, 0, 0, 0.35), Vector2(0, 4))
+		_gender_button_pressed_shadow = _build_gender_shadow_style(14, Color(0, 0, 0, 0.45), Vector2(0, 6))
+
+	button.add_theme_stylebox_override("normal", _gender_button_normal_shadow)
+	button.add_theme_stylebox_override("hover", _gender_button_hover_shadow)
+	button.add_theme_stylebox_override("pressed", _gender_button_pressed_shadow)
+	button.add_theme_stylebox_override("focus", _gender_button_hover_shadow)
+	button.add_theme_stylebox_override("hover_pressed", _gender_button_pressed_shadow)
+
+	button.self_modulate = Color(GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, 1.0)
+	if button.has_method("set_icon_offset"):
+		button.set_icon_offset(Vector2(0.0, GENDER_BUTTON_ICON_Y_NORMAL))
+
+	button.mouse_entered.connect(_on_gender_button_hover.bind(button))
+	button.mouse_exited.connect(_on_gender_button_unhover.bind(button))
+	button.focus_entered.connect(_on_gender_button_hover.bind(button))
+	button.focus_exited.connect(_on_gender_button_unhover.bind(button))
+	button.button_down.connect(_on_gender_button_pressed.bind(button))
+	button.button_up.connect(_on_gender_button_released.bind(button))
+
+func _build_gender_shadow_style(size: int, color: Color, offset: Vector2) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)
+	style.shadow_size = size
+	style.shadow_color = color
+	style.shadow_offset = offset
+	return style
+
+func _on_gender_button_hover(button: Button) -> void:
+	if button.is_pressed():
+		return
+	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER, GENDER_BUTTON_ICON_Y_HOVER)
+
+func _on_gender_button_unhover(button: Button) -> void:
+	if button.is_pressed():
+		return
+	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_ICON_Y_NORMAL)
+
+func _on_gender_button_pressed(button: Button) -> void:
+	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED, GENDER_BUTTON_ICON_Y_PRESSED)
+
+func _on_gender_button_released(button: Button) -> void:
+	if button.is_hovered() or button.has_focus():
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER, GENDER_BUTTON_ICON_Y_HOVER)
+	else:
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_ICON_Y_NORMAL)
+
+func _animate_gender_button(button: Button, brightness: float, icon_y: float) -> void:
+	var tween := button.create_tween()
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "self_modulate", Color(brightness, brightness, brightness, 1.0), GENDER_BUTTON_TWEEN_DURATION)
+	if button.has_method("set_icon_offset"):
+		tween.tween_property(button, "icon_offset", Vector2(0.0, icon_y), GENDER_BUTTON_TWEEN_DURATION)
 
 func _refresh_random_name() -> void:
 	if character_name.text.strip_edges().is_empty():
