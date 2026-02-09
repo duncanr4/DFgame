@@ -21,6 +21,8 @@ static var instance: PortraitCreator
 @export_group(&"Directories")
 @export var character_name: LineEdit
 @export var clan_name: OptionButton
+@export var female_button: Button
+@export var male_button: Button
 
 const CLAN_OPTIONS := [
 	"Stonebeard",
@@ -220,6 +222,276 @@ const CLAN_OPTIONS := [
 	"Highhelm"
 ]
 
+const MALE_NAME_POOL := [
+	"Baern",
+	"Dimli",
+	"Einkar",
+	"Gimli",
+	"Harbek",
+	"Kargun",
+	"Mardin",
+	"Orsik",
+	"Rurik",
+	"Thorin",
+	"Ulfgar",
+	"Vondal",
+	"Urist",
+	"Thob",
+	"Kadol",
+	"Stukos",
+	"Likot",
+	"Datan",
+	"Mörul",
+	"Logem",
+	"Rakust",
+	"Gorim",
+	"Norgrim",
+	"Balgor",
+	"Balgrum",
+	"Balro",
+	"Byron",
+	"Dain",
+	"Daragin",
+	"Darmar",
+	"Darrius",
+	"Datunashvili",
+	"Dorgan",
+	"Dranvin",
+	"Duragin",
+	"Durgin",
+	"Durin",
+	"Durnak",
+	"Elgor",
+	"Flindir",
+	"Gardian",
+	"Gorin",
+	"Harald",
+	"Hoogin",
+	"Horgrim",
+	"Hoyreal",
+	"Hrothar",
+	"Jamin",
+	"Jarin",
+	"Jarroc",
+	"Khordryn",
+	"Kordrim",
+	"Korgrim",
+	"Kurgil",
+	"Maldrik",
+	"Marius",
+	"Mordrun",
+	"Morgrim",
+	"Muradin",
+	"Odrin",
+	"Oshuart",
+	"Roorke",
+	"Thaivo",
+	"Thalgrim",
+	"Tharagin",
+	"Thorek",
+	"Thorgrim",
+	"Thrain",
+	"Thror",
+	"Thuringar",
+	"Torgrim",
+	"Trearagin",
+	"Tyr",
+	"Ulgrim",
+	"Vearspan",
+	"Vondar",
+	"Bargrin",
+	"Drokal",
+	"Khardek",
+	"Brundar",
+	"Kolgrim",
+	"Tharnok",
+	"Grimvek",
+	"Odrak",
+	"Storn",
+	"Baldrik",
+	"Khemdir",
+	"Rugnar",
+	"Haldrek",
+	"Morvek",
+	"Durnik",
+	"Kargath",
+	"Ulvorn",
+	"Brannik",
+	"Thorekkan",
+	"Galdur",
+	"Ragnor",
+	"Dromli",
+	"Skarn",
+	"Vuldrek",
+	"Korvash",
+	"Drakkel",
+	"Borgran",
+	"Khuldir",
+	"Tarnak",
+	"Grodin",
+	"Malgrom",
+	"Fenrik",
+	"Ogrimak",
+	"Durvash",
+	"Balrik",
+	"Thuldar",
+	"Krommel",
+	"Jarndek",
+	"Moradin",
+	"Hurgan",
+	"Skeldor",
+	"Brandek",
+	"Vulkar",
+	"Dornik",
+	"Grimdar",
+	"Rokhan",
+	"Kharn",
+	"Ulgrin",
+	"Brumak",
+	"Tharvek",
+	"Gromlir",
+	"Kardun",
+	"Vordek",
+	"Sturgan",
+	"Malrik",
+	"Orvash",
+	"Drundel",
+	"Hrodek",
+	"Kargul",
+	"Balvorn",
+	"Thurnik",
+	"Grovak",
+	"Ruldar",
+	"Dorgath",
+	"Skorim",
+	"Branvor",
+	"Khordek",
+	"Murvek",
+	"Tarnor",
+	"Vulgrim",
+	"Drekal",
+	"Harnok",
+	"Borvik",
+	"Grimlor",
+	"Ulmar",
+	"Stenrik",
+	"Kardrim",
+	"Throlin",
+	"Gurnak",
+	"Morgrin",
+	"Yorrill",
+	"Zromin"
+]
+
+const FEMALE_NAME_POOL := [
+	"Audhild",
+	"Brynna",
+	"Diesa",
+	"Eldeth",
+	"Finellen",
+	"Gurdis",
+	"Helja",
+	"Kathra",
+	"Liftrasa",
+	"Sannl",
+	"Torbera",
+	"Vistra",
+	"Domas",
+	"Rigòth",
+	"Kadôl",
+	"Meng",
+	"Onol",
+	"Rith",
+	"Sigrid",
+	"Thilda",
+	"Asgrid",
+	"Helga",
+	"Goden",
+	"Emera",
+	"Hilda",
+	"Moira",
+	"Brunna",
+	"Keldra",
+	"Audrika",
+	"Thorga",
+	"Durnella",
+	"Grimsa",
+	"Hildren",
+	"Baldris",
+	"Skara",
+	"Vondra",
+	"Khorra",
+	"Bryndis",
+	"Ulvara",
+	"Morna",
+	"Ragna",
+	"Torhilda",
+	"Dagna",
+	"Finra",
+	"Kardra",
+	"Helvara",
+	"Sigrun",
+	"Borna",
+	"Thryssa",
+	"Kelmora",
+	"Audra",
+	"Skaldi",
+	"Vigrid",
+	"Durnis",
+	"Grimna",
+	"Hroda",
+	"Brilda",
+	"Malda",
+	"Orla",
+	"Khendra",
+	"Balra",
+	"Thildaen",
+	"Gurna",
+	"Rigdra",
+	"Ulrissa",
+	"Morgria",
+	"Tarnis",
+	"Brylda",
+	"Kardis",
+	"Hella",
+	"Fenna",
+	"Skorla",
+	"Dorga",
+	"Thorae",
+	"Brunnae",
+	"Vendra",
+	"Korga",
+	"Audmora",
+	"Runa",
+	"Grimra",
+	"Heldis",
+	"Borika",
+	"Dagnae",
+	"Thryna",
+	"Ulmara",
+	"Skelda",
+	"Mornael",
+	"Keldis",
+	"Ragnae",
+	"Brindra",
+	"Gildra",
+	"Tarnia",
+	"Kardella",
+	"Hrothra",
+	"Baldis",
+	"Fenra",
+	"Skarna",
+	"Vuldra",
+	"Ordis",
+	"Durnika",
+	"Bryssa",
+	"Thulda",
+	"Grena",
+	"Ulgrida",
+	"Mordra",
+	"Khora"
+]
+
 @export_group(&"Directories")
 @export_dir var portrait_dir: String
 @export_dir var beard_dir: String
@@ -250,6 +522,8 @@ var _images: Array[CompressedTexture2D]
 var _colors: Array[Vector3]
 
 var _selected := Images.PORTRAIT
+var _is_female := false
+var _rng := RandomNumberGenerator.new()
 
 var _available_beards: Array[CompressedTexture2D]
 
@@ -262,11 +536,17 @@ func _exit_tree() -> void:
 	_available_beards.clear()
 
 func _ready() -> void:
+	_rng.randomize()
+
 	skin_color.value_changed.connect(_on_color_changed.bind(Images.PORTRAIT))
 	hair_color.value_changed.connect(_on_color_changed.bind(Images.HAIR))
 	beard_color.value_changed.connect(_on_color_changed.bind(Images.BEARD))
 
 	character_name.text_changed.connect(_on_name_changed)
+	if female_button:
+		female_button.pressed.connect(_set_gender.bind(true))
+	if male_button:
+		male_button.pressed.connect(_set_gender.bind(false))
 
 	clan_name.clear()
 	for clan: String in CLAN_OPTIONS:
@@ -276,6 +556,21 @@ func _ready() -> void:
 
 	_images.resize(3)
 	_colors.resize(3)
+	_refresh_random_name()
+
+func _refresh_random_name() -> void:
+	if character_name.text.strip_edges().is_empty():
+		character_name.text = _generate_random_name()
+
+func _set_gender(is_female: bool) -> void:
+	_is_female = is_female
+	character_name.text = _generate_random_name()
+
+func _generate_random_name() -> String:
+	var pool := FEMALE_NAME_POOL if _is_female else MALE_NAME_POOL
+	if pool.is_empty():
+		return ""
+	return pool[_rng.randi_range(0, pool.size() - 1)]
 
 func _on_name_changed(_new_text: String) -> void:
 	for curr_idx in AMOUNT_OF_IMAGES:

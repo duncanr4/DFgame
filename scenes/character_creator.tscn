@@ -26,7 +26,7 @@ shader = ExtResource("2_0yffs")
 shader_parameter/images = Array[CompressedTexture2D]([ExtResource("2_6txqo"), ExtResource("3_ucp7b"), ExtResource("4_oy0w6")])
 shader_parameter/colors = Array[Vector3]([Vector3(0.07, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
 
-[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "clan_name", "skin_color", "hair_color", "beard_color")]
+[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "clan_name", "female_button", "male_button", "skin_color", "hair_color", "beard_color")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -39,6 +39,8 @@ script = ExtResource("1_6txqo")
 target_render = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Control2/TextureRect")
 character_name = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer/NameRect2/LineEdit")
 clan_name = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer2/VBoxContainer/GridContainer/OptionButton2")
+female_button = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer2/VBoxContainer/HBoxContainer/TextureRect2")
+male_button = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer2/VBoxContainer/HBoxContainer/TextureRect3")
 portrait_dir = "res://resources/images/character_creator/portraits"
 beard_dir = "res://resources/images/character_creator/beards"
 hair_dir = "res://resources/images/character_creator/hair"
