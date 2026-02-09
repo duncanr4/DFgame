@@ -25,6 +25,8 @@ extends Node2D
 @export_group("Biomes")
 @export_range(0.0, 1.0, 0.01) var tundra_threshold: float = 0.28
 @export_range(0.0, 1.0, 0.01) var desert_threshold: float = 0.25
+@export_range(0.0, 0.4, 0.01) var desert_temperature_bias: float = 0.08
+@export_range(0.0, 0.4, 0.01) var desert_moisture_bias: float = 0.08
 @export_range(0.0, 1.0, 0.01) var badlands_threshold: float = 0.4
 @export_range(0.0, 1.0, 0.01) var forest_threshold: float = 0.6
 @export_range(0.0, 1.0, 0.01) var jungle_threshold: float = 0.75
@@ -672,7 +674,9 @@ func _assign_base_biome(
 		return BIOME_TUNDRA
 	if _is_marsh(coord, height, moisture, height_map):
 		return BIOME_MARSH
-	if temperature >= hot_threshold && moisture <= desert_threshold:
+	var desert_temp_cutoff := clampf(hot_threshold - desert_temperature_bias, 0.0, 1.0)
+	var desert_moisture_cutoff := clampf(desert_threshold + desert_moisture_bias, 0.0, 1.0)
+	if temperature >= desert_temp_cutoff && moisture <= desert_moisture_cutoff:
 		return BIOME_DESERT
 	if temperature >= warm_threshold && moisture <= badlands_threshold:
 		return BIOME_BADLANDS
