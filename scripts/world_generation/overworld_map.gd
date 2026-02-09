@@ -793,7 +793,6 @@ func _place_icebergs(
 	var candidates: Array[Vector2i] = []
 	var coldest_coord := Vector2i(-1, -1)
 	var coldest_temp := 1.0
-	var selected_iceberg_tile := _pick_iceberg_tile(rng)
 	for coord: Vector2i in biome_map.keys():
 		if biome_map.get(coord, "") != BIOME_WATER:
 			continue
@@ -806,10 +805,12 @@ func _place_icebergs(
 	var placed := 0
 	for coord: Vector2i in candidates:
 		if rng.randf() <= iceberg_density:
+			var selected_iceberg_tile := _pick_iceberg_tile(rng)
 			iceberg_layer.set_cell(coord, _atlas_source_id, selected_iceberg_tile)
 			placed += 1
 	if placed == 0 and coldest_coord != Vector2i(-1, -1):
-		iceberg_layer.set_cell(coldest_coord, _atlas_source_id, selected_iceberg_tile)
+		var fallback_iceberg_tile := _pick_iceberg_tile(rng)
+		iceberg_layer.set_cell(coldest_coord, _atlas_source_id, fallback_iceberg_tile)
 
 func _pick_iceberg_tile(rng: RandomNumberGenerator) -> Vector2i:
 	if iceberg_tile_options.is_empty():
