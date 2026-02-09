@@ -203,7 +203,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_apply_cached_world_settings()
 	_configure_tileset()
-	_generate_map()
+	await _generate_map()
 	_hide_loading_screen()
 	if regenerate_button == null:
 		push_error("Overworld map is missing a RegenerateButton at MapUi/TopBar/TopBarLayout/RegenerateButton.")
@@ -245,10 +245,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key_event == null or not key_event.pressed:
 		return
 	if key_event.keycode == KEY_R:
-		_regenerate_map()
+		await _regenerate_map()
 
 func _on_regenerate_pressed() -> void:
-	_regenerate_map()
+	await _regenerate_map()
 
 func _on_globe_view_toggled(is_pressed: bool) -> void:
 	_set_globe_view(is_pressed)
@@ -262,8 +262,11 @@ func _on_elevation_map_toggled(is_pressed: bool) -> void:
 	_update_elevation_overlay_visibility()
 
 func _regenerate_map() -> void:
+	_show_loading_screen()
+	await get_tree().process_frame
 	map_seed = 0
-	_generate_map()
+	await _generate_map()
+	_hide_loading_screen()
 
 func _generate_map() -> void:
 	if map_layer == null:
@@ -384,12 +387,40 @@ func _generate_map() -> void:
 	for coord: Vector2i in highland_map.keys():
 		biome_map[coord] = highland_map[coord]
 
+	_apply_base_tiles(base_biome_map)
+	await _yield_generation_wave()
+	_apply_overlays_and_metadata(base_biome_map, biome_map, highland_map, temperature_map, moisture_map)
+	await _yield_generation_wave()
+	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
+	await _yield_generation_wave()
+	_place_settlements(biome_map, rng)
+	_height_map = height_map.duplicate()
+	_temperature_map = temperature_map.duplicate()
+	_update_elevation_overlay()
+	_update_temperature_overlay()
+	_configure_globe_viewport()
+	if _is_globe_view:
+		_update_globe_texture()
+
+func _apply_base_tiles(base_biome_map: Dictionary) -> void:
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
 			var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
 			var tile_coords := _biome_to_tile(base_biome)
 			map_layer.set_cell(coord, _atlas_source_id, tile_coords)
+
+func _apply_overlays_and_metadata(
+	base_biome_map: Dictionary,
+	biome_map: Dictionary,
+	highland_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary
+) -> void:
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
 			if highland_layer != null:
 				if highland_map.has(coord):
 					highland_layer.set_cell(coord, _atlas_source_id, _biome_to_tile(highland_map[coord]))
@@ -403,15 +434,10 @@ func _generate_map() -> void:
 				"resources": _resources_for_biome(biome),
 				"region_name": ""
 			}
-	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
-	_place_settlements(biome_map, rng)
-	_height_map = height_map.duplicate()
-	_temperature_map = temperature_map.duplicate()
-	_update_elevation_overlay()
-	_update_temperature_overlay()
-	_configure_globe_viewport()
-	if _is_globe_view:
-		_update_globe_texture()
+
+func _yield_generation_wave() -> void:
+	if is_inside_tree():
+		await get_tree().process_frame
 
 func _sample_height(
 	continent_noise: FastNoiseLite,
