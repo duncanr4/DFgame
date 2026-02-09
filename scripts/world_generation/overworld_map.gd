@@ -1554,8 +1554,8 @@ func _set_tooltip_label(label: Label, text: String, should_show: bool) -> void:
 	label.visible = should_show
 	if should_show:
 		label.text = text
-	var key_label := label.get_previous_sibling()
-	if key_label is Label:
+	var key_label: Label = label.get_previous_sibling() as Label
+	if key_label != null:
 		key_label.visible = should_show
 
 func _humanize_biome(biome: String) -> String:
