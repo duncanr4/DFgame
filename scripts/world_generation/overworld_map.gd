@@ -119,6 +119,376 @@ const BIOME_JUNGLE := "jungle"
 const BIOME_GRASSLAND := "grassland"
 const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
 
+const FOREST_NAME_PREFIXES: Array[String] = [
+	"Verdant",
+	"Whispering",
+	"Emerald",
+	"Silver",
+	"Shadow",
+	"Golden",
+	"Moonlit",
+	"Ancient",
+	"Wild",
+	"Sunset"
+]
+const FOREST_NAME_SUFFIXES: Array[String] = [
+	"Groves",
+	"Woods",
+	"Thicket",
+	"Wilds",
+	"Canopy",
+	"Boughs",
+	"Hollows",
+	"Glade",
+	"Expanse",
+	"Reserve"
+]
+const FOREST_NAME_MOTIFS: Array[String] = [
+	"Echoes",
+	"Mists",
+	"Cicadas",
+	"Fables",
+	"Starlight",
+	"Owls",
+	"Whispers",
+	"Lanterns",
+	"Spirits",
+	"Willows"
+]
+
+const MOUNTAIN_NAME_PREFIXES: Array[String] = [
+	"Stone",
+	"Iron",
+	"Storm",
+	"Thunder",
+	"Frost",
+	"Dragon",
+	"Obsidian",
+	"Moon",
+	"Sunspire",
+	"Titan"
+]
+const MOUNTAIN_NAME_SUFFIXES: Array[String] = [
+	"Peaks",
+	"Range",
+	"Highlands",
+	"Crown",
+	"Mountains",
+	"Spines",
+	"Escarpment",
+	"Ridge",
+	"Tor",
+	"Bastions"
+]
+const MOUNTAIN_NAME_MOTIFS: Array[String] = [
+	"Storms",
+	"Giants",
+	"Dawn",
+	"Ash",
+	"Echoes",
+	"Legends",
+	"Stars",
+	"Anvils",
+	"Dragons",
+	"Auroras"
+]
+
+const DESERT_NAME_DESCRIPTORS: Array[String] = [
+	"Shifting",
+	"Burning",
+	"Golden",
+	"Silent",
+	"Glass",
+	"Crimson",
+	"Howling",
+	"Endless",
+	"Scoured",
+	"Sunken"
+]
+const DESERT_NAME_NOUNS: Array[String] = [
+	"Dunes",
+	"Waste",
+	"Expanse",
+	"Sea",
+	"Desert",
+	"Reach",
+	"Barrens",
+	"Quarter",
+	"Wastes",
+	"Sands"
+]
+const DESERT_NAME_MOTIFS: Array[String] = [
+	"Mirages",
+	"Ashes",
+	"Suns",
+	"Bones",
+	"Scorpions",
+	"Dust",
+	"Secrets",
+	"Hollows",
+	"Echoes",
+	"Zephyrs"
+]
+
+const TUNDRA_NAME_DESCRIPTORS: Array[String] = [
+	"Frozen",
+	"Ivory",
+	"Bleak",
+	"Glimmering",
+	"Shivering",
+	"Frostbound",
+	"Auric",
+	"Pale",
+	"Windshorn",
+	"Starlit"
+]
+const TUNDRA_NAME_NOUNS: Array[String] = [
+	"Tundra",
+	"Reach",
+	"Steppes",
+	"Barrens",
+	"Fields",
+	"Expanse",
+	"Marches",
+	"Plateau",
+	"Glade",
+	"March"
+]
+const TUNDRA_NAME_MOTIFS: Array[String] = [
+	"Auroras",
+	"Frost",
+	"Comets",
+	"Stars",
+	"Echoes",
+	"Drifts",
+	"Owls",
+	"Lights",
+	"Mammoths",
+	"Silence"
+]
+
+const GRASSLAND_NAME_DESCRIPTORS: Array[String] = [
+	"Windward",
+	"Emerald",
+	"Golden",
+	"Rolling",
+	"Open",
+	"Skylit",
+	"Silver",
+	"Gentle",
+	"Breezy",
+	"Sunlit"
+]
+const GRASSLAND_NAME_NOUNS: Array[String] = [
+	"Plains",
+	"Meadows",
+	"Fields",
+	"Prairies",
+	"Steppes",
+	"Expanse",
+	"Downs",
+	"Reach",
+	"Hearth",
+	"Lowlands"
+]
+const GRASSLAND_NAME_MOTIFS: Array[String] = [
+	"Larks",
+	"Horizon",
+	"Harvests",
+	"Echoes",
+	"Sunsets",
+	"Breezes",
+	"Lanterns",
+	"Auroras",
+	"Stones",
+	"Dreams"
+]
+
+const JUNGLE_NAME_DESCRIPTORS: Array[String] = [
+	"Emerald",
+	"Verdant",
+	"Sun-dappled",
+	"Obsidian",
+	"Mist-shrouded",
+	"Ancient",
+	"Thundering",
+	"Canopy",
+	"Moonlit",
+	"Serpent"
+]
+const JUNGLE_NAME_NOUNS: Array[String] = [
+	"Jungle",
+	"Wilds",
+	"Canopy",
+	"Rainforest",
+	"Tangle",
+	"Deepwood",
+	"Labyrinth",
+	"Greenway",
+	"Expanse",
+	"Verdure"
+]
+const JUNGLE_NAME_MOTIFS: Array[String] = [
+	"Serpents",
+	"Drums",
+	"Monsoons",
+	"Spirits",
+	"Cenotes",
+	"Orchids",
+	"Tempests",
+	"Roots",
+	"Jaguar Spirits",
+	"Emerald Dawn"
+]
+
+const MARSH_NAME_DESCRIPTORS: Array[String] = [
+	"Glimmer",
+	"Mire",
+	"Gloom",
+	"Low",
+	"Sodden",
+	"Willow",
+	"Brackish",
+	"Sable",
+	"Sunken",
+	"Twilight"
+]
+const MARSH_NAME_NOUNS: Array[String] = [
+	"Bog",
+	"Fen",
+	"Morass",
+	"Quagmire",
+	"Wetlands",
+	"Mires",
+	"Marsh",
+	"Reeds",
+	"Pools",
+	"Sinks"
+]
+const MARSH_NAME_MOTIFS: Array[String] = [
+	"Fireflies",
+	"Lilies",
+	"Secrets",
+	"Mist",
+	"Echoes",
+	"Cranes",
+	"Reeds",
+	"Moss",
+	"Shadows",
+	"Frogs"
+]
+
+const BADLANDS_NAME_DESCRIPTORS: Array[String] = [
+	"Shattered",
+	"Redstone",
+	"Sundered",
+	"Dustfallen",
+	"Sunblasted",
+	"Windswept",
+	"Bleached",
+	"Broken",
+	"Scorched",
+	"Cracked"
+]
+const BADLANDS_NAME_NOUNS: Array[String] = [
+	"Badlands",
+	"Wastes",
+	"Breaks",
+	"Barrens",
+	"Tablelands",
+	"Escarpment",
+	"Canyons",
+	"Bluffs",
+	"Ridges",
+	"Maze"
+]
+const BADLANDS_NAME_MOTIFS: Array[String] = [
+	"Bones",
+	"Dust",
+	"Echoes",
+	"Thunderheads",
+	"Vultures",
+	"Ash",
+	"Mirages",
+	"Sunstorms",
+	"Ruins",
+	"Storms"
+]
+
+const OCEAN_NAME_DESCRIPTORS: Array[String] = [
+	"Sapphire",
+	"Tempest",
+	"Sunken",
+	"Cerulean",
+	"Midnight",
+	"Gilded",
+	"Storm",
+	"Azure",
+	"Silent",
+	"Everdeep"
+]
+const OCEAN_NAME_NOUNS: Array[String] = [
+	"Sea",
+	"Ocean",
+	"Gulf",
+	"Sound",
+	"Reach",
+	"Current",
+	"Depths",
+	"Expanse",
+	"Waters",
+	"Strait"
+]
+const OCEAN_NAME_MOTIFS: Array[String] = [
+	"Sirens",
+	"Stars",
+	"Moons",
+	"Whales",
+	"Voyagers",
+	"Storms",
+	"Legends",
+	"Coral",
+	"Mists",
+	"Echoes"
+]
+
+const LAKE_NAME_DESCRIPTORS: Array[String] = [
+	"Silver",
+	"Crystal",
+	"Mirror",
+	"Still",
+	"Glimmer",
+	"Duskwater",
+	"Bright",
+	"Moon",
+	"Amber",
+	"Serene"
+]
+const LAKE_NAME_NOUNS: Array[String] = [
+	"Lake",
+	"Mere",
+	"Loch",
+	"Pond",
+	"Basin",
+	"Reservoir",
+	"Waters",
+	"Lagoon",
+	"Pool",
+	"Bay"
+]
+const LAKE_NAME_MOTIFS: Array[String] = [
+	"Echoes",
+	"Willows",
+	"Lanterns",
+	"Dreams",
+	"Reflections",
+	"Whispers",
+	"Herons",
+	"Lilies",
+	"Dawn",
+	"Stars"
+]
+
 const SETTLEMENT_TILES := {
 	"dwarfhold": [DWARFHOLD_TILE, ABANDONED_DWARFHOLD_TILE, GREAT_DWARFHOLD_TILE, DARK_DWARFHOLD_TILE],
 	"town": [TOWN_TILE, PORT_TOWN_TILE, CASTLE_TILE, HAMLET_TILE],
@@ -583,11 +953,13 @@ func _generate_map() -> void:
 	var highland_map: Dictionary = {}
 
 	var rng := RandomNumberGenerator.new()
+	var name_rng := RandomNumberGenerator.new()
 	if map_seed == 0:
 		rng.randomize()
 		map_seed = rng.randi()
 	else:
 		rng.seed = map_seed
+	name_rng.seed = map_seed + 911
 	_configure_landmass_centers(rng)
 
 	var continent_noise := FastNoiseLite.new()
@@ -689,7 +1061,14 @@ func _generate_map() -> void:
 	_apply_base_tiles(base_biome_map)
 	await _yield_generation_wave()
 	_apply_tree_tiles(tree_map, base_biome_map)
-	_apply_overlays_and_metadata(base_biome_map, biome_map, highland_map, temperature_map, moisture_map)
+	_apply_overlays_and_metadata(
+		base_biome_map,
+		biome_map,
+		highland_map,
+		temperature_map,
+		moisture_map,
+		name_rng
+	)
 	await _yield_generation_wave()
 	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
 	await _yield_generation_wave()
@@ -720,8 +1099,10 @@ func _apply_overlays_and_metadata(
 	biome_map: Dictionary,
 	highland_map: Dictionary,
 	temperature_map: Dictionary,
-	moisture_map: Dictionary
+	moisture_map: Dictionary,
+	name_rng: RandomNumberGenerator
 ) -> void:
+	var context_size := maxi(map_size.x, map_size.y)
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
@@ -734,12 +1115,13 @@ func _apply_overlays_and_metadata(
 				else:
 					highland_layer.erase_cell(coord)
 			var biome := biome_map.get(coord, base_biome) as String
+			var region_name := _generate_biome_region_name(biome, coord, name_rng, context_size)
 			_tile_data[coord] = {
 				"biome_type": biome,
 				"temperature": temperature_map.get(coord, 0.0),
 				"moisture": moisture_map.get(coord, 0.0),
 				"resources": _resources_for_biome(biome),
-				"region_name": ""
+				"region_name": region_name
 			}
 
 func _highland_tile_for_biome(highland_biome: String, base_biome: String) -> Vector2i:
@@ -1457,6 +1839,147 @@ func _format_resource_list(resources: Array[String]) -> String:
 		else:
 			combined += "%s, " % items[index]
 	return combined
+
+func _generate_biome_region_name(
+	biome: String,
+	coord: Vector2i,
+	rng: RandomNumberGenerator,
+	context_size: int
+) -> String:
+	match biome:
+		BIOME_FOREST:
+			return _generate_forest_name(rng)
+		BIOME_MOUNTAIN, BIOME_HILLS:
+			return _generate_mountain_name(rng)
+		BIOME_DESERT:
+			return _generate_desert_name(rng)
+		BIOME_TUNDRA:
+			return _generate_tundra_name(rng)
+		BIOME_GRASSLAND:
+			return _generate_grassland_name(rng)
+		BIOME_JUNGLE:
+			return _generate_jungle_name(rng)
+		BIOME_MARSH:
+			return _generate_marsh_name(rng)
+		BIOME_BADLANDS:
+			return _generate_badlands_name(rng)
+		BIOME_WATER:
+			var water_type := _water_body_type(coord)
+			if water_type == "lake":
+				return _generate_lake_name(rng)
+			return _generate_ocean_name(rng, context_size)
+		_:
+			return ""
+
+func _water_body_type(coord: Vector2i) -> String:
+	if coord.x == 0 or coord.y == 0 or coord.x == map_size.x - 1 or coord.y == map_size.y - 1:
+		return "ocean"
+	return "lake"
+
+func _generate_forest_name(rng: RandomNumberGenerator) -> String:
+	var prefix := _pick_random_entry(FOREST_NAME_PREFIXES, rng, "Verdant")
+	var suffix := _pick_random_entry(FOREST_NAME_SUFFIXES, rng, "Woods")
+	var motif := _pick_random_entry(FOREST_NAME_MOTIFS, rng)
+	var roll := rng.randf()
+	if roll < 0.34 and not motif.is_empty():
+		return "%s %s of the %s" % [prefix, suffix, motif]
+	if roll < 0.67:
+		return "The %s %s" % [prefix, suffix]
+	return "%s %s" % [prefix, suffix]
+
+func _generate_mountain_name(rng: RandomNumberGenerator) -> String:
+	var prefix := _pick_random_entry(MOUNTAIN_NAME_PREFIXES, rng, "Stone")
+	var suffix := _pick_random_entry(MOUNTAIN_NAME_SUFFIXES, rng, "Peaks")
+	var motif := _pick_random_entry(MOUNTAIN_NAME_MOTIFS, rng)
+	var use_motif := rng.randf() < 0.5
+	if use_motif and not motif.is_empty():
+		return "%s %s of the %s" % [prefix, suffix, motif]
+	return "The %s %s" % [prefix, suffix]
+
+func _generate_desert_name(rng: RandomNumberGenerator) -> String:
+	var descriptor := _pick_random_entry(DESERT_NAME_DESCRIPTORS, rng, "Shifting")
+	var noun := _pick_random_entry(DESERT_NAME_NOUNS, rng, "Dunes")
+	var motif := _pick_random_entry(DESERT_NAME_MOTIFS, rng)
+	var use_motif := rng.randf() < 0.5
+	if use_motif and not motif.is_empty():
+		return "%s of the %s" % [noun, motif]
+	return "The %s %s" % [descriptor, noun]
+
+func _generate_tundra_name(rng: RandomNumberGenerator) -> String:
+	var descriptor := _pick_random_entry(TUNDRA_NAME_DESCRIPTORS, rng, "Frozen")
+	var noun := _pick_random_entry(TUNDRA_NAME_NOUNS, rng, "Tundra")
+	var motif := _pick_random_entry(TUNDRA_NAME_MOTIFS, rng)
+	var use_motif := rng.randf() < 0.5
+	if use_motif and not motif.is_empty():
+		return "%s of the %s" % [noun, motif]
+	return "The %s %s" % [descriptor, noun]
+
+func _generate_grassland_name(rng: RandomNumberGenerator) -> String:
+	var descriptor := _pick_random_entry(GRASSLAND_NAME_DESCRIPTORS, rng, "Windward")
+	var noun := _pick_random_entry(GRASSLAND_NAME_NOUNS, rng, "Plains")
+	var motif := _pick_random_entry(GRASSLAND_NAME_MOTIFS, rng)
+	var roll := rng.randf()
+	if roll < 0.34 and not motif.is_empty():
+		return "%s of the %s" % [noun, motif]
+	if roll < 0.67:
+		return "The %s %s" % [descriptor, noun]
+	return "%s %s" % [descriptor, noun]
+
+func _generate_jungle_name(rng: RandomNumberGenerator) -> String:
+	var descriptor := _pick_random_entry(JUNGLE_NAME_DESCRIPTORS, rng, "Emerald")
+	var noun := _pick_random_entry(JUNGLE_NAME_NOUNS, rng, "Jungle")
+	var motif := _pick_random_entry(JUNGLE_NAME_MOTIFS, rng)
+	var roll := rng.randf()
+	if roll < 0.34 and not motif.is_empty():
+		return "%s of the %s" % [noun, motif]
+	if roll < 0.67:
+		return "The %s %s" % [descriptor, noun]
+	return "%s %s" % [descriptor, noun]
+
+func _generate_marsh_name(rng: RandomNumberGenerator) -> String:
+	var descriptor := _pick_random_entry(MARSH_NAME_DESCRIPTORS, rng, "Glimmer")
+	var noun := _pick_random_entry(MARSH_NAME_NOUNS, rng, "Bog")
+	var motif := _pick_random_entry(MARSH_NAME_MOTIFS, rng)
+	var use_motif := rng.randf() < 0.5
+	if use_motif and not motif.is_empty():
+		return "%s %s of the %s" % [descriptor, noun, motif]
+	return "The %s %s" % [descriptor, noun]
+
+func _generate_badlands_name(rng: RandomNumberGenerator) -> String:
+	var descriptor := _pick_random_entry(BADLANDS_NAME_DESCRIPTORS, rng, "Shattered")
+	var noun := _pick_random_entry(BADLANDS_NAME_NOUNS, rng, "Badlands")
+	var motif := _pick_random_entry(BADLANDS_NAME_MOTIFS, rng)
+	var roll := rng.randf()
+	if roll < 0.34 and not motif.is_empty():
+		return "%s of the %s" % [noun, motif]
+	if roll < 0.67:
+		return "The %s %s" % [descriptor, noun]
+	return "%s %s" % [descriptor, noun]
+
+func _generate_ocean_name(rng: RandomNumberGenerator, context_size: int) -> String:
+	var descriptor := _pick_random_entry(OCEAN_NAME_DESCRIPTORS, rng, "Sapphire")
+	var noun := _pick_random_entry(OCEAN_NAME_NOUNS, rng, "Sea")
+	var motif := _pick_random_entry(OCEAN_NAME_MOTIFS, rng)
+	if context_size < 120 and noun == "Ocean":
+		noun = "Sea"
+	var use_motif := rng.randf() < 0.5
+	if use_motif and not motif.is_empty():
+		return "%s of the %s" % [noun, motif]
+	return "The %s %s" % [descriptor, noun]
+
+func _generate_lake_name(rng: RandomNumberGenerator) -> String:
+	var descriptor := _pick_random_entry(LAKE_NAME_DESCRIPTORS, rng, "Silver")
+	var noun := _pick_random_entry(LAKE_NAME_NOUNS, rng, "Lake")
+	var motif := _pick_random_entry(LAKE_NAME_MOTIFS, rng)
+	var lower_noun := noun.to_lower()
+	var use_motif := rng.randf() < 0.5
+	if lower_noun == "lake" or lower_noun == "loch":
+		if use_motif and not motif.is_empty():
+			return "%s %s" % [noun, motif]
+		return "%s %s" % [noun, descriptor]
+	if use_motif and not motif.is_empty():
+		return "The %s %s of the %s" % [descriptor, noun, motif]
+	return "The %s %s" % [descriptor, noun]
 
 func _pick_random_entry(options: Array[String], rng: RandomNumberGenerator, fallback: String = "") -> String:
 	if options.is_empty():
