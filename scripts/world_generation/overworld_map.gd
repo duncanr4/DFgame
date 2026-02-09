@@ -399,6 +399,7 @@ func _generate_map() -> void:
 	_update_elevation_overlay()
 	_update_temperature_overlay()
 	_configure_globe_viewport()
+	_configure_overworld_camera_bounds()
 	if _is_globe_view:
 		_update_globe_texture()
 
@@ -1151,6 +1152,17 @@ func _configure_globe_viewport() -> void:
 		return
 	map_viewport.size = viewport_size
 	map_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+
+func _configure_overworld_camera_bounds() -> void:
+	if overworld_camera == null:
+		return
+	var world_rect := _get_world_rect()
+	overworld_camera.set_world_bounds(world_rect)
+
+func _get_world_rect() -> Rect2:
+	var world_width := maxf(0.0, float(map_size.x * tile_size))
+	var world_height := maxf(0.0, float(map_size.y * tile_size))
+	return Rect2(Vector2.ZERO, Vector2(world_width, world_height))
 
 func _set_globe_view(enabled: bool) -> void:
 	_is_globe_view = enabled

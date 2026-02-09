@@ -12,6 +12,8 @@ var _pan_pointer_index := -1
 var _pan_start_screen := Vector2.ZERO
 var _pan_start_position := Vector2.ZERO
 var _pan_exceeded_threshold := false
+var _world_bounds := Rect2()
+var _has_world_bounds := false
 
 func _unhandled_input(event: InputEvent) -> void:
 	var mouse_event := event as InputEventMouseButton
@@ -59,6 +61,7 @@ func _physics_process(delta: float) -> void:
 
 	if direction != Vector2.ZERO:
 		global_position += direction.normalized() * move_speed * delta
+		_clamp_to_world_bounds()
 
 func adjust_zoom(delta: float) -> void:
 	var next_zoom := clampf(zoom.x + delta, min_zoom, max_zoom)
@@ -68,6 +71,41 @@ func adjust_zoom(delta: float) -> void:
 	zoom = Vector2(next_zoom, next_zoom)
 	var mouse_world_after := get_global_mouse_position()
 	global_position += mouse_world_before - mouse_world_after
+	_clamp_to_world_bounds()
+
+func set_world_bounds(bounds: Rect2) -> void:
+	_world_bounds = bounds
+	_has_world_bounds = true
+	_update_camera_limits()
+	_clamp_to_world_bounds()
+
+func _update_camera_limits() -> void:
+	if not _has_world_bounds:
+		return
+	limit_left = int(floor(_world_bounds.position.x))
+	limit_top = int(floor(_world_bounds.position.y))
+	limit_right = int(ceil(_world_bounds.position.x + _world_bounds.size.x))
+	limit_bottom = int(ceil(_world_bounds.position.y + _world_bounds.size.y))
+
+func _clamp_to_world_bounds() -> void:
+	if not _has_world_bounds:
+		return
+	var viewport_size := get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return
+	var half_view := (viewport_size * 0.5) / zoom
+	var min_pos := _world_bounds.position + half_view
+	var max_pos := _world_bounds.position + _world_bounds.size - half_view
+	var clamped := global_position
+	if min_pos.x > max_pos.x:
+		clamped.x = _world_bounds.position.x + (_world_bounds.size.x * 0.5)
+	else:
+		clamped.x = clampf(clamped.x, min_pos.x, max_pos.x)
+	if min_pos.y > max_pos.y:
+		clamped.y = _world_bounds.position.y + (_world_bounds.size.y * 0.5)
+	else:
+		clamped.y = clampf(clamped.y, min_pos.y, max_pos.y)
+	global_position = clamped
 
 func _start_pan(screen_position: Vector2, pointer_index: int) -> void:
 	_is_panning = true
@@ -87,6 +125,7 @@ func _update_pan(screen_position: Vector2, pointer_index: int) -> void:
 		return
 	var world_delta := delta / zoom
 	global_position = _pan_start_position - world_delta
+	_clamp_to_world_bounds()
 
 func _end_pan() -> void:
 	if not _is_panning:
