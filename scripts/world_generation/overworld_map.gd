@@ -1828,7 +1828,7 @@ func _format_population_breakdown_entry(entry: Dictionary) -> String:
 	if percentage > 0.0:
 		parts.append("%0.2f%%" % percentage)
 	if population > 0:
-		parts.append("(%s)" % String(population))
+		parts.append("(%s)" % str(population))
 	return " ".join(parts)
 
 func _populate_population_breakdown_list(breakdown: Array) -> void:
@@ -1841,7 +1841,7 @@ func _populate_population_breakdown_list(breakdown: Array) -> void:
 		func(a: Dictionary, b: Dictionary) -> bool:
 			return int(b.get("population", 0)) < int(a.get("population", 0))
 	)
-	for entry in sorted_breakdown:
+	for entry: Dictionary in sorted_breakdown:
 		if float(entry.get("percentage", 0.0)) <= 0.0:
 			continue
 		if int(entry.get("population", 0)) <= 0:
