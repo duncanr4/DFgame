@@ -398,18 +398,18 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 @onready var tooltip_panel: PanelContainer = get_node_or_null("MapUi/MapTooltip")
 @onready var tooltip_title: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipTitle")
-@onready var tooltip_biome: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipBiome")
-@onready var tooltip_climate: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipClimate")
-@onready var tooltip_resources: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipResources")
-@onready var tooltip_settlement: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipSettlement")
-@onready var tooltip_population: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulation")
-@onready var tooltip_ruler: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipRuler")
-@onready var tooltip_founded: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipFounded")
-@onready var tooltip_prominent_clan: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipProminentClan")
-@onready var tooltip_major_clans: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipMajorClans")
-@onready var tooltip_major_guilds: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipMajorGuilds")
-@onready var tooltip_major_exports: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipMajorExports")
-@onready var tooltip_hallmark: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipHallmark")
+@onready var tooltip_biome: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipBiome")
+@onready var tooltip_climate: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipClimate")
+@onready var tooltip_resources: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipResources")
+@onready var tooltip_settlement: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipSettlement")
+@onready var tooltip_population: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipPopulation")
+@onready var tooltip_ruler: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipRuler")
+@onready var tooltip_founded: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipFounded")
+@onready var tooltip_prominent_clan: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipProminentClan")
+@onready var tooltip_major_clans: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipMajorClans")
+@onready var tooltip_major_guilds: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipMajorGuilds")
+@onready var tooltip_major_exports: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipMajorExports")
+@onready var tooltip_hallmark: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipHallmark")
 
 var _atlas_source_id := -1
 var _temperature_noise: FastNoiseLite
@@ -1554,6 +1554,9 @@ func _set_tooltip_label(label: Label, text: String, should_show: bool) -> void:
 	label.visible = should_show
 	if should_show:
 		label.text = text
+	var key_label := label.get_previous_sibling()
+	if key_label is Label:
+		key_label.visible = should_show
 
 func _humanize_biome(biome: String) -> String:
 	if biome.is_empty():
@@ -1722,18 +1725,18 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	if tooltip_title != null:
 		tooltip_title.text = region_name
 	if tooltip_biome != null:
-		tooltip_biome.text = "Biome: %s" % biome_label
+		tooltip_biome.text = biome_label
 	if tooltip_climate != null:
-		tooltip_climate.text = "Climate: %s" % _describe_climate(temperature, moisture)
+		tooltip_climate.text = _describe_climate(temperature, moisture)
 	if tooltip_resources != null:
 		var resource_text := _format_resource_list(resources)
-		tooltip_resources.text = "Resources: %s" % (resource_text if not resource_text.is_empty() else "None")
+		tooltip_resources.text = resource_text if not resource_text.is_empty() else "None"
 
 	var settlement_type := String(data.get("settlement_type", ""))
 	var is_dwarfhold := settlement_type == "dwarfhold"
 	if is_dwarfhold:
 		var classification_label := String(data.get("settlement_classification", "Dwarfhold"))
-		_set_tooltip_label(tooltip_settlement, "Settlement: %s" % classification_label, true)
+		_set_tooltip_label(tooltip_settlement, classification_label, true)
 
 		var population_value: Variant = data.get("population", null)
 		var population_text := ""
@@ -1745,7 +1748,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 				population_text = "%s %s" % [population_text, population_descriptor]
 		_set_tooltip_label(
 			tooltip_population,
-			"Population: %s" % (population_text if not population_text.is_empty() else "Unknown"),
+			population_text if not population_text.is_empty() else "Unknown",
 			true
 		)
 
@@ -1753,7 +1756,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		var ruler_name := String(data.get("ruler_name", "")).strip_edges()
 		var ruler_text := "%s %s" % [ruler_title, ruler_name]
 		ruler_text = ruler_text.strip_edges()
-		_set_tooltip_label(tooltip_ruler, "Ruler: %s" % (ruler_text if not ruler_text.is_empty() else "Unknown"), true)
+		_set_tooltip_label(tooltip_ruler, ruler_text if not ruler_text.is_empty() else "Unknown", true)
 
 		var founded_value: Variant = data.get("founded_years_ago", null)
 		var founded_text := ""
@@ -1761,14 +1764,14 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			founded_text = "%s years ago" % str(maxi(1, int(round(float(founded_value)))))
 		_set_tooltip_label(
 			tooltip_founded,
-			"Founded: %s" % (founded_text if not founded_text.is_empty() else "Unknown"),
+			founded_text if not founded_text.is_empty() else "Unknown",
 			true
 		)
 
 		var prominent_clan := String(data.get("prominent_clan", "")).strip_edges()
 		_set_tooltip_label(
 			tooltip_prominent_clan,
-			"Prominent Clan: %s" % (prominent_clan if not prominent_clan.is_empty() else "Unknown"),
+			prominent_clan if not prominent_clan.is_empty() else "Unknown",
 			true
 		)
 
@@ -1777,7 +1780,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			major_clans.append(String(entry))
 		_set_tooltip_label(
 			tooltip_major_clans,
-			"Major Clans: %s" % _format_resource_list(major_clans),
+			_format_resource_list(major_clans),
 			not major_clans.is_empty()
 		)
 
@@ -1786,7 +1789,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			major_guilds.append(String(entry))
 		_set_tooltip_label(
 			tooltip_major_guilds,
-			"Major Guilds: %s" % _format_resource_list(major_guilds),
+			_format_resource_list(major_guilds),
 			not major_guilds.is_empty()
 		)
 
@@ -1795,14 +1798,14 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			major_exports.append(String(entry))
 		_set_tooltip_label(
 			tooltip_major_exports,
-			"Major Exports: %s" % _format_resource_list(major_exports),
+			_format_resource_list(major_exports),
 			not major_exports.is_empty()
 		)
 
 		var hallmark := String(data.get("hallmark", "")).strip_edges()
 		_set_tooltip_label(
 			tooltip_hallmark,
-			"Hallmark: %s" % hallmark,
+			hallmark,
 			not hallmark.is_empty()
 		)
 	else:
