@@ -20,6 +20,7 @@ static var instance: PortraitCreator
 
 @export_group(&"Directories")
 @export var character_name: LineEdit
+@export var profession_choice: OptionButton
 @export var clan_name: OptionButton
 @export var female_button: Button
 @export var male_button: Button
@@ -499,6 +500,7 @@ const FEMALE_NAME_POOL := [
 
 @export_group(&"Sliders")
 @export var skin_color: HSlider
+@export var eye_color: HSlider
 @export var hair_color: HSlider
 @export var beard_color: HSlider
 
@@ -610,3 +612,15 @@ func _on_return_button_pressed() -> void:
 
 func _on_create_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/embark_preparation.tscn")
+
+func _on_randomize_button_pressed() -> void:
+	if profession_choice and profession_choice.item_count > 0:
+		profession_choice.select(_rng.randi_range(0, profession_choice.item_count - 1))
+	if clan_name and clan_name.item_count > 0:
+		clan_name.select(_rng.randi_range(0, clan_name.item_count - 1))
+	if skin_color:
+		skin_color.value = _rng.randf_range(skin_color.min_value, skin_color.max_value)
+	if eye_color:
+		eye_color.value = _rng.randf_range(eye_color.min_value, eye_color.max_value)
+
+	character_name.text = _generate_random_name()
