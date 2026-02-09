@@ -132,6 +132,16 @@ const SETTLEMENT_NAMES := {
 	"wood_elves": "Grove",
 	"lizardmen": "Lizard City"
 }
+const DWARFHOLD_NEARBY_TOWN_RADIUS := 12.0
+const DWARFHOLD_POPULATION_RACE_OPTIONS := [
+	{"key": "dwarves", "label": "Dwarves", "color": Color("#f4c069")},
+	{"key": "humans", "label": "Humans", "color": Color("#9bb6d8")},
+	{"key": "halflings", "label": "Halflings", "color": Color("#f7a072")},
+	{"key": "gnomes", "label": "Gnomes", "color": Color("#c9a3e6")},
+	{"key": "goblins", "label": "Goblins", "color": Color("#7f8c4d")},
+	{"key": "kobolds", "label": "Kobolds", "color": Color("#b1c8ff")},
+	{"key": "others", "label": "Others", "color": Color("#9e9e9e")}
+]
 const DWARFHOLD_NAMES: Array[String] = [
 	"Khazadûn Kharn",
 	"Dhurnomli Bûr",
@@ -410,6 +420,21 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var tooltip_major_guilds: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipMajorGuilds")
 @onready var tooltip_major_exports: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipMajorExports")
 @onready var tooltip_hallmark: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipHallmark")
+@onready var tooltip_population_breakdown_section: Control = get_node_or_null(
+	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationBreakdown"
+)
+@onready var tooltip_population_breakdown_list: VBoxContainer = get_node_or_null(
+	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationBreakdown/PopulationBreakdownContent/PopulationBreakdownList"
+)
+@onready var tooltip_population_pie_chart: Control = get_node_or_null(
+	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationBreakdown/PopulationBreakdownContent/PopulationPieChart"
+)
+@onready var tooltip_population_history_section: Control = get_node_or_null(
+	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationHistory"
+)
+@onready var tooltip_population_history_chart: Control = get_node_or_null(
+	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationHistory/PopulationHistoryChart"
+)
 
 var _atlas_source_id := -1
 var _temperature_noise: FastNoiseLite
@@ -1292,7 +1317,7 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			tile_info["minor_population_groups"] = []
 			tile_info["settlement_type"] = settlement_type
 			if settlement_type == "dwarfhold":
-				tile_info.merge(_generate_dwarfhold_details(settlement_name, tile, rng), true)
+				tile_info.merge(_generate_dwarfhold_details(settlement_name, chosen, tile, rng), true)
 			_tile_data[chosen] = tile_info
 
 func _build_settlement_candidates(biome_map: Dictionary) -> Array:
@@ -1456,6 +1481,211 @@ func _pick_unique_entries(
 		pool.remove_at(index)
 	return chosen
 
+func _has_nearby_settlement_type(
+	coord: Vector2i,
+	settlement_type: String,
+	search_radius: float
+) -> bool:
+	if search_radius <= 0.0:
+		return false
+	for tile_coord: Vector2i in _tile_data.keys():
+		var details: Dictionary = _tile_data.get(tile_coord, {}) as Dictionary
+		if String(details.get("settlement_type", "")) != settlement_type:
+			continue
+		if coord.distance_to(tile_coord) <= search_radius:
+			return true
+	return false
+
+func _sort_fraction_desc(a: Dictionary, b: Dictionary) -> bool:
+	return float(a.get("fraction", 0.0)) > float(b.get("fraction", 0.0))
+
+func _generate_dwarfhold_population_breakdown(
+	population: int,
+	has_nearby_human_settlement: bool,
+	rng: RandomNumberGenerator
+) -> Array[Dictionary]:
+	if DWARFHOLD_POPULATION_RACE_OPTIONS.is_empty():
+		return []
+
+	var config_map := {}
+	for option: Dictionary in DWARFHOLD_POPULATION_RACE_OPTIONS:
+		var key := String(option.get("key", ""))
+		if not key.is_empty():
+			config_map[key] = option
+
+	var dwarf_config: Dictionary = config_map.get("dwarves", {}) as Dictionary
+	if dwarf_config.is_empty():
+		return []
+
+	var resolved_population := maxi(0, population)
+	var majority_range := Vector2(0.9, 0.96)
+	if has_nearby_human_settlement:
+		majority_range = Vector2(0.85, 0.93)
+	var dwarf_share := clampf(
+		lerpf(majority_range.x, majority_range.y, rng.randf()),
+		0.0,
+		1.0
+	)
+	var shares: Array[Dictionary] = [{"config": dwarf_config, "share": dwarf_share}]
+	var remainder_share := maxf(0.0, 1.0 - dwarf_share)
+
+	var weight_plans := []
+	if has_nearby_human_settlement:
+		weight_plans = [
+			{"key": "humans", "min": 0.9, "max": 1.6},
+			{"key": "halflings", "min": 0.7, "max": 1.2},
+			{"key": "gnomes", "min": 0.15, "max": 0.4},
+			{"key": "goblins", "min": 0.12, "max": 0.35},
+			{"key": "kobolds", "min": 0.12, "max": 0.35},
+			{"key": "others", "min": 0.0, "max": 0.2}
+		]
+	else:
+		weight_plans = [
+			{"key": "gnomes", "min": 0.8, "max": 1.4},
+			{"key": "goblins", "min": 0.9, "max": 1.5},
+			{"key": "kobolds", "min": 0.7, "max": 1.2},
+			{"key": "others", "min": 0.0, "max": 0.25}
+		]
+
+	var weight_entries: Array[Dictionary] = []
+	for plan: Dictionary in weight_plans:
+		var config: Dictionary = config_map.get(String(plan.get("key", "")), {}) as Dictionary
+		if config.is_empty():
+			continue
+		var min_weight := maxf(0.0, float(plan.get("min", 0.0)))
+		var max_weight := maxf(min_weight, float(plan.get("max", min_weight)))
+		if max_weight <= 0.0:
+			continue
+		var weight := min_weight + rng.randf() * (max_weight - min_weight)
+		if weight <= 0.0:
+			continue
+		weight_entries.append({"config": config, "weight": weight})
+
+	var weight_sum := 0.0
+	for entry: Dictionary in weight_entries:
+		weight_sum += float(entry.get("weight", 0.0))
+
+	if remainder_share > 0.0 and weight_sum > 0.0:
+		for entry: Dictionary in weight_entries:
+			var share := (float(entry.get("weight", 0.0)) / weight_sum) * remainder_share
+			shares.append({"config": entry.get("config", {}), "share": share})
+
+	var total_share := 0.0
+	for entry: Dictionary in shares:
+		total_share += float(entry.get("share", 0.0))
+	var safe_total := total_share if total_share > 0.0 else 1.0
+
+	var normalized_shares: Array[Dictionary] = []
+	for entry: Dictionary in shares:
+		var share := clampf(float(entry.get("share", 0.0)) / safe_total, 0.0, 1.0)
+		normalized_shares.append({"config": entry.get("config", {}), "share": share})
+
+	var percentage_decimals := 2
+	var percentage_scale := int(pow(10, percentage_decimals))
+	var total_units := 100 * percentage_scale
+
+	var scaled_entries: Array[Dictionary] = []
+	for entry: Dictionary in normalized_shares:
+		var safe_share := clampf(float(entry.get("share", 0.0)), 0.0, 1.0)
+		var raw_percentage := safe_share * 100.0
+		var scaled_raw := raw_percentage * float(percentage_scale)
+		var base_unit := int(floor(scaled_raw))
+		var fraction := clampf(scaled_raw - float(base_unit), 0.0, 1.0)
+		scaled_entries.append({
+			"config": entry.get("config", {}),
+			"base_unit": base_unit,
+			"fraction": fraction
+		})
+
+	var base_units: Array[int] = []
+	for entry: Dictionary in scaled_entries:
+		base_units.append(int(entry.get("base_unit", 0)))
+	var remainder_units := total_units
+	for value: int in base_units:
+		remainder_units -= value
+
+	var fractional_order: Array[Dictionary] = []
+	for index in range(scaled_entries.size()):
+		fractional_order.append({"index": index, "fraction": float(scaled_entries[index].get("fraction", 0.0))})
+	fractional_order.sort_custom(Callable(self, "_sort_fraction_desc"))
+
+	if not fractional_order.is_empty():
+		var increment_index := 0
+		while remainder_units > 0:
+			var target: Dictionary = fractional_order[increment_index % fractional_order.size()]
+			var target_index := int(target.get("index", 0))
+			base_units[target_index] += 1
+			remainder_units -= 1
+			increment_index += 1
+
+		var ascending := fractional_order.duplicate()
+		ascending.reverse()
+		var decrement_index := 0
+		while remainder_units < 0 and not ascending.is_empty():
+			var target: Dictionary = ascending[decrement_index % ascending.size()]
+			var target_index := int(target.get("index", 0))
+			if base_units[target_index] > 0:
+				base_units[target_index] -= 1
+				remainder_units += 1
+			decrement_index += 1
+
+	if remainder_units != 0 and not base_units.is_empty():
+		var last_index := base_units.size() - 1
+		var adjusted := clampi(base_units[last_index] + remainder_units, 0, total_units)
+		remainder_units -= adjusted - base_units[last_index]
+		base_units[last_index] = adjusted
+
+	var results: Array[Dictionary] = []
+	for index in range(scaled_entries.size()):
+		var config: Dictionary = scaled_entries[index].get("config", {}) as Dictionary
+		var percentage := clampf(float(base_units[index]) / float(percentage_scale), 0.0, 100.0)
+		var count := int(round(float(resolved_population) * percentage / 100.0))
+		results.append({
+			"key": String(config.get("key", "")),
+			"label": String(config.get("label", "")),
+			"color": config.get("color", Color.GRAY),
+			"percentage": percentage,
+			"population": count
+		})
+	return results
+
+func _generate_population_timeline(
+	population: int,
+	rng: RandomNumberGenerator,
+	founded_years_ago: int
+) -> Array[Dictionary]:
+	var resolved_population := maxi(0, population)
+	if resolved_population <= 0:
+		return []
+
+	var points: Array[Dictionary] = []
+	var steps := 5
+	var base_start := maxf(30.0, float(resolved_population) * (0.35 + rng.randf() * 0.25))
+	var current_value := base_start
+	var labels := ["Founding", "Expansion", "Conflict", "Recovery", "Current"]
+	var years_step := float(maxi(1, founded_years_ago)) / float(maxi(1, steps - 1))
+
+	for index in range(steps):
+		if index == steps - 1:
+			current_value = float(resolved_population)
+		else:
+			var variance := rng.randf_range(-0.25, 0.25)
+			current_value = clampf(
+				current_value * (1.0 + variance),
+				20.0,
+				float(resolved_population) * 1.5
+			)
+		var years_ago := int(round(float(founded_years_ago) - years_step * float(index)))
+		points.append({
+			"label": labels[index],
+			"population": int(round(current_value)),
+			"years_ago": max(0, years_ago)
+		})
+
+	if points.size() > 1:
+		points[points.size() - 1]["population"] = resolved_population
+	return points
+
 func _dwarfhold_classification_for_tile(tile: Vector2i) -> Dictionary:
 	if tile == GREAT_DWARFHOLD_TILE:
 		return {
@@ -1483,6 +1713,7 @@ func _dwarfhold_classification_for_tile(tile: Vector2i) -> Dictionary:
 
 func _generate_dwarfhold_details(
 	settlement_name: String,
+	settlement_coord: Vector2i,
 	settlement_tile: Vector2i,
 	rng: RandomNumberGenerator
 ) -> Dictionary:
@@ -1512,6 +1743,11 @@ func _generate_dwarfhold_details(
 
 	var population_range: Vector2i = classification["population_range"]
 	var population := rng.randi_range(population_range.x, population_range.y)
+	var has_nearby_human_settlement := _has_nearby_settlement_type(
+		settlement_coord,
+		"town",
+		DWARFHOLD_NEARBY_TOWN_RADIUS
+	)
 	var clan := _pick_random_entry(DWARFHOLD_CLANS, rng, "Stonebeard")
 	var ruler_first := _pick_random_entry(DWARFHOLD_RULER_NAMES, rng, "Urist")
 	var is_dark: bool = classification_key == "dark"
@@ -1546,6 +1782,20 @@ func _generate_dwarfhold_details(
 		hallmark = "%s Magma channels keep the forges blazing." % hallmark
 	details["hallmark"] = hallmark
 	details["description"] = "The hold of %s anchors nearby trade routes." % settlement_name
+	var population_breakdown := _generate_dwarfhold_population_breakdown(
+		population,
+		has_nearby_human_settlement,
+		rng
+	)
+	var founded_years_ago := int(details.get("founded_years_ago", 0))
+	var population_timeline := _generate_population_timeline(population, rng, founded_years_ago)
+	if is_dark:
+		for entry in population_breakdown:
+			if String(entry.get("key", "")) == "dwarves":
+				entry["label"] = "Dark Dwarves"
+				entry["color"] = Color("#3b2a3d")
+	details["population_breakdown"] = population_breakdown
+	details["population_timeline"] = population_timeline
 	return details
 
 func _set_tooltip_label(label: Label, text: String, should_show: bool) -> void:
@@ -1562,6 +1812,46 @@ func _set_tooltip_label(label: Label, text: String, should_show: bool) -> void:
 			key_label = parent.get_child(previous_index) as Label
 	if key_label != null:
 		key_label.visible = should_show
+
+func _set_tooltip_section_visible(node: CanvasItem, should_show: bool) -> void:
+	if node == null:
+		return
+	node.visible = should_show
+
+func _format_population_breakdown_entry(entry: Dictionary) -> String:
+	var label := String(entry.get("label", "")).strip_edges()
+	var percentage := float(entry.get("percentage", 0.0))
+	var population := int(entry.get("population", 0))
+	var parts: Array[String] = []
+	if not label.is_empty():
+		parts.append(label)
+	if percentage > 0.0:
+		parts.append("%0.2f%%" % percentage)
+	if population > 0:
+		parts.append("(%s)" % String(population))
+	return " ".join(parts)
+
+func _populate_population_breakdown_list(breakdown: Array) -> void:
+	if tooltip_population_breakdown_list == null:
+		return
+	for child in tooltip_population_breakdown_list.get_children():
+		child.queue_free()
+	var sorted_breakdown := breakdown.duplicate()
+	sorted_breakdown.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			return int(b.get("population", 0)) < int(a.get("population", 0))
+	)
+	for entry in sorted_breakdown:
+		if float(entry.get("percentage", 0.0)) <= 0.0:
+			continue
+		if int(entry.get("population", 0)) <= 0:
+			continue
+		var label := Label.new()
+		label.text = _format_population_breakdown_entry(entry)
+		label.add_theme_font_size_override("font_size", 10)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tooltip_population_breakdown_list.add_child(label)
 
 func _humanize_biome(biome: String) -> String:
 	if biome.is_empty():
@@ -1813,6 +2103,28 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			hallmark,
 			not hallmark.is_empty()
 		)
+
+		var population_breakdown: Array = []
+		for entry: Variant in data.get("population_breakdown", []):
+			if entry is Dictionary:
+				population_breakdown.append(entry)
+		var has_breakdown := not population_breakdown.is_empty()
+		_set_tooltip_section_visible(tooltip_population_breakdown_section, has_breakdown)
+		if has_breakdown:
+			_populate_population_breakdown_list(population_breakdown)
+			if tooltip_population_pie_chart != null and tooltip_population_pie_chart.has_method("set_slices"):
+				tooltip_population_pie_chart.call("set_slices", population_breakdown)
+		elif tooltip_population_pie_chart != null and tooltip_population_pie_chart.has_method("set_slices"):
+			tooltip_population_pie_chart.call("set_slices", [])
+
+		var population_timeline: Array = []
+		for entry: Variant in data.get("population_timeline", []):
+			if entry is Dictionary:
+				population_timeline.append(entry)
+		var has_timeline := not population_timeline.is_empty()
+		_set_tooltip_section_visible(tooltip_population_history_section, has_timeline)
+		if tooltip_population_history_chart != null and tooltip_population_history_chart.has_method("set_points"):
+			tooltip_population_history_chart.call("set_points", population_timeline)
 	else:
 		_set_tooltip_label(tooltip_settlement, "", false)
 		_set_tooltip_label(tooltip_population, "", false)
@@ -1823,6 +2135,12 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		_set_tooltip_label(tooltip_major_guilds, "", false)
 		_set_tooltip_label(tooltip_major_exports, "", false)
 		_set_tooltip_label(tooltip_hallmark, "", false)
+		_set_tooltip_section_visible(tooltip_population_breakdown_section, false)
+		_set_tooltip_section_visible(tooltip_population_history_section, false)
+		if tooltip_population_pie_chart != null and tooltip_population_pie_chart.has_method("set_slices"):
+			tooltip_population_pie_chart.call("set_slices", [])
+		if tooltip_population_history_chart != null and tooltip_population_history_chart.has_method("set_points"):
+			tooltip_population_history_chart.call("set_points", [])
 	tooltip_panel.size = tooltip_panel.get_combined_minimum_size()
 
 func _position_map_tooltip() -> void:
