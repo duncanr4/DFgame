@@ -734,8 +734,8 @@ func _biome_to_tile(biome: String) -> Vector2i:
 			return TREE_TILE
 		BIOME_JUNGLE:
 			return JUNGLE_TREE_TILE
-	_:
-		return GRASS_TILE
+		_:
+			return GRASS_TILE
 
 func _place_icebergs(
 	biome_map: Dictionary,
