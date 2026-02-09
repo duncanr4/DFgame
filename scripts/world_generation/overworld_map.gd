@@ -1482,17 +1482,18 @@ func _dwarfhold_classification_for_tile(tile: Vector2i) -> Dictionary:
 	}
 
 func _generate_dwarfhold_details(
-	name: String,
+	settlement_name: String,
 	settlement_tile: Vector2i,
 	rng: RandomNumberGenerator
 ) -> Dictionary:
 	var classification := _dwarfhold_classification_for_tile(settlement_tile)
+	var classification_key := String(classification.get("key", ""))
 	var details := {
 		"settlement_classification": classification["label"],
 		"population_label": "Population",
 		"population_descriptor": "residents"
 	}
-	if classification["key"] == "abandoned":
+	if classification_key == "abandoned":
 		details["population"] = 0
 		details["ruler_title"] = ""
 		details["ruler_name"] = ""
@@ -1513,7 +1514,7 @@ func _generate_dwarfhold_details(
 	var population := rng.randi_range(population_range.x, population_range.y)
 	var clan := _pick_random_entry(DWARFHOLD_CLANS, rng, "Stonebeard")
 	var ruler_first := _pick_random_entry(DWARFHOLD_RULER_NAMES, rng, "Urist")
-	var is_dark := classification["key"] == "dark"
+	var is_dark: bool = classification_key == "dark"
 	var ruler_title := (
 		_pick_random_entry(DARK_DWARFHOLD_RULER_TITLES, rng, "Sorcerer-Prophet")
 		if is_dark
@@ -1544,14 +1545,14 @@ func _generate_dwarfhold_details(
 	if is_dark:
 		hallmark = "%s Magma channels keep the forges blazing." % hallmark
 	details["hallmark"] = hallmark
-	details["description"] = "The hold of %s anchors nearby trade routes." % name
+	details["description"] = "The hold of %s anchors nearby trade routes." % settlement_name
 	return details
 
-func _set_tooltip_label(label: Label, text: String, is_visible: bool) -> void:
+func _set_tooltip_label(label: Label, text: String, should_show: bool) -> void:
 	if label == null:
 		return
-	label.visible = is_visible
-	if is_visible:
+	label.visible = should_show
+	if should_show:
 		label.text = text
 
 func _humanize_biome(biome: String) -> String:
@@ -1739,7 +1740,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		if typeof(population_value) == TYPE_INT or typeof(population_value) == TYPE_FLOAT:
 			var population_int := maxi(0, int(round(float(population_value))))
 			var population_descriptor := String(data.get("population_descriptor", "residents")).strip_edges()
-			population_text = String(population_int)
+			population_text = str(population_int)
 			if not population_descriptor.is_empty():
 				population_text = "%s %s" % [population_text, population_descriptor]
 		_set_tooltip_label(
@@ -1757,7 +1758,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		var founded_value: Variant = data.get("founded_years_ago", null)
 		var founded_text := ""
 		if typeof(founded_value) == TYPE_INT or typeof(founded_value) == TYPE_FLOAT:
-			founded_text = "%s years ago" % String(maxi(1, int(round(float(founded_value)))))
+			founded_text = "%s years ago" % str(maxi(1, int(round(float(founded_value)))))
 		_set_tooltip_label(
 			tooltip_founded,
 			"Founded: %s" % (founded_text if not founded_text.is_empty() else "Unknown"),
