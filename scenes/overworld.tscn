@@ -68,6 +68,11 @@ visible = false
 z_index = 5
 centered = false
 
+[node name="MoistureOverlay" type="Sprite2D" parent="MapOverlays"]
+visible = false
+z_index = 6
+centered = false
+
 [node name="OverworldCamera" type="Camera2D" parent="."]
 position = Vector2(512, 384)
 current = true
@@ -121,6 +126,11 @@ text = "Globe View"
 layout_mode = 2
 toggle_mode = true
 text = "Temperature Map"
+
+[node name="MoistureMapButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
+layout_mode = 2
+toggle_mode = true
+text = "Moisture Map"
 
 [node name="ElevationMapButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
 layout_mode = 2
