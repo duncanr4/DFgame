@@ -633,6 +633,36 @@ func _apply_tree_overlays(
 	vegetation_map: Dictionary
 ) -> void:
 	var next_map := biome_map.duplicate()
+	var tree_source_map := biome_map
+	var has_existing_trees := false
+	for coord: Vector2i in biome_map.keys():
+		if TREE_BIOMES.has(biome_map[coord]):
+			has_existing_trees = true
+			break
+	if not has_existing_trees:
+		var best_seed_score := -1.0
+		var seed_coord := Vector2i(-1, -1)
+		for coord: Vector2i in biome_map.keys():
+			if not TREE_BASE_BIOMES.has(biome_map[coord]):
+				continue
+			var moisture: float = moisture_map.get(coord, 0.0)
+			if moisture < forest_threshold:
+				continue
+			var vegetation: float = vegetation_map.get(coord, 0.0)
+			if vegetation < 0.52:
+				continue
+			var temperature: float = temperature_map.get(coord, 0.0)
+			var seed_score := moisture + vegetation + temperature
+			if seed_score > best_seed_score:
+				best_seed_score = seed_score
+				seed_coord = coord
+		if best_seed_score >= 0.0:
+			tree_source_map = biome_map.duplicate()
+			var seed_moisture: float = moisture_map.get(seed_coord, 0.0)
+			var seed_temperature: float = temperature_map.get(seed_coord, 0.0)
+			var seeded_biome := _tree_overlay_biome(seed_temperature, seed_moisture)
+			tree_source_map[seed_coord] = seeded_biome
+			next_map[seed_coord] = seeded_biome
 	for coord: Vector2i in biome_map.keys():
 		if not TREE_BASE_BIOMES.has(biome_map[coord]):
 			continue
@@ -642,7 +672,7 @@ func _apply_tree_overlays(
 		var vegetation: float = vegetation_map.get(coord, 0.0)
 		if vegetation < 0.52:
 			continue
-		if _has_tree_neighbor(coord, biome_map):
+		if _has_tree_neighbor(coord, tree_source_map):
 			var temperature: float = temperature_map.get(coord, 0.0)
 			next_map[coord] = _tree_overlay_biome(temperature, moisture)
 	biome_map.clear()
