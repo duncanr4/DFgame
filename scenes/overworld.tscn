@@ -147,6 +147,36 @@ layout_mode = 2
 toggle_mode = true
 text = "Biome Map"
 
+[node name="MapTooltip" type="PanelContainer" parent="MapUi"]
+visible = false
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6v0i6")
+
+[node name="TooltipMargin" type="MarginContainer" parent="MapUi/MapTooltip"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="TooltipVBox" type="VBoxContainer" parent="MapUi/MapTooltip/TooltipMargin"]
+theme_override_constants/separation = 6
+
+[node name="TooltipTitle" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+theme_override_font_sizes/font_size = 16
+text = "Unnamed Region"
+
+[node name="TooltipBiome" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Biome: —"
+
+[node name="TooltipClimate" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Climate: —"
+
+[node name="TooltipResources" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Resources: —"
+
 [node name="LoadingScreen" type="Control" parent="MapUi"]
 visible = false
 layout_mode = 1
