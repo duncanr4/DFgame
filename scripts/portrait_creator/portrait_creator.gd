@@ -563,6 +563,8 @@ func _ready() -> void:
 	clan_name.clear()
 	for clan: String in CLAN_OPTIONS:
 		clan_name.add_item(clan)
+	if clan_name:
+		clan_name.item_selected.connect(_on_clan_selected)
 
 	resend_images.connect(_on_resend_images)
 
@@ -625,17 +627,41 @@ func _animate_gender_button(button: Button, brightness: float) -> void:
 
 func _refresh_random_name() -> void:
 	if character_name.text.strip_edges().is_empty():
-		character_name.text = _generate_random_name()
+		character_name.text = _generate_full_name()
 
 func _set_gender(is_female: bool) -> void:
 	_is_female = is_female
-	character_name.text = _generate_random_name()
+	character_name.text = _generate_full_name()
 
 func _generate_random_name() -> String:
 	var pool := FEMALE_NAME_POOL if _is_female else MALE_NAME_POOL
 	if pool.is_empty():
 		return ""
 	return pool[_rng.randi_range(0, pool.size() - 1)]
+
+func _get_selected_clan() -> String:
+	if clan_name and clan_name.item_count > 0:
+		var selected_index := clan_name.selected
+		if selected_index < 0:
+			selected_index = 0
+		return clan_name.get_item_text(selected_index)
+	return ""
+
+func _generate_full_name(first_name: String = "") -> String:
+	var given_name := first_name.strip_edges()
+	if given_name.is_empty():
+		given_name = _generate_random_name()
+	var clan := _get_selected_clan()
+	if clan.is_empty():
+		return given_name
+	return "%s %s" % [given_name, clan]
+
+func _on_clan_selected(_index: int) -> void:
+	var current_name := character_name.text.strip_edges()
+	var given_name := current_name
+	if current_name.contains(" "):
+		given_name = current_name.split(" ", false, 1)[0]
+	character_name.text = _generate_full_name(given_name)
 
 func _on_name_changed(_new_text: String) -> void:
 	for curr_idx in AMOUNT_OF_IMAGES:
@@ -686,4 +712,4 @@ func _on_randomize_button_pressed() -> void:
 	if eye_color:
 		eye_color.value = _rng.randf_range(eye_color.min_value, eye_color.max_value)
 
-	character_name.text = _generate_random_name()
+	character_name.text = _generate_full_name()
