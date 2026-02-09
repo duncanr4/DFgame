@@ -1117,7 +1117,6 @@ func _update_tooltip() -> void:
 	if map_layer == null:
 		_hide_tooltip()
 		return
-	var mouse_pos := get_viewport().get_mouse_position()
 	var local_mouse := map_layer.get_local_mouse_position()
 	var tile_coords := map_layer.local_to_map(local_mouse)
 	if not _tile_data.has(tile_coords):
@@ -1132,14 +1131,15 @@ func _update_tooltip() -> void:
 	if tooltip_control != null:
 		tooltip_control.size = panel_size
 	tooltip_control.visible = true
-	var tooltip_size := panel_size
 	var viewport_rect := get_viewport().get_visible_rect()
-	var desired := mouse_pos + Vector2(18, 18)
-	var max_x := maxf(viewport_rect.position.x, viewport_rect.position.x + viewport_rect.size.x - tooltip_size.x)
-	var max_y := maxf(viewport_rect.position.y, viewport_rect.position.y + viewport_rect.size.y - tooltip_size.y)
+	var margin := 16.0
+	var max_x := viewport_rect.position.x + viewport_rect.size.x - panel_size.x - margin
+	var min_x := viewport_rect.position.x + margin
+	var max_y := viewport_rect.position.y + viewport_rect.size.y - panel_size.y - margin
+	var min_y := viewport_rect.position.y + margin
 	tooltip_control.position = Vector2(
-		clampf(desired.x, viewport_rect.position.x, max_x),
-		clampf(desired.y, viewport_rect.position.y, max_y)
+		clampf(max_x, min_x, max_x),
+		clampf(min_y, min_y, max_y)
 	)
 
 func _update_tooltip_content(tile_info: Dictionary) -> void:
