@@ -45,10 +45,10 @@ script = ExtResource("1_1r0ns")
 [node name="MapLayer" type="TileMapLayer" parent="."]
 
 [node name="TreeLayer" type="TileMapLayer" parent="."]
-z_index = 1
+z_index = 2
 
 [node name="HighlandLayer" type="TileMapLayer" parent="."]
-z_index = 2
+z_index = 1
 
 [node name="IcebergLayer" type="TileMapLayer" parent="."]
 z_index = 3
