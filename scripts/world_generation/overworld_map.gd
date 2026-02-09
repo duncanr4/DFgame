@@ -281,6 +281,87 @@ const DWARFHOLD_NAMES: Array[String] = [
 	"Dun Ezmar",
 	"Azgark Metzger"
 ]
+const DWARFHOLD_CLANS: Array[String] = [
+	"Stonebeard",
+	"Ironfist",
+	"Deepdelve",
+	"Bronzeborn",
+	"Hammerfall",
+	"Oakenshield",
+	"Flintforge",
+	"Granitejaw",
+	"Runebinder",
+	"Grimhelm",
+	"Goldvein",
+	"Frostmantle",
+	"Fireforge",
+	"Emberbrand",
+	"Blackhammer"
+]
+const DWARFHOLD_RULER_TITLES: Array[String] = [
+	"Thane",
+	"High Thane",
+	"Forge-Lord",
+	"Shieldthane",
+	"Deepwarden",
+	"Runesmith",
+	"Iron Regent"
+]
+const DARK_DWARFHOLD_RULER_TITLES: Array[String] = [
+	"Sorcerer-Prophet",
+	"Ash Lord",
+	"Obsidian Warden",
+	"Flame Regent",
+	"Deep Ember"
+]
+const DWARFHOLD_RULER_NAMES: Array[String] = [
+	"Urist",
+	"Thrain",
+	"Borin",
+	"Durin",
+	"Gimli",
+	"Khazad",
+	"Rurik",
+	"Dwalin",
+	"Oin",
+	"Fundin",
+	"Balin",
+	"Kili",
+	"Thorin",
+	"Nori"
+]
+const DWARFHOLD_GUILDS: Array[String] = [
+	"Miners Guild",
+	"Smiths Guild",
+	"Stonewright Circle",
+	"Runecarver Lodge",
+	"Brewers Consortium",
+	"Machinists Union",
+	"Cartographers Hall"
+]
+const DWARFHOLD_EXPORTS: Array[String] = [
+	"Iron ingots",
+	"Steel tools",
+	"Gemstones",
+	"Runed stone",
+	"Fine ale",
+	"Machined gears",
+	"Obsidian glass",
+	"Granite blocks"
+]
+const DWARFHOLD_HALLMARKS: Array[String] = [
+	"Renowned for its rune-forges and unbroken gates.",
+	"Known for echoing halls lined with gilded reliefs.",
+	"Famous for masterwork arms traded across the realm.",
+	"Guarded by a renowned shieldwall of veteran thanes.",
+	"Caravans arrive daily with ore from the lower delves."
+]
+const DWARFHOLD_ABANDONED_HALLMARKS: Array[String] = [
+	"Silent halls lie sealed behind collapsed tunnels.",
+	"Only the rumble of distant stonefall breaks the quiet.",
+	"Old banners hang tattered above shuttered gates.",
+	"Echoes of abandoned forges linger in the dust."
+]
 
 const TREE_BIOMES: Array[String] = [
 	BIOME_FOREST,
@@ -320,6 +401,15 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var tooltip_biome: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipBiome")
 @onready var tooltip_climate: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipClimate")
 @onready var tooltip_resources: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipResources")
+@onready var tooltip_settlement: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipSettlement")
+@onready var tooltip_population: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulation")
+@onready var tooltip_ruler: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipRuler")
+@onready var tooltip_founded: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipFounded")
+@onready var tooltip_prominent_clan: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipProminentClan")
+@onready var tooltip_major_clans: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipMajorClans")
+@onready var tooltip_major_guilds: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipMajorGuilds")
+@onready var tooltip_major_exports: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipMajorExports")
+@onready var tooltip_hallmark: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipHallmark")
 
 var _atlas_source_id := -1
 var _temperature_noise: FastNoiseLite
@@ -1201,6 +1291,8 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			tile_info["major_population_groups"] = [civilization]
 			tile_info["minor_population_groups"] = []
 			tile_info["settlement_type"] = settlement_type
+			if settlement_type == "dwarfhold":
+				tile_info.merge(_generate_dwarfhold_details(settlement_name, tile, rng), true)
 			_tile_data[chosen] = tile_info
 
 func _build_settlement_candidates(biome_map: Dictionary) -> Array:
@@ -1340,6 +1432,127 @@ func _format_resource_list(resources: Array[String]) -> String:
 		else:
 			combined += "%s, " % items[index]
 	return combined
+
+func _pick_random_entry(options: Array[String], rng: RandomNumberGenerator, fallback: String = "") -> String:
+	if options.is_empty():
+		return fallback
+	return options[rng.randi_range(0, options.size() - 1)]
+
+func _pick_unique_entries(
+	options: Array[String],
+	rng: RandomNumberGenerator,
+	count: int,
+	guaranteed: String = ""
+) -> Array[String]:
+	var pool: Array[String] = options.duplicate()
+	var chosen: Array[String] = []
+	if not guaranteed.is_empty():
+		if pool.has(guaranteed):
+			pool.erase(guaranteed)
+		chosen.append(guaranteed)
+	while chosen.size() < count and not pool.is_empty():
+		var index := rng.randi_range(0, pool.size() - 1)
+		chosen.append(pool[index])
+		pool.remove_at(index)
+	return chosen
+
+func _dwarfhold_classification_for_tile(tile: Vector2i) -> Dictionary:
+	if tile == GREAT_DWARFHOLD_TILE:
+		return {
+			"key": "great",
+			"label": "Great Dwarfhold",
+			"population_range": Vector2i(4800, 12000)
+		}
+	if tile == DARK_DWARFHOLD_TILE:
+		return {
+			"key": "dark",
+			"label": "Dark Dwarfhold",
+			"population_range": Vector2i(1800, 7000)
+		}
+	if tile == ABANDONED_DWARFHOLD_TILE:
+		return {
+			"key": "abandoned",
+			"label": "Abandoned Dwarfhold",
+			"population_range": Vector2i(0, 0)
+		}
+	return {
+		"key": "standard",
+		"label": "Dwarfhold",
+		"population_range": Vector2i(900, 4800)
+	}
+
+func _generate_dwarfhold_details(
+	name: String,
+	settlement_tile: Vector2i,
+	rng: RandomNumberGenerator
+) -> Dictionary:
+	var classification := _dwarfhold_classification_for_tile(settlement_tile)
+	var details := {
+		"settlement_classification": classification["label"],
+		"population_label": "Population",
+		"population_descriptor": "residents"
+	}
+	if classification["key"] == "abandoned":
+		details["population"] = 0
+		details["ruler_title"] = ""
+		details["ruler_name"] = ""
+		details["founded_years_ago"] = rng.randi_range(120, 3800)
+		details["prominent_clan"] = ""
+		details["major_clans"] = []
+		details["major_guilds"] = []
+		details["major_exports"] = []
+		details["hallmark"] = _pick_random_entry(
+			DWARFHOLD_ABANDONED_HALLMARKS,
+			rng,
+			"Silent halls lie sealed behind collapsed tunnels."
+		)
+		details["description"] = "Dust and silence fill the abandoned chambers."
+		return details
+
+	var population_range: Vector2i = classification["population_range"]
+	var population := rng.randi_range(population_range.x, population_range.y)
+	var clan := _pick_random_entry(DWARFHOLD_CLANS, rng, "Stonebeard")
+	var ruler_first := _pick_random_entry(DWARFHOLD_RULER_NAMES, rng, "Urist")
+	var is_dark := classification["key"] == "dark"
+	var ruler_title := (
+		_pick_random_entry(DARK_DWARFHOLD_RULER_TITLES, rng, "Sorcerer-Prophet")
+		if is_dark
+		else _pick_random_entry(DWARFHOLD_RULER_TITLES, rng, "Thane")
+	)
+	details["population"] = population
+	details["ruler_title"] = ruler_title
+	details["ruler_name"] = "%s %s" % [ruler_first, clan]
+	details["founded_years_ago"] = rng.randi_range(60, 3200)
+	details["prominent_clan"] = clan
+	var major_clan_count := rng.randi_range(2, 4)
+	details["major_clans"] = _pick_unique_entries(DWARFHOLD_CLANS, rng, major_clan_count, clan)
+	var guild_count := rng.randi_range(2, 3)
+	var guilds := _pick_unique_entries(DWARFHOLD_GUILDS, rng, guild_count)
+	if is_dark and not guilds.has("Ashforged Covenant"):
+		guilds.append("Ashforged Covenant")
+	details["major_guilds"] = guilds
+	var export_count := rng.randi_range(2, 3)
+	var exports := _pick_unique_entries(DWARFHOLD_EXPORTS, rng, export_count)
+	if is_dark:
+		exports.append("Obsidian ingots")
+	details["major_exports"] = exports
+	var hallmark := _pick_random_entry(
+		DWARFHOLD_HALLMARKS,
+		rng,
+		"Renowned for its rune-forges and unbroken gates."
+	)
+	if is_dark:
+		hallmark = "%s Magma channels keep the forges blazing." % hallmark
+	details["hallmark"] = hallmark
+	details["description"] = "The hold of %s anchors nearby trade routes." % name
+	return details
+
+func _set_tooltip_label(label: Label, text: String, is_visible: bool) -> void:
+	if label == null:
+		return
+	label.visible = is_visible
+	if is_visible:
+		label.text = text
 
 func _humanize_biome(biome: String) -> String:
 	if biome.is_empty():
@@ -1514,6 +1727,93 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	if tooltip_resources != null:
 		var resource_text := _format_resource_list(resources)
 		tooltip_resources.text = "Resources: %s" % (resource_text if not resource_text.is_empty() else "None")
+
+	var settlement_type := String(data.get("settlement_type", ""))
+	var is_dwarfhold := settlement_type == "dwarfhold"
+	if is_dwarfhold:
+		var classification_label := String(data.get("settlement_classification", "Dwarfhold"))
+		_set_tooltip_label(tooltip_settlement, "Settlement: %s" % classification_label, true)
+
+		var population_value: Variant = data.get("population", null)
+		var population_text := ""
+		if typeof(population_value) == TYPE_INT or typeof(population_value) == TYPE_FLOAT:
+			var population_int := maxi(0, int(round(float(population_value))))
+			var population_descriptor := String(data.get("population_descriptor", "residents")).strip_edges()
+			population_text = String(population_int)
+			if not population_descriptor.is_empty():
+				population_text = "%s %s" % [population_text, population_descriptor]
+		_set_tooltip_label(
+			tooltip_population,
+			"Population: %s" % (population_text if not population_text.is_empty() else "Unknown"),
+			true
+		)
+
+		var ruler_title := String(data.get("ruler_title", "")).strip_edges()
+		var ruler_name := String(data.get("ruler_name", "")).strip_edges()
+		var ruler_text := "%s %s" % [ruler_title, ruler_name]
+		ruler_text = ruler_text.strip_edges()
+		_set_tooltip_label(tooltip_ruler, "Ruler: %s" % (ruler_text if not ruler_text.is_empty() else "Unknown"), true)
+
+		var founded_value: Variant = data.get("founded_years_ago", null)
+		var founded_text := ""
+		if typeof(founded_value) == TYPE_INT or typeof(founded_value) == TYPE_FLOAT:
+			founded_text = "%s years ago" % String(maxi(1, int(round(float(founded_value)))))
+		_set_tooltip_label(
+			tooltip_founded,
+			"Founded: %s" % (founded_text if not founded_text.is_empty() else "Unknown"),
+			true
+		)
+
+		var prominent_clan := String(data.get("prominent_clan", "")).strip_edges()
+		_set_tooltip_label(
+			tooltip_prominent_clan,
+			"Prominent Clan: %s" % (prominent_clan if not prominent_clan.is_empty() else "Unknown"),
+			true
+		)
+
+		var major_clans: Array[String] = []
+		for entry: Variant in data.get("major_clans", []):
+			major_clans.append(String(entry))
+		_set_tooltip_label(
+			tooltip_major_clans,
+			"Major Clans: %s" % _format_resource_list(major_clans),
+			not major_clans.is_empty()
+		)
+
+		var major_guilds: Array[String] = []
+		for entry: Variant in data.get("major_guilds", []):
+			major_guilds.append(String(entry))
+		_set_tooltip_label(
+			tooltip_major_guilds,
+			"Major Guilds: %s" % _format_resource_list(major_guilds),
+			not major_guilds.is_empty()
+		)
+
+		var major_exports: Array[String] = []
+		for entry: Variant in data.get("major_exports", []):
+			major_exports.append(String(entry))
+		_set_tooltip_label(
+			tooltip_major_exports,
+			"Major Exports: %s" % _format_resource_list(major_exports),
+			not major_exports.is_empty()
+		)
+
+		var hallmark := String(data.get("hallmark", "")).strip_edges()
+		_set_tooltip_label(
+			tooltip_hallmark,
+			"Hallmark: %s" % hallmark,
+			not hallmark.is_empty()
+		)
+	else:
+		_set_tooltip_label(tooltip_settlement, "", false)
+		_set_tooltip_label(tooltip_population, "", false)
+		_set_tooltip_label(tooltip_ruler, "", false)
+		_set_tooltip_label(tooltip_founded, "", false)
+		_set_tooltip_label(tooltip_prominent_clan, "", false)
+		_set_tooltip_label(tooltip_major_clans, "", false)
+		_set_tooltip_label(tooltip_major_guilds, "", false)
+		_set_tooltip_label(tooltip_major_exports, "", false)
+		_set_tooltip_label(tooltip_hallmark, "", false)
 	tooltip_panel.size = tooltip_panel.get_combined_minimum_size()
 
 func _position_map_tooltip() -> void:

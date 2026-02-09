@@ -177,6 +177,42 @@ text = "Climate: —"
 autowrap_mode = 3
 text = "Resources: —"
 
+[node name="TooltipSettlement" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Settlement: —"
+
+[node name="TooltipPopulation" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Population: —"
+
+[node name="TooltipRuler" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Ruler: —"
+
+[node name="TooltipFounded" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Founded: —"
+
+[node name="TooltipProminentClan" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Prominent Clan: —"
+
+[node name="TooltipMajorClans" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Major Clans: —"
+
+[node name="TooltipMajorGuilds" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Major Guilds: —"
+
+[node name="TooltipMajorExports" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Major Exports: —"
+
+[node name="TooltipHallmark" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox"]
+autowrap_mode = 3
+text = "Hallmark: —"
+
 [node name="LoadingScreen" type="Control" parent="MapUi"]
 visible = false
 layout_mode = 1
