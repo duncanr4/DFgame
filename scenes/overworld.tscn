@@ -130,8 +130,6 @@ mouse_filter = 2
 
 [node name="Panel" type="Panel" parent="MapUi/MapTooltip"]
 anchors_preset = 0
-offset_right = 360.0
-offset_bottom = 220.0
 clip_contents = true
 
 [node name="TooltipLayout" type="VBoxContainer" parent="MapUi/MapTooltip/Panel"]
