@@ -41,9 +41,7 @@ static func choose_tile_for_capital(
 		weighted.append({"coord": candidate["coord"], "weight": suitability})
 
 	if weighted.is_empty():
-		if candidates.is_empty():
-			return Vector2i(-1, -1)
-		return candidates[rng.randi_range(0, candidates.size() - 1)]["coord"]
+		return Vector2i(-1, -1)
 
 	var total_weight := 0.0
 	for item: Dictionary in weighted:
@@ -71,9 +69,11 @@ static func evaluate_tile_suitability(faction_type: String, tile: Dictionary) ->
 		"dwarfhold":
 			if is_mountain:
 				return 1.0
-			if biome == "snow":
-				return 0.45
-			return 0.05
+			return 0.0
+		"town":
+			if biome in ["snow", "grass", "sand", "badlands"]:
+				return 1.0
+			return 0.0
 		"woodElfGrove":
 			if is_forest:
 				return 1.0

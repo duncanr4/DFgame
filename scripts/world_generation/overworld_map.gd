@@ -146,6 +146,7 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var map_layer: TileMapLayer = $MapLayer
 @onready var highland_layer: TileMapLayer = get_node_or_null("HighlandLayer")
 @onready var iceberg_layer: TileMapLayer = get_node_or_null("IcebergLayer")
+@onready var settlement_layer: TileMapLayer = get_node_or_null("SettlementLayer")
 @onready var map_overlays: Node2D = get_node_or_null("MapOverlays")
 @onready var elevation_overlay: Sprite2D = get_node_or_null("MapOverlays/ElevationOverlay")
 @onready var temperature_overlay: Sprite2D = get_node_or_null("MapOverlays/TemperatureOverlay")
@@ -189,6 +190,8 @@ var _highland_layer_original_parent: Node = null
 var _highland_layer_original_index := -1
 var _iceberg_layer_original_parent: Node = null
 var _iceberg_layer_original_index := -1
+var _settlement_layer_original_parent: Node = null
+var _settlement_layer_original_index := -1
 var _overlays_original_parent: Node = null
 var _overlays_original_index := -1
 var _is_globe_view := false
@@ -221,6 +224,7 @@ func _ready() -> void:
 	_cache_map_layer_parent()
 	_cache_highland_layer_parent()
 	_cache_iceberg_layer_parent()
+	_cache_settlement_layer_parent()
 	_cache_overlay_parent()
 	_configure_globe_viewport()
 	_set_globe_view(false)
@@ -282,6 +286,8 @@ func _generate_map() -> void:
 		highland_layer.clear()
 	if iceberg_layer != null:
 		iceberg_layer.clear()
+	if settlement_layer != null:
+		settlement_layer.clear()
 	_tile_data.clear()
 	_last_hovered_tile = Vector2i(-9999, -9999)
 	_hide_tooltip()
@@ -896,7 +902,10 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			occupied.append(chosen)
 			var biome_label := _settlement_biome_label(biome_map.get(chosen, BIOME_GRASSLAND))
 			var tile := _select_settlement_tile(settlement_type, biome_label, rng)
-			map_layer.set_cell(chosen, _atlas_source_id, tile)
+			if settlement_layer != null:
+				settlement_layer.set_cell(chosen, _atlas_source_id, tile)
+			else:
+				map_layer.set_cell(chosen, _atlas_source_id, tile)
 			var tile_info: Dictionary = {}
 			if _tile_data.has(chosen):
 				tile_info = _tile_data[chosen] as Dictionary
@@ -944,6 +953,10 @@ func _settlement_biome_label(biome: String) -> String:
 			return "grass"
 		BIOME_TUNDRA:
 			return "snow"
+		BIOME_DESERT:
+			return "sand"
+		BIOME_BADLANDS:
+			return "badlands"
 		BIOME_FOREST, BIOME_JUNGLE:
 			return "forest"
 		BIOME_MARSH:
@@ -1137,6 +1150,13 @@ func _cache_iceberg_layer_parent() -> void:
 	if _iceberg_layer_original_parent != null:
 		_iceberg_layer_original_index = iceberg_layer.get_index()
 
+func _cache_settlement_layer_parent() -> void:
+	if settlement_layer == null:
+		return
+	_settlement_layer_original_parent = settlement_layer.get_parent()
+	if _settlement_layer_original_parent != null:
+		_settlement_layer_original_index = settlement_layer.get_index()
+
 func _cache_overlay_parent() -> void:
 	if map_overlays == null:
 		return
@@ -1201,6 +1221,11 @@ func _move_map_layer_to_viewport() -> void:
 			iceberg_layer.get_parent().remove_child(iceberg_layer)
 		map_viewport_root.add_child(iceberg_layer)
 		iceberg_layer.position = Vector2.ZERO
+	if settlement_layer != null:
+		if settlement_layer.get_parent() != null:
+			settlement_layer.get_parent().remove_child(settlement_layer)
+		map_viewport_root.add_child(settlement_layer)
+		settlement_layer.position = Vector2.ZERO
 	if map_overlays != null:
 		if map_overlays.get_parent() != null:
 			map_overlays.get_parent().remove_child(map_overlays)
@@ -1237,6 +1262,15 @@ func _restore_map_layer_parent() -> void:
 		else:
 			_iceberg_layer_original_parent.add_child(iceberg_layer)
 		iceberg_layer.position = Vector2.ZERO
+	if settlement_layer != null and _settlement_layer_original_parent != null:
+		if settlement_layer.get_parent() != null:
+			settlement_layer.get_parent().remove_child(settlement_layer)
+		if _settlement_layer_original_index >= 0:
+			_settlement_layer_original_parent.add_child(settlement_layer)
+			_settlement_layer_original_parent.move_child(settlement_layer, _settlement_layer_original_index)
+		else:
+			_settlement_layer_original_parent.add_child(settlement_layer)
+		settlement_layer.position = Vector2.ZERO
 	if map_overlays == null or _overlays_original_parent == null:
 		return
 	if map_overlays.get_parent() == _overlays_original_parent:
@@ -1281,6 +1315,8 @@ func _configure_tileset() -> void:
 			highland_layer.tile_set = tile_set
 		if iceberg_layer != null:
 			iceberg_layer.tile_set = tile_set
+		if settlement_layer != null:
+			settlement_layer.tile_set = tile_set
 		return
 	var texture_size := atlas_texture.get_size()
 	var tile_coords_list: Array[Vector2i] = [
@@ -1419,6 +1455,9 @@ func _configure_tileset() -> void:
 	if iceberg_layer != null:
 		iceberg_layer.tile_set = tile_set
 		iceberg_layer.position = Vector2.ZERO
+	if settlement_layer != null:
+		settlement_layer.tile_set = tile_set
+		settlement_layer.position = Vector2.ZERO
 
 func _update_temperature_overlay() -> void:
 	if temperature_overlay == null:
