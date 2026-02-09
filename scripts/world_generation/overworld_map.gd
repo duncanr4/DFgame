@@ -1554,7 +1554,12 @@ func _set_tooltip_label(label: Label, text: String, should_show: bool) -> void:
 	label.visible = should_show
 	if should_show:
 		label.text = text
-	var key_label: Label = label.get_previous_sibling() as Label
+	var key_label: Label = null
+	var parent := label.get_parent()
+	if parent != null:
+		var previous_index := label.get_index() - 1
+		if previous_index >= 0 and previous_index < parent.get_child_count():
+			key_label = parent.get_child(previous_index) as Label
 	if key_label != null:
 		key_label.visible = should_show
 
