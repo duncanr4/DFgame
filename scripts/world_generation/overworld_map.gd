@@ -138,9 +138,7 @@ const TREE_BIOMES: Array[String] = [
 ]
 const TREE_BASE_BIOMES: Array[String] = [
 	BIOME_GRASSLAND,
-	BIOME_TUNDRA,
-	BIOME_DESERT,
-	BIOME_BADLANDS
+	BIOME_TUNDRA
 ]
 
 @onready var map_layer: TileMapLayer = $MapLayer
@@ -387,14 +385,16 @@ func _generate_map() -> void:
 			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
 
 	_smooth_biomes(base_biome_map, 2)
-	_apply_tree_overlays(base_biome_map, temperature_map, moisture_map, vegetation_map)
+	var tree_biome_map: Dictionary = base_biome_map.duplicate()
+	var tree_map := _apply_tree_overlays(tree_biome_map, temperature_map, moisture_map, vegetation_map)
 	highland_map = _build_highland_overlays(base_biome_map, height_map)
-	var biome_map: Dictionary = base_biome_map.duplicate()
+	var biome_map: Dictionary = tree_biome_map.duplicate()
 	for coord: Vector2i in highland_map.keys():
 		biome_map[coord] = highland_map[coord]
 
 	_apply_base_tiles(base_biome_map)
 	await _yield_generation_wave()
+	_apply_tree_tiles(tree_map, base_biome_map)
 	_apply_overlays_and_metadata(base_biome_map, biome_map, highland_map, temperature_map, moisture_map)
 	await _yield_generation_wave()
 	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
@@ -664,7 +664,8 @@ func _apply_tree_overlays(
 	temperature_map: Dictionary,
 	moisture_map: Dictionary,
 	vegetation_map: Dictionary
-) -> void:
+) -> Dictionary:
+	var tree_map: Dictionary = {}
 	var next_map := biome_map.duplicate()
 	var tree_source_map := biome_map
 	var has_existing_trees := false
@@ -696,6 +697,7 @@ func _apply_tree_overlays(
 			var seeded_biome := _tree_overlay_biome(seed_temperature, seed_moisture)
 			tree_source_map[seed_coord] = seeded_biome
 			next_map[seed_coord] = seeded_biome
+			tree_map[seed_coord] = seeded_biome
 	for coord: Vector2i in biome_map.keys():
 		if not TREE_BASE_BIOMES.has(biome_map[coord]):
 			continue
@@ -707,10 +709,29 @@ func _apply_tree_overlays(
 			continue
 		if _has_tree_neighbor(coord, tree_source_map):
 			var temperature: float = temperature_map.get(coord, 0.0)
-			next_map[coord] = _tree_overlay_biome(temperature, moisture)
+			var tree_biome := _tree_overlay_biome(temperature, moisture)
+			next_map[coord] = tree_biome
+			tree_map[coord] = tree_biome
 	biome_map.clear()
 	for coord: Vector2i in next_map.keys():
 		biome_map[coord] = next_map[coord]
+	return tree_map
+
+
+func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void:
+	if map_layer == null:
+		return
+	for coord: Vector2i in tree_map.keys():
+		var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
+		if base_biome != BIOME_GRASSLAND and base_biome != BIOME_TUNDRA:
+			continue
+		var tree_biome := tree_map.get(coord, BIOME_FOREST) as String
+		var tile_coords := TREE_TILE
+		if tree_biome == BIOME_JUNGLE:
+			tile_coords = JUNGLE_TREE_TILE
+		elif base_biome == BIOME_TUNDRA:
+			tile_coords = TREE_SNOW_TILE
+		map_layer.set_cell(coord, _atlas_source_id, tile_coords)
 
 
 func _has_tree_neighbor(coord: Vector2i, biome_map: Dictionary) -> bool:
