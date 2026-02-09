@@ -150,6 +150,7 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var elevation_overlay: Sprite2D = get_node_or_null("MapOverlays/ElevationOverlay")
 @onready var temperature_overlay: Sprite2D = get_node_or_null("MapOverlays/TemperatureOverlay")
 @onready var moisture_overlay: Sprite2D = get_node_or_null("MapOverlays/MoistureOverlay")
+@onready var biome_overlay: Sprite2D = get_node_or_null("MapOverlays/BiomeOverlay")
 @onready var overworld_camera: OverworldCamera = get_node_or_null("OverworldCamera")
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
 @onready var globe_camera: Camera3D = get_node_or_null("GlobeView/GlobeCamera")
@@ -161,6 +162,7 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var temperature_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/TemperatureMapButton")
 @onready var elevation_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/ElevationMapButton")
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
+@onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
 @onready var tooltip_control: Control = get_node_or_null("MapUi/MapTooltip")
 @onready var tooltip_panel: Panel = get_node_or_null("MapUi/MapTooltip/Panel")
 @onready var tooltip_title: Label = get_node_or_null("MapUi/MapTooltip/Panel/TooltipLayout/TitleLabel")
@@ -183,6 +185,7 @@ var _tile_data: Dictionary = {}
 var _height_map: Dictionary = {}
 var _temperature_map: Dictionary = {}
 var _moisture_map: Dictionary = {}
+var _biome_map: Dictionary = {}
 var _last_hovered_tile := Vector2i(-9999, -9999)
 var _world_settings: Dictionary = {}
 var _landmass_centers: Array[Vector2] = []
@@ -202,6 +205,7 @@ var _is_globe_view := false
 var _elevation_overlay_enabled := false
 var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
+var _biome_overlay_enabled := false
 
 func _ready() -> void:
 	if map_layer == null:
@@ -229,6 +233,9 @@ func _ready() -> void:
 	if moisture_map_button != null:
 		moisture_map_button.toggled.connect(_on_moisture_map_toggled)
 		moisture_map_button.button_pressed = false
+	if biome_map_button != null:
+		biome_map_button.toggled.connect(_on_biome_map_toggled)
+		biome_map_button.button_pressed = false
 	_cache_map_layer_parent()
 	_cache_tree_layer_parent()
 	_cache_highland_layer_parent()
@@ -277,6 +284,10 @@ func _on_elevation_map_toggled(is_pressed: bool) -> void:
 func _on_moisture_map_toggled(is_pressed: bool) -> void:
 	_moisture_overlay_enabled = is_pressed
 	_update_moisture_overlay_visibility()
+
+func _on_biome_map_toggled(is_pressed: bool) -> void:
+	_biome_overlay_enabled = is_pressed
+	_update_biome_overlay_visibility()
 
 func _regenerate_map() -> void:
 	_show_loading_screen()
@@ -422,9 +433,11 @@ func _generate_map() -> void:
 	_height_map = height_map.duplicate()
 	_temperature_map = temperature_map.duplicate()
 	_moisture_map = moisture_map.duplicate()
+	_biome_map = biome_map.duplicate()
 	_update_elevation_overlay()
 	_update_temperature_overlay()
 	_update_moisture_overlay()
+	_update_biome_overlay()
 	_configure_globe_viewport()
 	_configure_overworld_camera_bounds()
 	if _is_globe_view:
@@ -1292,6 +1305,7 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_elevation_overlay_visibility()
 	_update_temperature_overlay_visibility()
 	_update_moisture_overlay_visibility()
+	_update_biome_overlay_visibility()
 
 func _move_map_layer_to_viewport() -> void:
 	if map_layer == null or map_viewport_root == null:
@@ -1675,6 +1689,55 @@ func _update_moisture_overlay_visibility() -> void:
 	if moisture_overlay == null:
 		return
 	moisture_overlay.visible = _moisture_overlay_enabled and not _is_globe_view
+
+func _update_biome_overlay() -> void:
+	if biome_overlay == null:
+		return
+	if _biome_map.is_empty():
+		biome_overlay.texture = null
+		return
+	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var biome := _biome_map.get(coord, BIOME_GRASSLAND) as String
+			image.set_pixel(x, y, _biome_to_overlay_color(biome))
+	var texture := ImageTexture.create_from_image(image)
+	biome_overlay.texture = texture
+	biome_overlay.centered = false
+	biome_overlay.scale = Vector2(tile_size, tile_size)
+	biome_overlay.position = Vector2.ZERO
+	_update_biome_overlay_visibility()
+
+func _biome_to_overlay_color(biome: String) -> Color:
+	var alpha := 0.45
+	match biome:
+		BIOME_WATER:
+			return Color(0.1, 0.35, 0.75, alpha)
+		BIOME_MOUNTAIN:
+			return Color(0.55, 0.55, 0.6, alpha)
+		BIOME_HILLS:
+			return Color(0.6, 0.45, 0.25, alpha)
+		BIOME_MARSH:
+			return Color(0.2, 0.6, 0.45, alpha)
+		BIOME_TUNDRA:
+			return Color(0.75, 0.8, 0.9, alpha)
+		BIOME_DESERT:
+			return Color(0.9, 0.75, 0.35, alpha)
+		BIOME_BADLANDS:
+			return Color(0.7, 0.35, 0.25, alpha)
+		BIOME_FOREST:
+			return Color(0.2, 0.55, 0.25, alpha)
+		BIOME_JUNGLE:
+			return Color(0.15, 0.45, 0.2, alpha)
+		BIOME_GRASSLAND:
+			return Color(0.35, 0.7, 0.35, alpha)
+	return Color(0.5, 0.5, 0.5, alpha)
+
+func _update_biome_overlay_visibility() -> void:
+	if biome_overlay == null:
+		return
+	biome_overlay.visible = _biome_overlay_enabled and not _is_globe_view
 
 func _apply_cached_world_settings() -> void:
 	var game_session := get_node_or_null("/root/GameSession")
