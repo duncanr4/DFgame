@@ -1038,7 +1038,7 @@ func _update_tooltip() -> void:
 		_hide_tooltip()
 		return
 	var mouse_pos := get_viewport().get_mouse_position()
-	var local_mouse := map_layer.to_local(get_global_mouse_position())
+	var local_mouse := map_layer.get_local_mouse_position()
 	var tile_coords := map_layer.local_to_map(local_mouse)
 	if not _tile_data.has(tile_coords):
 		_hide_tooltip()
@@ -1046,9 +1046,13 @@ func _update_tooltip() -> void:
 	if tile_coords != _last_hovered_tile:
 		_last_hovered_tile = tile_coords
 		_update_tooltip_content(_tile_data[tile_coords])
-	tooltip_panel.size = tooltip_panel.get_combined_minimum_size()
+	tooltip_panel.reset_size()
+	var panel_size := tooltip_panel.get_combined_minimum_size()
+	tooltip_panel.size = panel_size
+	if tooltip_control != null:
+		tooltip_control.size = panel_size
 	tooltip_control.visible = true
-	var tooltip_size := tooltip_panel.size
+	var tooltip_size := panel_size
 	var viewport_rect := get_viewport().get_visible_rect()
 	var desired := mouse_pos + Vector2(18, 18)
 	var max_x := maxf(viewport_rect.position.x, viewport_rect.position.x + viewport_rect.size.x - tooltip_size.x)
