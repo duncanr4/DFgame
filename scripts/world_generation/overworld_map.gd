@@ -1387,45 +1387,6 @@ func _hide_map_tooltip() -> void:
 		tooltip_panel.visible = false
 	_hovered_tile = Vector2i(-999, -999)
 
-func _describe_climate(temperature: float, moisture: float) -> String:
-	var temp_label := ""
-	if temperature < 0.25:
-		temp_label = "Frigid"
-	elif temperature < 0.45:
-		temp_label = "Cool"
-	elif temperature < 0.7:
-		temp_label = "Temperate"
-	else:
-		temp_label = "Hot"
-	var rainfall := ""
-	if moisture < 0.25:
-		rainfall = "arid conditions"
-	elif moisture < 0.5:
-		rainfall = "light rainfall"
-	elif moisture < 0.75:
-		rainfall = "moderate rainfall"
-	else:
-		rainfall = "heavy rainfall"
-	return "%s climate with %s" % [temp_label, rainfall]
-
-func _format_resource_list(resources: Variant) -> String:
-	var items: Array[String] = []
-	if resources is Array:
-		for item in resources:
-			var label := String(item).strip_edges()
-			if not label.is_empty():
-				items.append(label)
-	elif resources is String:
-		return String(resources).strip_edges()
-	if items.is_empty():
-		return ""
-	if items.size() == 1:
-		return items[0]
-	if items.size() == 2:
-		return "%s and %s" % [items[0], items[1]]
-	var head := ", ".join(items.slice(0, items.size() - 1))
-	return "%s, and %s" % [head, items[items.size() - 1]]
-
 func _restore_map_layer_parent() -> void:
 	if map_layer == null or _map_layer_original_parent == null:
 		return
