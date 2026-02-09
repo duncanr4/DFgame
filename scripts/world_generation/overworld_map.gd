@@ -144,6 +144,7 @@ const TREE_BASE_BIOMES: Array[String] = [
 ]
 
 @onready var map_layer: TileMapLayer = $MapLayer
+@onready var highland_layer: TileMapLayer = get_node_or_null("HighlandLayer")
 @onready var iceberg_layer: TileMapLayer = get_node_or_null("IcebergLayer")
 @onready var map_overlays: Node2D = get_node_or_null("MapOverlays")
 @onready var elevation_overlay: Sprite2D = get_node_or_null("MapOverlays/ElevationOverlay")
@@ -184,6 +185,8 @@ var _world_settings: Dictionary = {}
 var _landmass_centers: Array[Vector2] = []
 var _map_layer_original_parent: Node = null
 var _map_layer_original_index := -1
+var _highland_layer_original_parent: Node = null
+var _highland_layer_original_index := -1
 var _iceberg_layer_original_parent: Node = null
 var _iceberg_layer_original_index := -1
 var _overlays_original_parent: Node = null
@@ -216,6 +219,7 @@ func _ready() -> void:
 		elevation_map_button.toggled.connect(_on_elevation_map_toggled)
 		elevation_map_button.button_pressed = false
 	_cache_map_layer_parent()
+	_cache_highland_layer_parent()
 	_cache_iceberg_layer_parent()
 	_cache_overlay_parent()
 	_configure_globe_viewport()
@@ -271,6 +275,8 @@ func _generate_map() -> void:
 		push_error("Overworld map tileset is missing a valid atlas source.")
 		return
 	map_layer.clear()
+	if highland_layer != null:
+		highland_layer.clear()
 	if iceberg_layer != null:
 		iceberg_layer.clear()
 	_tile_data.clear()
@@ -281,7 +287,8 @@ func _generate_map() -> void:
 	var temperature_map: Dictionary = {}
 	var moisture_map: Dictionary = {}
 	var vegetation_map: Dictionary = {}
-	var biome_map: Dictionary = {}
+	var base_biome_map: Dictionary = {}
+	var highland_map: Dictionary = {}
 
 	var rng := RandomNumberGenerator.new()
 	if map_seed == 0:
@@ -368,18 +375,27 @@ func _generate_map() -> void:
 			var height: float = height_map[coord]
 			var temperature: float = temperature_map[coord]
 			var moisture: float = moisture_map[coord]
-			biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
+			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
 
-	_smooth_biomes(biome_map, 2)
-	_apply_highland_overlays(biome_map, height_map)
-	_apply_tree_overlays(biome_map, temperature_map, moisture_map, vegetation_map)
+	_smooth_biomes(base_biome_map, 2)
+	_apply_tree_overlays(base_biome_map, temperature_map, moisture_map, vegetation_map)
+	highland_map = _build_highland_overlays(base_biome_map, height_map)
+	var biome_map: Dictionary = base_biome_map.duplicate()
+	for coord: Vector2i in highland_map.keys():
+		biome_map[coord] = highland_map[coord]
 
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
-			var tile_coords := _biome_to_tile(biome_map.get(coord, BIOME_GRASSLAND))
+			var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
+			var tile_coords := _biome_to_tile(base_biome)
 			map_layer.set_cell(coord, _atlas_source_id, tile_coords)
-			var biome: String = biome_map.get(coord, BIOME_GRASSLAND) as String
+			if highland_layer != null:
+				if highland_map.has(coord):
+					highland_layer.set_cell(coord, _atlas_source_id, _biome_to_tile(highland_map[coord]))
+				else:
+					highland_layer.erase_cell(coord)
+			var biome := biome_map.get(coord, base_biome) as String
 			_tile_data[coord] = {
 				"biome_type": biome,
 				"temperature": temperature_map.get(coord, 0.0),
@@ -387,7 +403,7 @@ func _generate_map() -> void:
 				"resources": _resources_for_biome(biome),
 				"region_name": ""
 			}
-	_place_icebergs(biome_map, temperature_map, height_map, rng)
+	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
 	_place_settlements(biome_map, rng)
 	_height_map = height_map.duplicate()
 	_temperature_map = temperature_map.duplicate()
@@ -597,15 +613,17 @@ func _tree_overlay_biome(temperature: float, moisture: float) -> String:
 	return BIOME_FOREST
 
 
-func _apply_highland_overlays(biome_map: Dictionary, height_map: Dictionary) -> void:
+func _build_highland_overlays(biome_map: Dictionary, height_map: Dictionary) -> Dictionary:
+	var overlay_map: Dictionary = {}
 	for coord: Vector2i in biome_map.keys():
 		if biome_map[coord] == BIOME_WATER:
 			continue
 		var height: float = height_map.get(coord, 0.0)
 		if height > mountain_level:
-			biome_map[coord] = BIOME_MOUNTAIN
+			overlay_map[coord] = BIOME_MOUNTAIN
 		elif height > hill_level:
-			biome_map[coord] = BIOME_HILLS
+			overlay_map[coord] = BIOME_HILLS
+	return overlay_map
 
 
 func _apply_tree_overlays(
@@ -1041,6 +1059,13 @@ func _cache_map_layer_parent() -> void:
 	if _map_layer_original_parent != null:
 		_map_layer_original_index = map_layer.get_index()
 
+func _cache_highland_layer_parent() -> void:
+	if highland_layer == null:
+		return
+	_highland_layer_original_parent = highland_layer.get_parent()
+	if _highland_layer_original_parent != null:
+		_highland_layer_original_index = highland_layer.get_index()
+
 func _cache_iceberg_layer_parent() -> void:
 	if iceberg_layer == null:
 		return
@@ -1091,6 +1116,11 @@ func _move_map_layer_to_viewport() -> void:
 	map_layer.get_parent().remove_child(map_layer)
 	map_viewport_root.add_child(map_layer)
 	map_layer.position = Vector2.ZERO
+	if highland_layer != null:
+		if highland_layer.get_parent() != null:
+			highland_layer.get_parent().remove_child(highland_layer)
+		map_viewport_root.add_child(highland_layer)
+		highland_layer.position = Vector2.ZERO
 	if iceberg_layer != null:
 		if iceberg_layer.get_parent() != null:
 			iceberg_layer.get_parent().remove_child(iceberg_layer)
@@ -1114,6 +1144,15 @@ func _restore_map_layer_parent() -> void:
 	else:
 		_map_layer_original_parent.add_child(map_layer)
 	map_layer.position = Vector2.ZERO
+	if highland_layer != null and _highland_layer_original_parent != null:
+		if highland_layer.get_parent() != null:
+			highland_layer.get_parent().remove_child(highland_layer)
+		if _highland_layer_original_index >= 0:
+			_highland_layer_original_parent.add_child(highland_layer)
+			_highland_layer_original_parent.move_child(highland_layer, _highland_layer_original_index)
+		else:
+			_highland_layer_original_parent.add_child(highland_layer)
+		highland_layer.position = Vector2.ZERO
 	if iceberg_layer != null and _iceberg_layer_original_parent != null:
 		if iceberg_layer.get_parent() != null:
 			iceberg_layer.get_parent().remove_child(iceberg_layer)
@@ -1163,6 +1202,8 @@ func _configure_tileset() -> void:
 		_atlas_source_id = -1
 		if map_layer != null:
 			map_layer.tile_set = tile_set
+		if highland_layer != null:
+			highland_layer.tile_set = tile_set
 		if iceberg_layer != null:
 			iceberg_layer.tile_set = tile_set
 		return
@@ -1268,6 +1309,8 @@ func _configure_tileset() -> void:
 		_atlas_source_id = -1
 		if map_layer != null:
 			map_layer.tile_set = tile_set
+		if highland_layer != null:
+			highland_layer.tile_set = tile_set
 		if iceberg_layer != null:
 			iceberg_layer.tile_set = tile_set
 		return
@@ -1294,6 +1337,9 @@ func _configure_tileset() -> void:
 	_atlas_source_id = tile_set.add_source(overworld_atlas)
 	map_layer.tile_set = tile_set
 	map_layer.position = Vector2.ZERO
+	if highland_layer != null:
+		highland_layer.tile_set = tile_set
+		highland_layer.position = Vector2.ZERO
 	if iceberg_layer != null:
 		iceberg_layer.tile_set = tile_set
 		iceberg_layer.position = Vector2.ZERO
