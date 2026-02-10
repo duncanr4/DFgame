@@ -75,8 +75,8 @@ const CARDINAL_OFFSETS: Array[Vector2i] = [
 @export_range(0.1, 5.0, 0.1) var continental_frequency := 1.4
 @export_range(0.0, 1.0, 0.01) var coast_width := 0.06
 @export_range(0.0, 1.0, 0.01) var mountain_linearity := 0.5
-@export_range(0.0, 1.0, 0.01) var edge_water_strength := 0.42
-@export_range(0.01, 1.0, 0.01) var edge_water_falloff := 0.34
+@export_range(0.0, 1.0, 0.01) var edge_water_strength := 0.28
+@export_range(0.01, 1.0, 0.01) var edge_water_falloff := 0.22
 
 @export_group(&"Climate")
 @export_range(0.1, 5.0, 0.1) var temperature_frequency := 1.2
@@ -198,6 +198,8 @@ func _get_elevation(coord: Vector2i, curr_size: Vector2i) -> float:
 	var macro_fractal := _height_noise.get_noise_2dv(warped_coord * 0.9) * 0.09
 	var fine_fractal := _height_noise.get_noise_2dv(warped_coord * 6.2) * 0.05
 	var elevation := tectonic_uplift + coast_variation + micro_detail + breakup + macro_fractal + fine_fractal
+	var edge_ratio := clampf(edge_distance / maxf(edge_water_falloff, 0.01), 0.0, 1.0)
+	var edge_weight := 1.0 - edge_ratio
 	elevation -= edge_weight * edge_water_strength
 	return clampf(elevation, 0.0, 1.0)
 
