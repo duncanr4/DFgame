@@ -974,10 +974,10 @@ func _handle_structure_context_menu_input(event: InputEvent) -> bool:
 		structure_context_menu.popup()
 	return true
 
-func _get_tile_coord_from_global_position(global_position: Vector2) -> Vector2i:
+func _get_tile_coord_from_global_position(world_position: Vector2) -> Vector2i:
 	if map_layer == null:
 		return Vector2i(-1, -1)
-	var local_mouse := map_layer.to_local(global_position)
+	var local_mouse := map_layer.to_local(world_position)
 	return map_layer.local_to_map(local_mouse)
 
 func _is_valid_map_coord(coord: Vector2i) -> bool:
