@@ -1143,14 +1143,14 @@ func _build_region_name_map(
 			var region_name := _generate_biome_region_name(biome, water_body_type, rng, context_size)
 			var frontier: Array[Vector2i] = [start]
 			while not frontier.is_empty():
-				var coord := frontier.pop_back()
+				var coord: Vector2i = frontier.pop_back()
 				if region_names.has(coord):
 					continue
 				if String(biome_map.get(coord, BIOME_GRASSLAND)) != biome:
 					continue
 				region_names[coord] = region_name
 				for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-					var neighbor := coord + offset
+					var neighbor: Vector2i = coord + offset
 					if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
 						continue
 					if region_names.has(neighbor):
@@ -1163,7 +1163,7 @@ func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
 	var frontier: Array[Vector2i] = [start_coord]
 	var visited := {}
 	while not frontier.is_empty():
-		var coord := frontier.pop_back()
+		var coord: Vector2i = frontier.pop_back()
 		if visited.has(coord):
 			continue
 		if String(biome_map.get(coord, BIOME_GRASSLAND)) != BIOME_WATER:
@@ -1172,7 +1172,7 @@ func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
 		if coord.x == 0 or coord.y == 0 or coord.x == map_size.x - 1 or coord.y == map_size.y - 1:
 			return "ocean"
 		for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var neighbor := coord + offset
+			var neighbor: Vector2i = coord + offset
 			if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
 				continue
 			if visited.has(neighbor):
