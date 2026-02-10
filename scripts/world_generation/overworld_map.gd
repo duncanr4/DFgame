@@ -509,6 +509,53 @@ const SETTLEMENT_NAMES := {
 	"wood_elves": "Grove",
 	"lizardmen": "Lizard City"
 }
+const SETTLEMENT_HISTORY_EVENT_POOL := {
+	"human": [
+		"the entire town militia was conscripted by the Crown to fight in the Goblin Wars.",
+		"townsfolk dragged a corrupt guard captain from office and reclaimed the watch.",
+		"a major famine left nearly half the town dead or gone.",
+		"orc raiders burned the western quarter before the watch rallied.",
+		"merchants brokered a charter guaranteeing grain tithes from the riverlands.",
+		"the Night of Lanterns was first celebrated with bonfires on the green.",
+		"a shrine to Saint Lyra was dedicated, drawing pilgrims from afar.",
+		"the local guild council seized control of civic trade for a generation."
+	],
+	"dwarven": [
+		"an orc war-host lay siege to the gates, but the defenders held firm.",
+		"the dragon Kharazhul scorched the upper terraces before being driven into the deeps.",
+		"Stonebeard Reserve was first brewed in the hold's brass halls.",
+		"stonewrights completed the Deepgate Bastion.",
+		"miners breached an ancient vault filled with glimmering mithril.",
+		"the Ironwrights forged a new charter beneath the basalt vaults.",
+		"the Embervein Clan rose to become the largest clan in the hold."
+	],
+	"dwarven_variant_abandoned": [
+		"the last thane sealed the gates and led the clans to safer halls.",
+		"cataclysmic quakes shattered the underways and toppled the great halls."
+	],
+	"wood_elf": [
+		"the Circle of the Silver Bough sealed a rift to the Feywild.",
+		"wardens drove back ironwood poachers from the sacred trees.",
+		"Rite of the Whispered Glade was first danced beneath the luminous canopy.",
+		"a comet painted the canopy in emerald light.",
+		"dwarven emissaries were welcomed into the grove for counsel.",
+		"the sworn wardens renewed their oath to guard the Heartroot."
+	],
+	"lizardmen": [
+		"the oracles proclaimed the eclipse of twin suns, reshaping temple rites.",
+		"scale-priests led the War of Emerald Spears, sending legions into the jungles.",
+		"pyramid terraces were carved to honor the gods.",
+		"saurus cohorts swore fealty to the ruling temple.",
+		"the temple order warded the vaults against serpent cultists."
+	],
+	"generic": [
+		"an uncanny aurora shimmered overhead for seven nights.",
+		"a council of elders forged new laws to guide the settlement.",
+		"travelers from distant realms brought tales and rare curiosities.",
+		"mysterious lights danced above the hills.",
+		"craftsfolk raised a hall that became the heart of the community."
+	]
+}
 const DWARFHOLD_NEARBY_TOWN_RADIUS := 12.0
 const DWARFHOLD_POPULATION_RACE_OPTIONS := [
 	{"key": "dwarves", "label": "Dwarves", "color": Color("#f4c069")},
@@ -1058,18 +1105,28 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 		ruler_display = ruler_name
 
 	var founded_text := "Unknown"
+	var founded_years_ago := 120
 	var founded_value: Variant = details.get("founded_years_ago", null)
 	if typeof(founded_value) == TYPE_INT or typeof(founded_value) == TYPE_FLOAT:
-		founded_text = "%s years ago" % str(maxi(1, int(round(float(founded_value)))))
+		founded_years_ago = maxi(1, int(round(float(founded_value))))
+		founded_text = "%s years ago" % str(founded_years_ago)
+
+	var history_timeline := _build_settlement_history_timeline(
+		details,
+		settlement_name,
+		settlement_type,
+		founded_years_ago
+	)
 
 	_set_details_tab_text(
 		structure_details_history_label,
-		"[b]Settlement:[/b] %s\n[b]Type:[/b] %s\n[b]Founded:[/b] %s\n[b]Location:[/b] %s\n[b]Biome:[/b] %s" % [
+		"[b]Settlement:[/b] %s\n[b]Type:[/b] %s\n[b]Founded:[/b] %s\n[b]Location:[/b] %s\n[b]Biome:[/b] %s\n\n[b]Chronological Timeline[/b]\n%s" % [
 			settlement_name,
 			settlement_type,
 			founded_text,
 			str(tile_coord),
-			biome_name
+			biome_name,
+			history_timeline
 		]
 	)
 
@@ -1114,6 +1171,103 @@ func _set_details_tab_text(target: RichTextLabel, text: String) -> void:
 	if target == null:
 		return
 	target.text = text
+
+func _build_settlement_history_timeline(
+	details: Dictionary,
+	settlement_name: String,
+	settlement_type_label: String,
+	founded_years_ago: int
+) -> String:
+	var current_year := int(Time.get_datetime_dict_from_system().get("year", 0))
+	if current_year <= 0:
+		current_year = 1000
+	var founding_year := current_year - maxi(1, founded_years_ago)
+	var history_kind := _resolve_history_kind(details)
+	var event_pool: Array[String] = (SETTLEMENT_HISTORY_EVENT_POOL.get(history_kind, SETTLEMENT_HISTORY_EVENT_POOL["generic"]) as Array[String]).duplicate()
+
+	var seed_basis := "%s|%s|%s|%s" % [
+		settlement_name,
+		history_kind,
+		str(founding_year),
+		String(details.get("ruler_name", ""))
+	]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(seed_basis.hash())
+
+	var span := maxi(1, founded_years_ago)
+	var middle_event_count := clampi(span / 160, 2, 7)
+	if middle_event_count > event_pool.size():
+		middle_event_count = event_pool.size()
+
+	var selected_events: Array[String] = []
+	for _index in range(middle_event_count):
+		if event_pool.is_empty():
+			break
+		var selected_index := rng.randi_range(0, event_pool.size() - 1)
+		selected_events.append(event_pool[selected_index])
+		event_pool.remove_at(selected_index)
+
+	var events: Array[Dictionary] = []
+	events.append({
+		"year": founding_year,
+		"description": _build_founding_event_text(history_kind, settlement_name)
+	})
+
+	for index in range(selected_events.size()):
+		var progress := float(index + 1) / float(selected_events.size() + 1)
+		var year := int(round(lerpf(float(founding_year), float(current_year), progress)))
+		events.append({
+			"year": year,
+			"description": selected_events[index]
+		})
+
+	events.append({
+		"year": current_year,
+		"description": "%s now endures as a %s." % [settlement_name, settlement_type_label.to_lower()]
+	})
+
+	events.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a.get("year", 0)) < int(b.get("year", 0))
+	)
+
+	var rows: Array[String] = []
+	rows.append("[table=2]")
+	for event: Dictionary in events:
+		var year_text := "[color=#d4a64a][b]%s[/b][/color]" % str(int(event.get("year", current_year)))
+		var description := String(event.get("description", "")).strip_edges()
+		if description.is_empty():
+			continue
+		rows.append("[cell]%s[/cell][cell]%s[/cell]" % [year_text, description])
+	rows.append("[/table]")
+	return "\n".join(rows)
+
+func _resolve_history_kind(details: Dictionary) -> String:
+	var settlement_type := String(details.get("settlement_type", "")).strip_edges().to_lower()
+	if settlement_type == "town":
+		return "human"
+	if settlement_type == "woodelfgrove":
+		return "wood_elf"
+	if settlement_type == "lizardmencity":
+		return "lizardmen"
+	if settlement_type == "dwarfhold":
+		var class_key := String(details.get("settlement_classification_key", "")).strip_edges().to_lower()
+		if class_key == "abandoned":
+			return "dwarven_variant_abandoned"
+		return "dwarven"
+	return "generic"
+
+func _build_founding_event_text(history_kind: String, settlement_name: String) -> String:
+	match history_kind:
+		"human":
+			return "%s was founded at a strategic crossroads." % settlement_name
+		"dwarven", "dwarven_variant_abandoned":
+			return "%s was founded by a dwarven clan deep beneath the mountain." % settlement_name
+		"wood_elf":
+			return "%s took root beneath the elder trees." % settlement_name
+		"lizardmen":
+			return "%s was raised as a sacred city of scaled priest-kings." % settlement_name
+		_:
+			return "%s first appears in the oldest surviving chronicles." % settlement_name
 
 func _variant_array_to_strings(entries: Variant) -> Array[String]:
 	var result: Array[String] = []
@@ -2699,6 +2853,7 @@ func _generate_dwarfhold_details(
 	var classification_key := String(classification.get("key", ""))
 	var details := {
 		"settlement_classification": classification["label"],
+		"settlement_classification_key": classification_key,
 		"population_label": "Population",
 		"population_descriptor": "residents"
 	}
