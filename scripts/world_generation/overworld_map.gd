@@ -842,6 +842,9 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var structure_details_main_label: RichTextLabel = get_node_or_null(
 	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainText"
 )
+@onready var structure_details_population_history_chart: Control = get_node_or_null(
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainPopulationHistory/MainPopulationHistoryChart"
+)
 @onready var structure_details_features_label: RichTextLabel = get_node_or_null(
 	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Features/FeaturesText"
 )
@@ -871,13 +874,6 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var tooltip_population_pie_chart: Control = get_node_or_null(
 	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationBreakdown/PopulationBreakdownContent/PopulationPieChart"
 )
-@onready var tooltip_population_history_section: Control = get_node_or_null(
-	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationHistory"
-)
-@onready var tooltip_population_history_chart: Control = get_node_or_null(
-	"MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipPopulationHistory/PopulationHistoryChart"
-)
-
 var _atlas_source_id := -1
 var _temperature_noise: FastNoiseLite
 var _rainfall_noise: FastNoiseLite
@@ -1143,6 +1139,13 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 			hallmark
 		]
 	)
+
+	var population_timeline: Array = []
+	for entry: Variant in details.get("population_timeline", []):
+		if entry is Dictionary:
+			population_timeline.append(entry)
+	if structure_details_population_history_chart != null and structure_details_population_history_chart.has_method("set_points"):
+		structure_details_population_history_chart.call("set_points", population_timeline)
 
 	var major_clans := _variant_array_to_strings(details.get("major_clans", []))
 	var major_guilds := _variant_array_to_strings(details.get("major_guilds", []))
@@ -3252,14 +3255,6 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		elif tooltip_population_pie_chart != null and tooltip_population_pie_chart.has_method("set_slices"):
 			tooltip_population_pie_chart.call("set_slices", [])
 
-		var population_timeline: Array = []
-		for entry: Variant in data.get("population_timeline", []):
-			if entry is Dictionary:
-				population_timeline.append(entry)
-		var has_timeline := not population_timeline.is_empty()
-		_set_tooltip_section_visible(tooltip_population_history_section, has_timeline)
-		if tooltip_population_history_chart != null and tooltip_population_history_chart.has_method("set_points"):
-			tooltip_population_history_chart.call("set_points", population_timeline)
 	else:
 		_set_tooltip_label(tooltip_settlement, "", false)
 		_set_tooltip_label(tooltip_population, "", false)
@@ -3271,11 +3266,8 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		_set_tooltip_label(tooltip_major_exports, "", false)
 		_set_tooltip_label(tooltip_hallmark, "", false)
 		_set_tooltip_section_visible(tooltip_population_breakdown_section, false)
-		_set_tooltip_section_visible(tooltip_population_history_section, false)
 		if tooltip_population_pie_chart != null and tooltip_population_pie_chart.has_method("set_slices"):
 			tooltip_population_pie_chart.call("set_slices", [])
-		if tooltip_population_history_chart != null and tooltip_population_history_chart.has_method("set_points"):
-			tooltip_population_history_chart.call("set_points", [])
 	tooltip_panel.size = tooltip_panel.get_combined_minimum_size()
 
 func _position_map_tooltip() -> void:
