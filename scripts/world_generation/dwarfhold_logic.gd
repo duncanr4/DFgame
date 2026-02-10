@@ -2,11 +2,11 @@ class_name DwarfholdLogic
 extends RefCounted
 
 const MAP_PRESETS := {
-	"mini": {"label": "Mini", "size": Vector2i(128, 128)},
-	"small": {"label": "Small", "size": Vector2i(192, 192)},
-	"normal": {"label": "Normal", "size": Vector2i(256, 256)},
-	"large": {"label": "Large", "size": Vector2i(384, 384)},
-	"extra-large": {"label": "Extra Large", "size": Vector2i(512, 512)}
+	"mini": {"label": "Mini", "size": Vector2i(228, 128)},
+	"small": {"label": "Small", "size": Vector2i(341, 192)},
+	"normal": {"label": "Normal", "size": Vector2i(455, 256)},
+	"large": {"label": "Large", "size": Vector2i(683, 384)},
+	"extra-large": {"label": "Extra Large", "size": Vector2i(910, 512)}
 }
 
 const SETTLEMENT_TYPES := {
