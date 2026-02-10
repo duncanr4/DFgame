@@ -170,10 +170,15 @@ func _is_within_bounds(coord: Vector2i, curr_size: Vector2i) -> bool:
 func _to_normalized(noise_sample: float) -> float:
 	return clampf((noise_sample + 1.0) * 0.5, 0.0, 1.0)
 
-func _get_elevation(coord: Vector2i, curr_size: Vector2i) -> float:
+func _get_edge_weight(coord: Vector2i, curr_size: Vector2i) -> float:
 	var size_vec := Vector2(curr_size)
 	var min_edge := minf(minf(float(coord.x), float(curr_size.x - 1 - coord.x)), minf(float(coord.y), float(curr_size.y - 1 - coord.y)))
 	var edge_distance := clampf(min_edge / (minf(size_vec.x, size_vec.y) * 0.5), 0.0, 1.0)
+	var edge_ratio := clampf(edge_distance / maxf(edge_water_falloff, 0.01), 0.0, 1.0)
+	return pow(1.0 - edge_ratio, 2.1)
+
+func _get_elevation(coord: Vector2i, curr_size: Vector2i) -> float:
+	var edge_weight := _get_edge_weight(coord, curr_size)
 	var warp_strength := maxf(1.0, float(curr_size.x)) * 0.015
 	var warp := Vector2(
 		_temperature_noise.get_noise_2dv(Vector2(coord) * 0.8),
@@ -204,7 +209,10 @@ func _get_farcical_continent_value(coord: Vector2i, curr_size: Vector2i) -> floa
 	var wobble := sin(float(coord.x) / wobble_scale * TAU) * cos(float(coord.y) / (wobble_scale * 0.8) * TAU)
 	var swirl := sin((float(coord.x + coord.y) / (wobble_scale * 0.6)) * TAU)
 	var fray := _height_noise.get_noise_2dv(Vector2(coord) * 2.2) * 0.09
-	return clampf(base + wobble * 0.18 + swirl * 0.12 + fray, 0.0, 1.0)
+	var edge_weight := _get_edge_weight(coord, curr_size)
+	var interior_weight := 1.0 - edge_weight
+	var coastline_noise := wobble * 0.12 * interior_weight + swirl * 0.08 * interior_weight + fray * (0.65 + interior_weight * 0.35)
+	return clampf(base + coastline_noise - edge_weight * edge_water_strength * 0.55, 0.0, 1.0)
 
 func _get_temperature(coord: Vector2i, curr_size: Vector2i, elevation: float) -> float:
 	var latitude := absf((float(coord.y) / maxf(1.0, float(curr_size.y - 1))) * 2.0 - 1.0)
