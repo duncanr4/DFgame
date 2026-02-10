@@ -350,6 +350,12 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="StructureContextMenu" type="PopupMenu" parent="MapUi"]
+
+[node name="StructureInfoDialog" type="AcceptDialog" parent="MapUi"]
+title = "More information"
+dialog_text = ""
+
 [node name="Dimmer" type="ColorRect" parent="MapUi/LoadingScreen"]
 layout_mode = 1
 anchors_preset = 15

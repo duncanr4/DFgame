@@ -784,6 +784,8 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
 @onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
+@onready var structure_context_menu: PopupMenu = get_node_or_null("MapUi/StructureContextMenu")
+@onready var structure_info_dialog: AcceptDialog = get_node_or_null("MapUi/StructureInfoDialog")
 @onready var tooltip_panel: PanelContainer = get_node_or_null("MapUi/MapTooltip")
 @onready var tooltip_title: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipTitle")
 @onready var tooltip_biome: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipBiome")
@@ -844,6 +846,10 @@ var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
 var _biome_overlay_enabled := false
 var _hovered_tile := Vector2i(-999, -999)
+var _context_menu_tile := Vector2i(-1, -1)
+
+const CONTEXT_MENU_BEGIN_JOURNEY_ID := 0
+const CONTEXT_MENU_MORE_INFORMATION_ID := 1
 
 func _ready() -> void:
 	if map_layer == null:
@@ -882,6 +888,7 @@ func _ready() -> void:
 	_cache_overlay_parent()
 	_configure_globe_viewport()
 	_set_globe_view(false)
+	_configure_structure_context_menu()
 
 func _show_loading_screen() -> void:
 	if loading_screen != null:
@@ -898,6 +905,9 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_globe_view and _handle_globe_input(event):
+		return
+	if _handle_structure_context_menu_input(event):
+		get_viewport().set_input_as_handled()
 		return
 	var key_event := event as InputEventKey
 	if key_event == null or not key_event.pressed:
@@ -926,6 +936,70 @@ func _on_moisture_map_toggled(is_pressed: bool) -> void:
 func _on_biome_map_toggled(is_pressed: bool) -> void:
 	_biome_overlay_enabled = is_pressed
 	_update_biome_overlay_visibility()
+
+func _configure_structure_context_menu() -> void:
+	if structure_context_menu == null:
+		return
+	structure_context_menu.clear()
+	structure_context_menu.add_item("Begin your journey here", CONTEXT_MENU_BEGIN_JOURNEY_ID)
+	structure_context_menu.add_item("More information", CONTEXT_MENU_MORE_INFORMATION_ID)
+	if not structure_context_menu.id_pressed.is_connected(_on_structure_context_menu_id_pressed):
+		structure_context_menu.id_pressed.connect(_on_structure_context_menu_id_pressed)
+
+func _handle_structure_context_menu_input(event: InputEvent) -> bool:
+	var mouse_button_event := event as InputEventMouseButton
+	if mouse_button_event == null:
+		return false
+
+	if not mouse_button_event.pressed:
+		if mouse_button_event.button_index == MOUSE_BUTTON_LEFT and structure_context_menu != null and structure_context_menu.visible:
+			structure_context_menu.hide()
+		return false
+
+	if mouse_button_event.button_index != MOUSE_BUTTON_RIGHT:
+		return false
+
+	if map_layer == null:
+		return true
+
+	var tile_coord := _get_tile_coord_from_viewport_position(mouse_button_event.position)
+	if not _is_valid_map_coord(tile_coord):
+		if structure_context_menu != null:
+			structure_context_menu.hide()
+		return true
+
+	_context_menu_tile = tile_coord
+	if structure_context_menu != null:
+		structure_context_menu.position = mouse_button_event.position
+		structure_context_menu.popup()
+	return true
+
+func _get_tile_coord_from_viewport_position(viewport_position: Vector2) -> Vector2i:
+	if map_layer == null:
+		return Vector2i(-1, -1)
+	var local_mouse := map_layer.to_local(viewport_position)
+	return map_layer.local_to_map(local_mouse)
+
+func _on_structure_context_menu_id_pressed(action_id: int) -> void:
+	if not _is_valid_map_coord(_context_menu_tile):
+		return
+
+	match action_id:
+		CONTEXT_MENU_BEGIN_JOURNEY_ID:
+			print("Begin your journey here at %s" % _context_menu_tile)
+		CONTEXT_MENU_MORE_INFORMATION_ID:
+			_show_structure_information_dialog(_context_menu_tile)
+
+func _show_structure_information_dialog(tile_coord: Vector2i) -> void:
+	if structure_info_dialog == null:
+		return
+	var details := _tile_data.get(tile_coord, {}) as Dictionary
+	var region_name := String(details.get("region_name", "Unknown region"))
+	var biome_name := String(details.get("biome", "Unknown biome")).capitalize()
+	var settlement_type := String(details.get("settlement_type", "No known settlement"))
+	structure_info_dialog.title = "More information"
+	structure_info_dialog.dialog_text = "Location: %s\nBiome: %s\nSettlement: %s" % [region_name, biome_name, settlement_type]
+	structure_info_dialog.popup_centered()
 
 func _regenerate_map() -> void:
 	_show_loading_screen()
