@@ -1103,6 +1103,7 @@ func _apply_overlays_and_metadata(
 	name_rng: RandomNumberGenerator
 ) -> void:
 	var context_size := maxi(map_size.x, map_size.y)
+	var region_names := _build_region_name_map(biome_map, name_rng, context_size)
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
@@ -1115,7 +1116,7 @@ func _apply_overlays_and_metadata(
 				else:
 					highland_layer.erase_cell(coord)
 			var biome := biome_map.get(coord, base_biome) as String
-			var region_name := _generate_biome_region_name(biome, coord, name_rng, context_size)
+			var region_name := String(region_names.get(coord, ""))
 			_tile_data[coord] = {
 				"biome_type": biome,
 				"temperature": temperature_map.get(coord, 0.0),
@@ -1123,6 +1124,62 @@ func _apply_overlays_and_metadata(
 				"resources": _resources_for_biome(biome),
 				"region_name": region_name
 			}
+
+func _build_region_name_map(
+	biome_map: Dictionary,
+	rng: RandomNumberGenerator,
+	context_size: int
+) -> Dictionary:
+	var region_names := {}
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var start := Vector2i(x, y)
+			if region_names.has(start):
+				continue
+			var biome := String(biome_map.get(start, BIOME_GRASSLAND))
+			var water_body_type := ""
+			if biome == BIOME_WATER:
+				water_body_type = _water_region_type(start, biome_map)
+			var region_name := _generate_biome_region_name(biome, water_body_type, rng, context_size)
+			var frontier: Array[Vector2i] = [start]
+			while not frontier.is_empty():
+				var coord := frontier.pop_back()
+				if region_names.has(coord):
+					continue
+				if String(biome_map.get(coord, BIOME_GRASSLAND)) != biome:
+					continue
+				region_names[coord] = region_name
+				for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+					var neighbor := coord + offset
+					if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
+						continue
+					if region_names.has(neighbor):
+						continue
+					if String(biome_map.get(neighbor, BIOME_GRASSLAND)) == biome:
+						frontier.append(neighbor)
+	return region_names
+
+func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
+	var frontier: Array[Vector2i] = [start_coord]
+	var visited := {}
+	while not frontier.is_empty():
+		var coord := frontier.pop_back()
+		if visited.has(coord):
+			continue
+		if String(biome_map.get(coord, BIOME_GRASSLAND)) != BIOME_WATER:
+			continue
+		visited[coord] = true
+		if coord.x == 0 or coord.y == 0 or coord.x == map_size.x - 1 or coord.y == map_size.y - 1:
+			return "ocean"
+		for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var neighbor := coord + offset
+			if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
+				continue
+			if visited.has(neighbor):
+				continue
+			if String(biome_map.get(neighbor, BIOME_GRASSLAND)) == BIOME_WATER:
+				frontier.append(neighbor)
+	return "lake"
 
 func _highland_tile_for_biome(highland_biome: String, base_biome: String) -> Vector2i:
 	if highland_biome == BIOME_HILLS and base_biome == BIOME_TUNDRA:
@@ -1842,7 +1899,7 @@ func _format_resource_list(resources: Array[String]) -> String:
 
 func _generate_biome_region_name(
 	biome: String,
-	coord: Vector2i,
+	water_body_type: String,
 	rng: RandomNumberGenerator,
 	context_size: int
 ) -> String:
@@ -1864,17 +1921,11 @@ func _generate_biome_region_name(
 		BIOME_BADLANDS:
 			return _generate_badlands_name(rng)
 		BIOME_WATER:
-			var water_type := _water_body_type(coord)
-			if water_type == "lake":
+			if water_body_type == "lake":
 				return _generate_lake_name(rng)
 			return _generate_ocean_name(rng, context_size)
 		_:
 			return ""
-
-func _water_body_type(coord: Vector2i) -> String:
-	if coord.x == 0 or coord.y == 0 or coord.x == map_size.x - 1 or coord.y == map_size.y - 1:
-		return "ocean"
-	return "lake"
 
 func _generate_forest_name(rng: RandomNumberGenerator) -> String:
 	var prefix := _pick_random_entry(FOREST_NAME_PREFIXES, rng, "Verdant")
