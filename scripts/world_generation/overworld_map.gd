@@ -962,7 +962,7 @@ func _handle_structure_context_menu_input(event: InputEvent) -> bool:
 	if map_layer == null:
 		return true
 
-	var tile_coord := _get_tile_coord_from_viewport_position(mouse_button_event.position)
+	var tile_coord := _get_tile_coord_from_global_position(get_global_mouse_position())
 	if not _is_valid_map_coord(tile_coord):
 		if structure_context_menu != null:
 			structure_context_menu.hide()
@@ -974,10 +974,10 @@ func _handle_structure_context_menu_input(event: InputEvent) -> bool:
 		structure_context_menu.popup()
 	return true
 
-func _get_tile_coord_from_viewport_position(viewport_position: Vector2) -> Vector2i:
+func _get_tile_coord_from_global_position(global_position: Vector2) -> Vector2i:
 	if map_layer == null:
 		return Vector2i(-1, -1)
-	var local_mouse := map_layer.to_local(viewport_position)
+	var local_mouse := map_layer.to_local(global_position)
 	return map_layer.local_to_map(local_mouse)
 
 func _is_valid_map_coord(coord: Vector2i) -> bool:
