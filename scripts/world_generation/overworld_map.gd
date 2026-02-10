@@ -763,6 +763,7 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var temperature_overlay: Sprite2D = get_node_or_null("MapOverlays/TemperatureOverlay")
 @onready var moisture_overlay: Sprite2D = get_node_or_null("MapOverlays/MoistureOverlay")
 @onready var biome_overlay: Sprite2D = get_node_or_null("MapOverlays/BiomeOverlay")
+@onready var terrain_shading_overlay: Sprite2D = get_node_or_null("MapOverlays/TerrainShadingOverlay")
 @onready var overworld_camera: OverworldCamera = get_node_or_null("OverworldCamera")
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
 @onready var globe_camera: Camera3D = get_node_or_null("GlobeView/GlobeCamera")
@@ -1065,6 +1066,7 @@ func _generate_map() -> void:
 		base_biome_map,
 		biome_map,
 		highland_map,
+		height_map,
 		temperature_map,
 		moisture_map,
 		name_rng
@@ -1081,6 +1083,7 @@ func _generate_map() -> void:
 	_update_temperature_overlay()
 	_update_moisture_overlay()
 	_update_biome_overlay()
+	_update_terrain_shading_overlay(base_biome_map)
 	_configure_globe_viewport()
 	_configure_overworld_camera_bounds()
 	if _is_globe_view:
@@ -1098,10 +1101,15 @@ func _apply_overlays_and_metadata(
 	base_biome_map: Dictionary,
 	biome_map: Dictionary,
 	highland_map: Dictionary,
+	height_map: Dictionary,
 	temperature_map: Dictionary,
 	moisture_map: Dictionary,
 	name_rng: RandomNumberGenerator
 ) -> void:
+	var coast_proximity_map := _build_proximity_map(base_biome_map, [BIOME_WATER], 8)
+	var marsh_proximity_map := _build_proximity_map(base_biome_map, [BIOME_MARSH], 7)
+	var desert_proximity_map := _build_proximity_map(base_biome_map, [BIOME_DESERT, BIOME_BADLANDS], 8)
+	var forest_proximity_map := _build_proximity_map(base_biome_map, [BIOME_FOREST, BIOME_JUNGLE], 6)
 	var context_size := maxi(map_size.x, map_size.y)
 	var region_names := _build_region_name_map(biome_map, name_rng, context_size)
 	for y in range(map_size.y):
@@ -1119,11 +1127,147 @@ func _apply_overlays_and_metadata(
 			var region_name := String(region_names.get(coord, ""))
 			_tile_data[coord] = {
 				"biome_type": biome,
+				"base_biome": base_biome,
+				"surface_variation": _surface_variation_for_coord(coord, base_biome),
+				"water_depth": _water_depth_for_coord(coord, base_biome, height_map),
+				"coast_proximity": float(coast_proximity_map.get(coord, 0.0)),
+				"marsh_proximity": float(marsh_proximity_map.get(coord, 0.0)),
+				"desert_proximity": float(desert_proximity_map.get(coord, 0.0)),
+				"forest_canopy_density": float(forest_proximity_map.get(coord, 0.0)),
 				"temperature": temperature_map.get(coord, 0.0),
 				"moisture": moisture_map.get(coord, 0.0),
 				"resources": _resources_for_biome(biome),
 				"region_name": region_name
 			}
+
+
+func _build_proximity_map(biome_map: Dictionary, target_biomes: Array[String], max_distance: int) -> Dictionary:
+	var proximity_map: Dictionary = {}
+	if max_distance <= 0 or target_biomes.is_empty():
+		return proximity_map
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var nearest := max_distance + 1
+			for oy in range(-max_distance, max_distance + 1):
+				var ny := y + oy
+				if ny < 0 or ny >= map_size.y:
+					continue
+				for ox in range(-max_distance, max_distance + 1):
+					var nx := x + ox
+					if nx < 0 or nx >= map_size.x:
+						continue
+					var sample_coord := Vector2i(nx, ny)
+					if not target_biomes.has(String(biome_map.get(sample_coord, BIOME_GRASSLAND))):
+						continue
+					var distance := maxi(absi(ox), absi(oy))
+					if distance < nearest:
+						nearest = distance
+						if nearest == 0:
+							break
+				if nearest == 0:
+					break
+			if nearest > max_distance:
+				proximity_map[coord] = 0.0
+			else:
+				proximity_map[coord] = clampf(1.0 - float(nearest) / float(max_distance), 0.0, 1.0)
+	return proximity_map
+
+
+func _surface_variation_for_coord(coord: Vector2i, base_biome: String) -> float:
+	if base_biome != BIOME_TUNDRA and base_biome != BIOME_DESERT and base_biome != BIOME_BADLANDS:
+		return 0.0
+	var coarse := _to_normalized(_rainfall_noise.get_noise_2d(float(coord.x) * 0.8, float(coord.y) * 0.8))
+	var detail := _to_normalized(_temperature_noise.get_noise_2d(float(coord.x) * 2.3, float(coord.y) * 2.3))
+	return clampf((coarse * 0.65 + detail * 0.35 - 0.5) * 1.6, -1.0, 1.0)
+
+
+func _water_depth_for_coord(coord: Vector2i, base_biome: String, height_map: Dictionary) -> float:
+	if base_biome != BIOME_WATER:
+		return 0.0
+	var height := float(height_map.get(coord, water_level))
+	if water_level <= 0.001:
+		return 0.0
+	return clampf((water_level - height) / water_level, 0.0, 1.0)
+
+
+func _update_terrain_shading_overlay(base_biome_map: Dictionary) -> void:
+	if terrain_shading_overlay == null:
+		return
+	var shading_image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var tile_meta := _tile_data.get(coord, {}) as Dictionary
+			var base_biome := String(tile_meta.get("base_biome", base_biome_map.get(coord, BIOME_GRASSLAND)))
+			var color := Color(0, 0, 0, 0)
+			color = _apply_surface_noise_shading_to_color(color, base_biome, float(tile_meta.get("surface_variation", 0.0)))
+			color = _apply_coastal_shading_to_color(color, base_biome, String(tile_meta.get("biome_type", base_biome)), tile_meta)
+			shading_image.set_pixel(x, y, color)
+	var shading_texture := ImageTexture.create_from_image(shading_image)
+	terrain_shading_overlay.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	terrain_shading_overlay.centered = false
+	terrain_shading_overlay.position = Vector2.ZERO
+	terrain_shading_overlay.scale = Vector2(float(tile_size), float(tile_size))
+	terrain_shading_overlay.texture = shading_texture
+
+
+func _apply_surface_noise_shading_to_color(base_color: Color, base_biome: String, variation: float) -> Color:
+	if base_biome != BIOME_TUNDRA and base_biome != BIOME_DESERT and base_biome != BIOME_BADLANDS:
+		return base_color
+	var v := clampf(variation, -1.0, 1.0)
+	if absf(v) < 0.01:
+		return base_color
+	var lighten := v > 0.0
+	var intensity := absf(v)
+	if base_biome == BIOME_TUNDRA:
+		if lighten:
+			return _blend_overlay_color(base_color, Color8(255, 255, 255), clampf(0.1 + intensity * 0.28, 0.0, 0.55))
+		return _blend_overlay_color(base_color, Color8(120, 146, 182), clampf(0.08 + intensity * 0.26, 0.0, 0.55))
+	if base_biome == BIOME_DESERT:
+		if lighten:
+			return _blend_overlay_color(base_color, Color8(255, 236, 192), clampf(0.08 + intensity * 0.24, 0.0, 0.55))
+		return _blend_overlay_color(base_color, Color8(184, 140, 78), clampf(0.08 + intensity * 0.22, 0.0, 0.55))
+	if lighten:
+		return _blend_overlay_color(base_color, Color8(235, 206, 168), clampf(0.08 + intensity * 0.22, 0.0, 0.55))
+	return _blend_overlay_color(base_color, Color8(143, 102, 66), clampf(0.08 + intensity * 0.24, 0.0, 0.55))
+
+
+func _apply_coastal_shading_to_color(base_color: Color, base_biome: String, biome_type: String, tile_meta: Dictionary) -> Color:
+	var color := base_color
+	if base_biome == BIOME_WATER:
+		var shallow_factor := clampf(1.0 - float(tile_meta.get("water_depth", 0.0)), 0.0, 1.0)
+		if shallow_factor > 0.01:
+			color = _blend_overlay_color(color, Color8(88, 164, 218), shallow_factor * 0.32)
+		return color
+	if base_biome != BIOME_GRASSLAND:
+		return color
+	var coast_proximity := clampf(float(tile_meta.get("coast_proximity", 0.0)), 0.0, 1.0)
+	if coast_proximity > 0.01:
+		color = _blend_overlay_color(color, Color8(148, 205, 184), coast_proximity * 0.32)
+	var marsh_proximity := clampf(float(tile_meta.get("marsh_proximity", 0.0)), 0.0, 1.0)
+	if marsh_proximity > 0.01:
+		color = _blend_overlay_color(color, Color8(82, 64, 40), marsh_proximity * 0.55)
+	var forest_density := clampf(float(tile_meta.get("forest_canopy_density", 0.0)), 0.0, 1.0)
+	if biome_type == BIOME_FOREST and forest_density > 0.01:
+		color = _blend_overlay_color(color, Color8(26, 74, 36), forest_density * 0.55)
+	var desert_proximity := clampf(float(tile_meta.get("desert_proximity", 0.0)), 0.0, 1.0)
+	if desert_proximity > 0.01:
+		color = _blend_overlay_color(color, Color8(228, 202, 146), desert_proximity * 0.4)
+	return color
+
+
+func _blend_overlay_color(base_color: Color, tint_color: Color, alpha: float) -> Color:
+	var overlay_alpha := clampf(alpha, 0.0, 1.0)
+	if overlay_alpha <= 0.0:
+		return base_color
+	var out_alpha := overlay_alpha + base_color.a * (1.0 - overlay_alpha)
+	if out_alpha <= 0.0001:
+		return Color(0, 0, 0, 0)
+	var out_r := (tint_color.r * overlay_alpha + base_color.r * base_color.a * (1.0 - overlay_alpha)) / out_alpha
+	var out_g := (tint_color.g * overlay_alpha + base_color.g * base_color.a * (1.0 - overlay_alpha)) / out_alpha
+	var out_b := (tint_color.b * overlay_alpha + base_color.b * base_color.a * (1.0 - overlay_alpha)) / out_alpha
+	return Color(out_r, out_g, out_b, out_alpha)
 
 func _build_region_name_map(
 	biome_map: Dictionary,
