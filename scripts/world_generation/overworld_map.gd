@@ -1062,7 +1062,8 @@ func _generate_map() -> void:
 		temperature_map,
 		moisture_map,
 		vegetation_map,
-		height_map
+		height_map,
+		rng
 	)
 	highland_map = _build_highland_overlays(base_biome_map, height_map)
 	var biome_map: Dictionary = tree_biome_map.duplicate()
@@ -1602,7 +1603,8 @@ func _apply_tree_overlays(
 	temperature_map: Dictionary,
 	moisture_map: Dictionary,
 	vegetation_map: Dictionary,
-	height_map: Dictionary
+	height_map: Dictionary,
+	rng: RandomNumberGenerator
 ) -> Dictionary:
 	var tree_map: Dictionary = {}
 	var next_map := biome_map.duplicate()
@@ -1610,6 +1612,11 @@ func _apply_tree_overlays(
 	var has_existing_trees := false
 	var moisture_threshold := forest_threshold * 0.6
 	var vegetation_threshold := 0.35
+	var spread_chance_floor := 0.12
+	var spread_chance_weight := 0.78
+	var climate_weight := 0.65
+	var vegetation_weight := 0.35
+	var elevation_falloff := 1.8
 	for coord: Vector2i in biome_map.keys():
 		if height_map.get(coord, 0.0) > mountain_level:
 			continue
@@ -1631,7 +1638,11 @@ func _apply_tree_overlays(
 			if vegetation < vegetation_threshold:
 				continue
 			var temperature: float = temperature_map.get(coord, 0.0)
-			var seed_score := moisture + vegetation + temperature
+			var climate := clampf(moisture * climate_weight + temperature * (1.0 - climate_weight), 0.0, 1.0)
+			var elevation: float = height_map.get(coord, 0.0)
+			var elevation_limit := clampf(1.0 - maxf(0.0, elevation - hill_level) * elevation_falloff, 0.0, 1.0)
+			var suitability := clampf(climate * climate_weight + vegetation * vegetation_weight, 0.0, 1.0) * elevation_limit
+			var seed_score := suitability + rng.randf_range(0.0, 0.2)
 			if best_scores.size() < 6:
 				best_scores.append(seed_score)
 				best_seeds.append(coord)
@@ -1668,6 +1679,13 @@ func _apply_tree_overlays(
 				continue
 			if _has_tree_neighbor(coord, tree_source_map):
 				var temperature: float = temperature_map.get(coord, 0.0)
+				var climate := clampf(moisture * climate_weight + temperature * (1.0 - climate_weight), 0.0, 1.0)
+				var elevation: float = height_map.get(coord, 0.0)
+				var elevation_limit := clampf(1.0 - maxf(0.0, elevation - hill_level) * elevation_falloff, 0.0, 1.0)
+				var suitability := clampf(climate * climate_weight + vegetation * vegetation_weight, 0.0, 1.0) * elevation_limit
+				var spread_chance := spread_chance_floor + suitability * spread_chance_weight
+				if rng.randf() > spread_chance:
+					continue
 				var tree_biome := _tree_overlay_biome(temperature, moisture)
 				next_map[coord] = tree_biome
 				tree_map[coord] = tree_biome
