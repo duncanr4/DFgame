@@ -17,7 +17,7 @@ extends Node2D
 @export var rainfall_frequency: float = 1.7
 @export var map_seed: int = 0
 @export var tile_size: int = 32
-@export var globe_rotation_speed: float = 0.125
+@export var globe_rotation_speed: float = 0.0625
 @export var globe_drag_sensitivity: float = 0.008
 @export var globe_zoom_step: float = 0.35
 @export var globe_min_camera_distance: float = 2.4
@@ -2998,7 +2998,7 @@ func _update_globe_texture() -> void:
 	globe_material.albedo_texture = viewport_texture
 
 func _rotate_globe(delta: float) -> void:
-	if globe_mesh == null or globe_rotation_speed == 0.0:
+	if globe_mesh == null or globe_rotation_speed == 0.0 or _is_dragging_globe:
 		return
 	globe_mesh.rotate_y(globe_rotation_speed * delta)
 
