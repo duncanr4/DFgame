@@ -17,7 +17,11 @@ extends Node2D
 @export var rainfall_frequency: float = 1.7
 @export var map_seed: int = 0
 @export var tile_size: int = 32
-@export var globe_rotation_speed: float = 0.25
+@export var globe_rotation_speed: float = 0.125
+@export var globe_drag_sensitivity: float = 0.008
+@export var globe_zoom_step: float = 0.35
+@export var globe_min_camera_distance: float = 2.4
+@export var globe_max_camera_distance: float = 8.0
 @export_range(0.0, 1.0, 0.01) var iceberg_temperature_threshold: float = 0.32
 @export_range(0.0, 1.0, 0.01) var iceberg_density: float = 0.12
 @export var iceberg_tile_options: Array[Vector2i] = [Vector2i(4, 3), Vector2i(5, 3)]
@@ -831,6 +835,7 @@ var _settlement_layer_original_index := -1
 var _overlays_original_parent: Node = null
 var _overlays_original_index := -1
 var _is_globe_view := false
+var _is_dragging_globe := false
 var _elevation_overlay_enabled := false
 var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
@@ -889,6 +894,8 @@ func _process(delta: float) -> void:
 		_rotate_globe(delta)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _is_globe_view and _handle_globe_input(event):
+		return
 	var key_event := event as InputEventKey
 	if key_event == null or not key_event.pressed:
 		return
@@ -2642,6 +2649,8 @@ func _set_globe_view(enabled: bool) -> void:
 			overworld_camera.make_current()
 	if globe_camera != null:
 		globe_camera.current = enabled
+	if not enabled:
+		_is_dragging_globe = false
 	if enabled:
 		_move_map_layer_to_viewport()
 		_update_globe_texture()
@@ -2937,6 +2946,43 @@ func _restore_map_layer_parent() -> void:
 	else:
 		_overlays_original_parent.add_child(map_overlays)
 	map_overlays.position = Vector2.ZERO
+
+func _handle_globe_input(event: InputEvent) -> bool:
+	var mouse_button_event := event as InputEventMouseButton
+	if mouse_button_event != null:
+		if mouse_button_event.button_index == MOUSE_BUTTON_LEFT:
+			_is_dragging_globe = mouse_button_event.pressed
+			return true
+		if mouse_button_event.pressed:
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_zoom_globe_camera(-globe_zoom_step)
+				return true
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_globe_camera(globe_zoom_step)
+				return true
+	var mouse_motion_event := event as InputEventMouseMotion
+	if mouse_motion_event != null and _is_dragging_globe:
+		_rotate_globe_from_drag(mouse_motion_event.relative)
+		return true
+	return false
+
+func _rotate_globe_from_drag(relative_motion: Vector2) -> void:
+	if globe_mesh == null:
+		return
+	globe_mesh.rotate_y(-relative_motion.x * globe_drag_sensitivity)
+	globe_mesh.rotate_object_local(Vector3.RIGHT, -relative_motion.y * globe_drag_sensitivity)
+
+func _zoom_globe_camera(distance_delta: float) -> void:
+	if globe_camera == null:
+		return
+	var camera_origin := globe_camera.transform.origin
+	var current_distance := camera_origin.length()
+	if current_distance <= 0.0001:
+		return
+	var target_distance := clampf(current_distance + distance_delta, globe_min_camera_distance, globe_max_camera_distance)
+	if is_equal_approx(target_distance, current_distance):
+		return
+	globe_camera.transform.origin = camera_origin.normalized() * target_distance
 
 func _update_globe_texture() -> void:
 	if globe_mesh == null or map_viewport == null:
