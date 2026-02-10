@@ -24,8 +24,8 @@ func _draw() -> void:
 		draw_rect(inner, Color(0.2, 0.2, 0.25, 0.6), true)
 		return
 
-	var min_value := values.min()
-	var max_value := values.max()
+	var min_value: float = values.min()
+	var max_value: float = values.max()
 	if is_equal_approx(min_value, max_value):
 		max_value = min_value + 1.0
 
@@ -35,8 +35,8 @@ func _draw() -> void:
 		if values.size() > 1:
 			ratio = float(index) / float(values.size() - 1)
 		var x := inner.position.x + inner.size.x * ratio
-		var value_ratio := (values[index] - min_value) / (max_value - min_value)
-		var y := inner.position.y + inner.size.y * (1.0 - value_ratio)
+		var value_ratio: float = (values[index] - min_value) / (max_value - min_value)
+		var y: float = inner.position.y + inner.size.y * (1.0 - value_ratio)
 		chart_points.append(Vector2(x, y))
 
 	if chart_points.size() >= 2:
