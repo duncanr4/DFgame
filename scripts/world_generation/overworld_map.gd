@@ -1369,10 +1369,15 @@ func _sample_continent_bias(x: int, y: int) -> float:
 	var denom_y := maxf(1.0, float(map_size.y - 1))
 	var nx := float(x) / denom_x
 	var ny := float(y) / denom_y
+	var centered_nx := nx * 2.0 - 1.0
+	var centered_ny := ny * 2.0 - 1.0
 	var base_seed := map_seed + 0x6a09e667
 	var fractal := (_value_noise(nx * 18.0 + 2.3, ny * 18.0 + 9.7, base_seed) - 0.5) * 0.1
 	fractal += (_value_noise(nx * 42.0 + 13.1, ny * 42.0 + 5.4, base_seed + 0xbb67ae85) - 0.5) * 0.05
-	return fractal + _sample_edge_ocean_bias(x, y)
+	var radial_falloff_bias := _sample_radial_falloff_bias(centered_nx, centered_ny)
+	var landmass_center_bias := _sample_landmass_center_bias(centered_nx, centered_ny)
+	var landmass_mask_bias := _sample_landmass_mask_bias(nx, ny)
+	return fractal + radial_falloff_bias + landmass_center_bias + landmass_mask_bias + _sample_edge_ocean_bias(x, y)
 
 
 func _sample_edge_ocean_bias(x: int, y: int) -> float:
@@ -1385,6 +1390,30 @@ func _sample_edge_ocean_bias(x: int, y: int) -> float:
 	var edge_ocean := 1.0 - pow(edge_ratio, edge_ocean_curve)
 	var interior_support := pow(clampf(edge_normalized, 0.0, 1.0), 2.2) * (edge_ocean_strength * 0.28)
 	return interior_support - edge_ocean * edge_ocean_strength
+
+
+func _sample_radial_falloff_bias(centered_nx: float, centered_ny: float) -> float:
+	if falloff_strength <= 0.0:
+		return 0.0
+	var radial_distance := Vector2(centered_nx, centered_ny).length() / sqrt(2.0)
+	var radial_ratio := clampf(radial_distance, 0.0, 1.0)
+	var attenuation := 1.0 - pow(radial_ratio, maxf(falloff_power, 0.05))
+	return (attenuation - 0.5) * 2.0 * falloff_strength
+
+
+func _sample_landmass_center_bias(centered_nx: float, centered_ny: float) -> float:
+	var clamped_scale := maxf(0.001, landmass_falloff_scale)
+	var center_distance := _distance_to_nearest_landmass_center(centered_nx, centered_ny)
+	var center_ratio := clampf(center_distance / clamped_scale, 0.0, 1.0)
+	var center_support := 1.0 - pow(center_ratio, maxf(falloff_power, 0.05))
+	return (center_support - 0.5) * 2.0 * (landmass_falloff_scale * 0.08)
+
+
+func _sample_landmass_mask_bias(nx: float, ny: float) -> float:
+	if landmass_mask_strength <= 0.0:
+		return 0.0
+	var mask_sample := _sample_landmass_mask(nx, ny)
+	return (mask_sample - 0.5) * 2.0 * landmass_mask_strength
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
