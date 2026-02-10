@@ -2,7 +2,7 @@ extends Node2D
 
 @export var map_size: Vector2i = Vector2i(256, 256)
 @export var water_level: float = 0.45
-@export var falloff_strength: float = 0.55
+@export var falloff_strength: float = 0.0
 @export var falloff_power: float = 2.4
 @export var noise_frequency: float = 2.0
 @export var noise_octaves: int = 4
@@ -11,7 +11,7 @@ extends Node2D
 @export var landmass_center_count: int = 4
 @export var landmass_center_margin: float = 0.12
 @export var landmass_falloff_scale: float = 1.35
-@export var landmass_mask_strength: float = 0.55
+@export var landmass_mask_strength: float = 0.0
 @export var landmass_mask_power: float = 0.82
 @export var temperature_frequency: float = 1.2
 @export var rainfall_frequency: float = 1.7
@@ -1197,11 +1197,6 @@ func _sample_height(
 	x: int,
 	y: int
 ) -> float:
-	var nx := (float(x) / float(map_size.x)) * 2.0 - 1.0
-	var ny := (float(y) / float(map_size.y)) * 2.0 - 1.0
-	var distance := _distance_to_nearest_landmass_center(nx, ny)
-	var scaled_distance := clampf(distance / maxf(0.01, landmass_falloff_scale), 0.0, 1.0)
-	var falloff := pow(scaled_distance, falloff_power) * falloff_strength
 	var continent := _to_normalized(continent_noise.get_noise_2d(float(x), float(y)))
 	var detail := _to_normalized(detail_noise.get_noise_2d(float(x), float(y)))
 	var ridges := 1.0 - absf(ridge_noise.get_noise_2d(float(x), float(y)))
@@ -1209,7 +1204,7 @@ func _sample_height(
 	var archipelago := (_to_normalized(detail_noise.get_noise_2d(float(x) * 2.6, float(y) * 2.6)) - 0.5) * 0.12
 	height += archipelago
 	var continent_bias := _sample_continent_bias(x, y)
-	height += continent_bias - falloff
+	height += continent_bias
 	var coast_mask := 1.0 - clampf(absf(height - water_level) / 0.15, 0.0, 1.0)
 	var coast_jag := detail_noise.get_noise_2d(float(x) * 5.1, float(y) * 5.1) * 0.06 * coast_mask
 	return clampf(height + coast_jag, 0.0, 1.0)
@@ -1220,14 +1215,10 @@ func _sample_continent_bias(x: int, y: int) -> float:
 	var denom_y := maxf(1.0, float(map_size.y - 1))
 	var nx := float(x) / denom_x
 	var ny := float(y) / denom_y
-	var mask_value := _sample_landmass_mask(nx, ny)
-	var base_bias := (mask_value - 0.5) * landmass_mask_strength
-	var ocean_weight := clampf(1.0 - mask_value * 1.25, 0.0, 1.0)
 	var base_seed := map_seed + 0x6a09e667
-	var fractal := (_value_noise(nx * 18.0 + 2.3, ny * 18.0 + 9.7, base_seed) - 0.5) * 0.18
-	fractal += (_value_noise(nx * 42.0 + 13.1, ny * 42.0 + 5.4, base_seed + 0xbb67ae85) - 0.5) * 0.08
-	var ocean_boost := fractal * ocean_weight
-	return base_bias + ocean_boost
+	var fractal := (_value_noise(nx * 18.0 + 2.3, ny * 18.0 + 9.7, base_seed) - 0.5) * 0.1
+	fractal += (_value_noise(nx * 42.0 + 13.1, ny * 42.0 + 5.4, base_seed + 0xbb67ae85) - 0.5) * 0.05
+	return fractal
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
