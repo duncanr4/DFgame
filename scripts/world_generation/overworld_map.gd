@@ -980,6 +980,9 @@ func _get_tile_coord_from_viewport_position(viewport_position: Vector2) -> Vecto
 	var local_mouse := map_layer.to_local(viewport_position)
 	return map_layer.local_to_map(local_mouse)
 
+func _is_valid_map_coord(coord: Vector2i) -> bool:
+	return coord.x >= 0 and coord.y >= 0 and coord.x < map_size.x and coord.y < map_size.y
+
 func _on_structure_context_menu_id_pressed(action_id: int) -> void:
 	if not _is_valid_map_coord(_context_menu_tile):
 		return
