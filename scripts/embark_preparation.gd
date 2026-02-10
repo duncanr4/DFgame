@@ -3,28 +3,28 @@ extends Control
 const MAP_SIZES := [
 	{
 		"name": "Mini",
-		"dimensions": "90 × 120",
-		"size": Vector2i(90, 120)
+		"dimensions": "213 × 120",
+		"size": Vector2i(213, 120)
 	},
 	{
 		"name": "Small",
-		"dimensions": "148 × 195",
-		"size": Vector2i(148, 195)
+		"dimensions": "347 × 195",
+		"size": Vector2i(347, 195)
 	},
 	{
 		"name": "Normal",
-		"dimensions": "205 × 270",
-		"size": Vector2i(205, 270)
+		"dimensions": "480 × 270",
+		"size": Vector2i(480, 270)
 	},
 	{
 		"name": "Large",
-		"dimensions": "262 × 345",
-		"size": Vector2i(262, 345)
+		"dimensions": "613 × 345",
+		"size": Vector2i(613, 345)
 	},
 	{
 		"name": "Extra Large",
-		"dimensions": "320 × 420",
-		"size": Vector2i(320, 420)
+		"dimensions": "747 × 420",
+		"size": Vector2i(747, 420)
 	}
 ]
 
