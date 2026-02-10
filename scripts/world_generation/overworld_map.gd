@@ -13,6 +13,9 @@ extends Node2D
 @export var landmass_falloff_scale: float = 1.35
 @export var landmass_mask_strength: float = 0.0
 @export var landmass_mask_power: float = 0.82
+@export_range(0.0, 0.5, 0.01) var edge_ocean_strength: float = 0.2
+@export_range(0.05, 1.0, 0.01) var edge_ocean_falloff: float = 0.32
+@export_range(0.5, 4.0, 0.1) var edge_ocean_curve: float = 1.6
 @export var temperature_frequency: float = 1.2
 @export var rainfall_frequency: float = 1.7
 @export var map_seed: int = 0
@@ -1369,7 +1372,19 @@ func _sample_continent_bias(x: int, y: int) -> float:
 	var base_seed := map_seed + 0x6a09e667
 	var fractal := (_value_noise(nx * 18.0 + 2.3, ny * 18.0 + 9.7, base_seed) - 0.5) * 0.1
 	fractal += (_value_noise(nx * 42.0 + 13.1, ny * 42.0 + 5.4, base_seed + 0xbb67ae85) - 0.5) * 0.05
-	return fractal
+	return fractal + _sample_edge_ocean_bias(x, y)
+
+
+func _sample_edge_ocean_bias(x: int, y: int) -> float:
+	var max_x := maxf(1.0, float(map_size.x - 1))
+	var max_y := maxf(1.0, float(map_size.y - 1))
+	var edge_distance := minf(minf(float(x), max_x - float(x)), minf(float(y), max_y - float(y)))
+	var half_span := minf(max_x, max_y) * 0.5
+	var edge_normalized := clampf(edge_distance / maxf(half_span, 1.0), 0.0, 1.0)
+	var edge_ratio := clampf(edge_normalized / maxf(edge_ocean_falloff, 0.01), 0.0, 1.0)
+	var edge_ocean := 1.0 - pow(edge_ratio, edge_ocean_curve)
+	var interior_support := pow(clampf(edge_normalized, 0.0, 1.0), 2.2) * (edge_ocean_strength * 0.28)
+	return interior_support - edge_ocean * edge_ocean_strength
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
