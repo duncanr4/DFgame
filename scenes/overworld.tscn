@@ -352,9 +352,60 @@ mouse_filter = 2
 
 [node name="StructureContextMenu" type="PopupMenu" parent="MapUi"]
 
-[node name="StructureInfoDialog" type="AcceptDialog" parent="MapUi"]
-title = "More information"
-dialog_text = ""
+[node name="StructureDetailsDialog" type="AcceptDialog" parent="MapUi"]
+title = "Structure Details"
+size = Vector2i(700, 480)
+ok_button_text = "Close"
+
+[node name="DetailsMargin" type="MarginContainer" parent="MapUi/StructureDetailsDialog"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DetailsTabs" type="TabContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin"]
+layout_mode = 2
+
+[node name="History" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
+
+[node name="HistoryText" type="RichTextLabel" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/History"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = true
+text = ""
+
+[node name="Main" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
+
+[node name="MainText" type="RichTextLabel" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = true
+text = ""
+
+[node name="Features" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
+
+[node name="FeaturesText" type="RichTextLabel" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Features"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = true
+text = ""
+
+[node name="Economy" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
+
+[node name="EconomyText" type="RichTextLabel" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Economy"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = true
+text = ""
 
 [node name="Dimmer" type="ColorRect" parent="MapUi/LoadingScreen"]
 layout_mode = 1

@@ -785,7 +785,22 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 @onready var structure_context_menu: PopupMenu = get_node_or_null("MapUi/StructureContextMenu")
-@onready var structure_info_dialog: AcceptDialog = get_node_or_null("MapUi/StructureInfoDialog")
+@onready var structure_details_dialog: AcceptDialog = get_node_or_null("MapUi/StructureDetailsDialog")
+@onready var structure_details_tabs: TabContainer = get_node_or_null(
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"
+)
+@onready var structure_details_history_label: RichTextLabel = get_node_or_null(
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/History/HistoryText"
+)
+@onready var structure_details_main_label: RichTextLabel = get_node_or_null(
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainText"
+)
+@onready var structure_details_features_label: RichTextLabel = get_node_or_null(
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Features/FeaturesText"
+)
+@onready var structure_details_economy_label: RichTextLabel = get_node_or_null(
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Economy/EconomyText"
+)
 @onready var tooltip_panel: PanelContainer = get_node_or_null("MapUi/MapTooltip")
 @onready var tooltip_title: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipTitle")
 @onready var tooltip_biome: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipBiome")
@@ -984,25 +999,133 @@ func _is_valid_map_coord(coord: Vector2i) -> bool:
 	return coord.x >= 0 and coord.y >= 0 and coord.x < map_size.x and coord.y < map_size.y
 
 func _on_structure_context_menu_id_pressed(action_id: int) -> void:
-	if not _is_valid_map_coord(_context_menu_tile):
+	var clicked_tile := _context_menu_tile
+	if structure_context_menu != null:
+		structure_context_menu.hide()
+	if not _is_valid_map_coord(clicked_tile):
 		return
 
 	match action_id:
 		CONTEXT_MENU_BEGIN_JOURNEY_ID:
-			print("Begin your journey here at %s" % _context_menu_tile)
+			print("Begin your journey here at %s" % clicked_tile)
 		CONTEXT_MENU_MORE_INFORMATION_ID:
-			_show_structure_information_dialog(_context_menu_tile)
+			_open_structure_details_from_context_menu(clicked_tile)
 
-func _show_structure_information_dialog(tile_coord: Vector2i) -> void:
-	if structure_info_dialog == null:
-		return
+func _open_structure_details_from_context_menu(tile_coord: Vector2i) -> void:
 	var details := _tile_data.get(tile_coord, {}) as Dictionary
-	var region_name := String(details.get("region_name", "Unknown region"))
+	if details.is_empty():
+		return
+
+	if _is_dwarfhold_structure(details):
+		_show_structure_details_modal(tile_coord, details)
+		return
+
+	var settlement_name := String(details.get("region_name", "")).strip_edges()
+	if settlement_name.is_empty():
+		return
+	_show_structure_details_modal(tile_coord, details)
+
+func _is_dwarfhold_structure(details: Dictionary) -> bool:
+	var settlement_type := String(details.get("settlement_type", "")).strip_edges().to_lower()
+	if settlement_type == "dwarfhold":
+		return true
+	var settlement_classification := String(details.get("settlement_classification", "")).strip_edges().to_lower()
+	return settlement_classification.contains("dwarfhold")
+
+func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) -> void:
+	if structure_details_dialog == null:
+		return
+
+	var settlement_name := String(details.get("region_name", "Unknown region")).strip_edges()
+	if settlement_name.is_empty():
+		settlement_name = "Unknown region"
+	var settlement_type := String(details.get("settlement_classification", "")).strip_edges()
+	if settlement_type.is_empty():
+		settlement_type = String(details.get("settlement_type", "Settlement")).strip_edges().capitalize()
+
+	structure_details_dialog.title = "Structure Details — %s" % settlement_name
+	if structure_details_tabs != null:
+		structure_details_tabs.current_tab = 0
+
 	var biome_name := String(details.get("biome", "Unknown biome")).capitalize()
-	var settlement_type := String(details.get("settlement_type", "No known settlement"))
-	structure_info_dialog.title = "More information"
-	structure_info_dialog.dialog_text = "Location: %s\nBiome: %s\nSettlement: %s" % [region_name, biome_name, settlement_type]
-	structure_info_dialog.popup_centered()
+	var population := int(details.get("population", 0))
+	var ruler_title := String(details.get("ruler_title", "")).strip_edges()
+	var ruler_name := String(details.get("ruler_name", "")).strip_edges()
+	var ruler_display := "Unknown"
+	if not ruler_name.is_empty() and not ruler_title.is_empty():
+		ruler_display = "%s %s" % [ruler_title, ruler_name]
+	elif not ruler_name.is_empty():
+		ruler_display = ruler_name
+
+	var founded_text := "Unknown"
+	var founded_value: Variant = details.get("founded_years_ago", null)
+	if typeof(founded_value) == TYPE_INT or typeof(founded_value) == TYPE_FLOAT:
+		founded_text = "%s years ago" % str(maxi(1, int(round(float(founded_value)))))
+
+	_set_details_tab_text(
+		structure_details_history_label,
+		"[b]Settlement:[/b] %s\n[b]Type:[/b] %s\n[b]Founded:[/b] %s\n[b]Location:[/b] %s\n[b]Biome:[/b] %s" % [
+			settlement_name,
+			settlement_type,
+			founded_text,
+			str(tile_coord),
+			biome_name
+		]
+	)
+
+	var hallmark := String(details.get("hallmark", "")).strip_edges()
+	if hallmark.is_empty():
+		hallmark = String(details.get("description", "No notable records yet.")).strip_edges()
+	_set_details_tab_text(
+		structure_details_main_label,
+		"[b]Name:[/b] %s\n[b]Type:[/b] %s\n[b]Population:[/b] %s\n[b]Ruler:[/b] %s\n\n%s" % [
+			settlement_name,
+			settlement_type,
+			str(population),
+			ruler_display,
+			hallmark
+		]
+	)
+
+	var major_clans := _variant_array_to_strings(details.get("major_clans", []))
+	var major_guilds := _variant_array_to_strings(details.get("major_guilds", []))
+	_set_details_tab_text(
+		structure_details_features_label,
+		"[b]Prominent clan:[/b] %s\n[b]Major clans:[/b] %s\n[b]Major guilds:[/b] %s" % [
+			_string_or_unknown(String(details.get("prominent_clan", "")).strip_edges()),
+			_format_resource_list(major_clans),
+			_format_resource_list(major_guilds)
+		]
+	)
+
+	var major_exports := _variant_array_to_strings(details.get("major_exports", []))
+	_set_details_tab_text(
+		structure_details_economy_label,
+		"[b]Major exports:[/b] %s\n[b]Nearby biome:[/b] %s\n[b]Settlement class:[/b] %s" % [
+			_format_resource_list(major_exports),
+			biome_name,
+			settlement_type
+		]
+	)
+
+	structure_details_dialog.popup_centered(Vector2i(700, 480))
+
+func _set_details_tab_text(target: RichTextLabel, text: String) -> void:
+	if target == null:
+		return
+	target.text = text
+
+func _variant_array_to_strings(entries: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if entries is Array:
+		for entry: Variant in entries:
+			var value := String(entry).strip_edges()
+			if not value.is_empty():
+				result.append(value)
+	return result
+
+func _string_or_unknown(value: String) -> String:
+	return value if not value.is_empty() else "Unknown"
 
 func _regenerate_map() -> void:
 	_show_loading_screen()
