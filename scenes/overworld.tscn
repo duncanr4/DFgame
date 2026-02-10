@@ -80,6 +80,10 @@ visible = false
 z_index = 3
 centered = false
 
+[node name="TerrainShadingOverlay" type="Sprite2D" parent="MapOverlays"]
+z_index = 1
+centered = false
+
 [node name="OverworldCamera" type="Camera2D" parent="."]
 position = Vector2(512, 384)
 current = true
