@@ -2757,7 +2757,8 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 				var population_options := _population_options_for_settlement_type(settlement_type)
 				if not population_options.is_empty():
 					var population := _roll_population_for_settlement_type(settlement_type, rng)
-					var majority_key := String(population_options[0].get("key", ""))
+					var primary_population_option: Dictionary = population_options[0]
+					var majority_key := String(primary_population_option.get("key", ""))
 					var population_breakdown := _generate_population_breakdown_from_options(
 						population_options,
 						population,
