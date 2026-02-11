@@ -568,6 +568,77 @@ const DWARFHOLD_POPULATION_RACE_OPTIONS := [
 	{"key": "kobolds", "label": "Kobolds", "color": Color("#b1c8ff")},
 	{"key": "others", "label": "Others", "color": Color("#9e9e9e")}
 ]
+const EVIL_WIZARD_TOWER_BASE_POPULATION_OPTIONS := [
+	{"key": "wizards", "label": "Wizards", "color": Color("#9c5cff")}
+]
+const EVIL_WIZARD_ARCHETYPES := [
+	{
+		"key": "necromancer",
+		"label": "Necromancer",
+		"population_options": [
+			{"key": "undead", "label": "Undead", "color": Color("#b1b1b1")}
+		]
+	},
+	{
+		"key": "warlock",
+		"label": "Warlock",
+		"population_options": [
+			{"key": "undead", "label": "Undead", "color": Color("#b1b1b1")},
+			{"key": "humans", "label": "Humans", "color": Color("#9bb6d8")}
+		]
+	},
+	{
+		"key": "artificer",
+		"label": "Artificer",
+		"population_options": [
+			{"key": "elementals", "label": "Elementals", "color": Color("#48cae4")}
+		]
+	},
+	{
+		"key": "elementalist",
+		"label": "Elementalist",
+		"population_options": [
+			{"key": "elementals", "label": "Elementals", "color": Color("#48cae4")},
+			{"key": "mindflayers", "label": "Mindflayers", "color": Color("#845ec2")}
+		]
+	},
+	{
+		"key": "voidcaller",
+		"label": "Voidcaller",
+		"population_options": [
+			{"key": "mindflayers", "label": "Mindflayers", "color": Color("#845ec2")},
+			{"key": "undead", "label": "Undead", "color": Color("#b1b1b1")}
+		]
+	}
+]
+const TOWER_POPULATION_RACE_OPTIONS := [
+	{"key": "elves", "label": "Elves", "color": Color("#6ecf85")},
+	{"key": "humans", "label": "Humans", "color": Color("#9bb6d8")},
+	{"key": "dwarves", "label": "Dwarves", "color": Color("#f4c069")},
+	{"key": "halflings", "label": "Halflings", "color": Color("#f7a072")},
+	{"key": "dragonborn", "label": "Dragonborn", "color": Color("#c16a6a")},
+	{"key": "tieflings", "label": "Tieflings", "color": Color("#b064b0")},
+	{"key": "others", "label": "Others", "color": Color("#9e9e9e")}
+]
+const TOWN_POPULATION_RACE_OPTIONS := [
+	{"key": "humans", "label": "Humans", "color": Color("#9bb6d8")},
+	{"key": "dwarves", "label": "Dwarves", "color": Color("#f4c069")},
+	{"key": "elves", "label": "Elves", "color": Color("#6ecf85")},
+	{"key": "halflings", "label": "Halflings", "color": Color("#f7a072")},
+	{"key": "gnomes", "label": "Gnomes", "color": Color("#c9a3e6")},
+	{"key": "dragonborn", "label": "Dragonborn", "color": Color("#c16a6a")},
+	{"key": "tieflings", "label": "Tieflings", "color": Color("#b064b0")},
+	{"key": "others", "label": "Others", "color": Color("#9e9e9e")}
+]
+const WOOD_ELF_GROVE_POPULATION_ROLE_OPTIONS := [
+	{"key": "elves", "label": "Wood Elves", "color": Color("#6ecf85")},
+	{"key": "satyrs", "label": "Satyrs", "color": Color("#c18c5d")},
+	{"key": "nymphs", "label": "Nymphs", "color": Color("#9bd4a9")},
+	{"key": "ents", "label": "Ents", "color": Color("#8bbbcf")}
+]
+const LIZARDMEN_CITY_POPULATION_ROLE_OPTIONS := [
+	{"key": "lizardmen", "label": "Lizardmen", "color": Color("#3a9f68")}
+]
 const DWARFHOLD_NAMES: Array[String] = [
 	"Khazadûn Kharn",
 	"Dhurnomli Bûr",
@@ -2682,7 +2753,108 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			tile_info["settlement_type"] = settlement_type
 			if settlement_type == "dwarfhold":
 				tile_info.merge(_generate_dwarfhold_details(settlement_name, chosen, tile, rng), true)
+			else:
+				var population_options := _population_options_for_settlement_type(settlement_type)
+				if not population_options.is_empty():
+					var population := _roll_population_for_settlement_type(settlement_type, rng)
+					var majority_key := String(population_options[0].get("key", ""))
+					var population_breakdown := _generate_population_breakdown_from_options(
+						population_options,
+						population,
+						rng,
+						majority_key
+					)
+					tile_info["population"] = population
+					tile_info["population_label"] = "Population"
+					tile_info["population_descriptor"] = "residents"
+					tile_info["population_breakdown"] = population_breakdown
+					var labels := _labels_from_population_breakdown(population_breakdown)
+					tile_info["major_population_groups"] = labels.get("major", [civilization_label])
+					tile_info["minor_population_groups"] = labels.get("minor", [])
 			_tile_data[chosen] = tile_info
+
+func _population_options_for_settlement_type(settlement_type: String) -> Array:
+	match settlement_type:
+		"town":
+			return TOWN_POPULATION_RACE_OPTIONS
+		"woodElfGrove":
+			return WOOD_ELF_GROVE_POPULATION_ROLE_OPTIONS
+		"lizardmenCity":
+			return LIZARDMEN_CITY_POPULATION_ROLE_OPTIONS
+		_:
+			return []
+
+func _roll_population_for_settlement_type(settlement_type: String, rng: RandomNumberGenerator) -> int:
+	match settlement_type:
+		"town":
+			return rng.randi_range(450, 6200)
+		"woodElfGrove":
+			return rng.randi_range(240, 2800)
+		"lizardmenCity":
+			return rng.randi_range(900, 5400)
+		_:
+			return 0
+
+func _generate_population_breakdown_from_options(
+	options: Array,
+	population: int,
+	rng: RandomNumberGenerator,
+	majority_key: String = ""
+) -> Array[Dictionary]:
+	if options.is_empty() or population <= 0:
+		return []
+
+	var weights: Array[float] = []
+	var total_weight := 0.0
+	for entry: Dictionary in options:
+		var key := String(entry.get("key", ""))
+		var weight := rng.randf_range(0.2, 1.3)
+		if not majority_key.is_empty() and key == majority_key:
+			weight = rng.randf_range(1.8, 3.2)
+		weights.append(weight)
+		total_weight += weight
+
+	if total_weight <= 0.0:
+		return []
+
+	var remaining := maxi(population, 0)
+	var results: Array[Dictionary] = []
+	for index in range(options.size()):
+		var entry: Dictionary = options[index]
+		var share := weights[index] / total_weight
+		var count := int(round(float(population) * share))
+		if index == options.size() - 1:
+			count = maxi(0, remaining)
+		remaining -= count
+		results.append({
+			"key": String(entry.get("key", "")),
+			"label": String(entry.get("label", "")),
+			"color": entry.get("color", Color.GRAY),
+			"percentage": share * 100.0,
+			"population": maxi(0, count)
+		})
+
+	results.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			return int(b.get("population", 0)) < int(a.get("population", 0))
+	)
+	return results
+
+func _labels_from_population_breakdown(population_breakdown: Array) -> Dictionary:
+	var major: Array[String] = []
+	var minor: Array[String] = []
+	for entry: Dictionary in population_breakdown:
+		var label := String(entry.get("label", "")).strip_edges()
+		if label.is_empty():
+			continue
+		if major.size() < 2:
+			major.append(label)
+		elif minor.size() < 4:
+			minor.append(label)
+	return {
+		"major": major,
+		"minor": minor
+	}
 
 func _assign_cultural_groups(
 	biome_map: Dictionary,
