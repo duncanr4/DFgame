@@ -3969,13 +3969,23 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			region_name = "Unnamed %s" % biome_label
 	if tooltip_title != null:
 		tooltip_title.text = region_name
-	if tooltip_biome != null:
-		tooltip_biome.text = biome_label
-	if tooltip_climate != null:
-		tooltip_climate.text = _describe_climate(temperature, moisture)
-	if tooltip_resources != null:
-		var resource_text := _format_resource_list(resources)
-		tooltip_resources.text = resource_text if not resource_text.is_empty() else "None"
+	_set_tooltip_label(
+		tooltip_biome,
+		biome_label,
+		not biome_label.is_empty()
+	)
+	var climate_text := _describe_climate(temperature, moisture).strip_edges()
+	_set_tooltip_label(
+		tooltip_climate,
+		climate_text,
+		not climate_text.is_empty()
+	)
+	var resource_text := _format_resource_list(resources)
+	_set_tooltip_label(
+		tooltip_resources,
+		resource_text,
+		not resource_text.is_empty()
+	)
 
 	var culture_tooltip := CulturalInfluence.new().build_tooltip_data(data)
 	var major_population_groups := _variant_array_to_strings(data.get("major_population_groups", []))
