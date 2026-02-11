@@ -95,11 +95,19 @@ func derive_population_groups(breakdown: Array[Dictionary]) -> Dictionary:
 	return {"major": major, "minor": minor}
 
 func build_tooltip_data(tile_data: Dictionary) -> Dictionary:
-	var influence: Dictionary = tile_data.get("cultural_influence", {}) as Dictionary
+	var influence_value := tile_data.get("cultural_influence", {})
+	if not (influence_value is Dictionary):
+		return {}
+	var influence := influence_value as Dictionary
 	if influence.is_empty():
 		return {}
 	var strength := clampf(float(influence.get("strength", 0.0)), 0.0, 1.0)
-	var breakdown := influence.get("breakdown", []) as Array[Dictionary]
+	var breakdown: Array[Dictionary] = []
+	var breakdown_value := influence.get("breakdown", [])
+	if breakdown_value is Array:
+		for entry in breakdown_value:
+			if entry is Dictionary:
+				breakdown.append(entry as Dictionary)
 	var population_groups := derive_population_groups(breakdown)
 	return {
 		"label": String(influence.get("label", "Unknown")),
