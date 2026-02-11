@@ -210,6 +210,28 @@ autowrap_mode = 3
 horizontal_alignment = 2
 text = "—"
 
+[node name="TooltipMajorPopulationGroupsLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 9
+text = "MAJOR GROUPS"
+
+[node name="TooltipMajorPopulationGroups" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
+
+[node name="TooltipMinorPopulationGroupsLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 9
+text = "MINOR GROUPS"
+
+[node name="TooltipMinorPopulationGroups" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
+theme_override_font_sizes/font_size = 10
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+text = "—"
+
 [node name="TooltipSettlementLabel" type="Label" parent="MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid"]
 theme_override_font_sizes/font_size = 9
 text = "SETTLEMENT"
