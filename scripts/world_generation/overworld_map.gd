@@ -2572,7 +2572,9 @@ func _expand_cultural_groups(
 		if current_cost > float(costs.get(coord, INF)):
 			continue
 		var profile := current["profile"] as Dictionary
-		for neighbor in [coord + Vector2i.LEFT, coord + Vector2i.RIGHT, coord + Vector2i.UP, coord + Vector2i.DOWN]:
+		var cardinal_offsets: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+		for offset: Vector2i in cardinal_offsets:
+			var neighbor: Vector2i = coord + offset
 			if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
 				continue
 			var biome := String(biome_map.get(neighbor, BIOME_WATER))
@@ -2618,7 +2620,7 @@ func _culture_travel_cost(
 
 func _get_neighbor_cultures(coord: Vector2i, assignments: Dictionary) -> Array[String]:
 	var cultures: Array[String] = []
-	for offset in [
+	var neighbor_offsets: Array[Vector2i] = [
 		Vector2i.LEFT,
 		Vector2i.RIGHT,
 		Vector2i.UP,
@@ -2627,8 +2629,9 @@ func _get_neighbor_cultures(coord: Vector2i, assignments: Dictionary) -> Array[S
 		Vector2i(1, -1),
 		Vector2i(-1, 1),
 		Vector2i(1, 1)
-	]:
-		var neighbor := coord + offset
+	]
+	for offset: Vector2i in neighbor_offsets:
+		var neighbor: Vector2i = coord + offset
 		if not assignments.has(neighbor):
 			continue
 		var culture := String((assignments[neighbor] as Dictionary).get("name", "")).strip_edges()
@@ -2653,7 +2656,7 @@ func _heap_pop(heap: Array[Dictionary]) -> Dictionary:
 	if heap.is_empty():
 		return {}
 	var root := heap[0]
-	var tail := heap.pop_back()
+	var tail: Dictionary = heap.pop_back()
 	if not heap.is_empty():
 		heap[0] = tail
 		var index := 0
