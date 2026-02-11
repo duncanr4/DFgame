@@ -125,6 +125,8 @@ const BIOME_FOREST := "forest"
 const BIOME_JUNGLE := "jungle"
 const BIOME_GRASSLAND := "grassland"
 const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
+const CULTURAL_INFLUENCE := preload("res://scripts/world_generation/cultural_influence.gd")
+const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
 
 const FOREST_NAME_PREFIXES: Array[String] = [
 	"Verdant",
@@ -1149,6 +1151,7 @@ const CIVILIZATION_LABELS := {
 @onready var moisture_overlay: Sprite2D = get_node_or_null("MapOverlays/MoistureOverlay")
 @onready var biome_overlay: Sprite2D = get_node_or_null("MapOverlays/BiomeOverlay")
 @onready var terrain_shading_overlay: Sprite2D = get_node_or_null("MapOverlays/TerrainShadingOverlay")
+@onready var culture_overlay: Sprite2D = get_node_or_null("MapOverlays/CultureOverlay")
 @onready var overworld_camera: OverworldCamera = get_node_or_null("OverworldCamera")
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
 @onready var globe_camera: Camera3D = get_node_or_null("GlobeView/GlobeCamera")
@@ -1161,6 +1164,7 @@ const CIVILIZATION_LABELS := {
 @onready var elevation_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/ElevationMapButton")
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
 @onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
+@onready var culture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/CultureMapButton")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 @onready var structure_context_menu: PopupMenu = get_node_or_null("MapUi/StructureContextMenu")
 @onready var structure_details_dialog: AcceptDialog = get_node_or_null("MapUi/StructureDetailsDialog")
@@ -1236,6 +1240,7 @@ var _elevation_overlay_enabled := false
 var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
 var _biome_overlay_enabled := false
+var _culture_overlay_enabled := false
 var _hovered_tile := Vector2i(-999, -999)
 var _context_menu_tile := Vector2i(-1, -1)
 
@@ -1271,6 +1276,9 @@ func _ready() -> void:
 	if biome_map_button != null:
 		biome_map_button.toggled.connect(_on_biome_map_toggled)
 		biome_map_button.button_pressed = false
+	if culture_map_button != null:
+		culture_map_button.toggled.connect(_on_culture_map_toggled)
+		culture_map_button.button_pressed = false
 	_cache_map_layer_parent()
 	_cache_tree_layer_parent()
 	_cache_highland_layer_parent()
@@ -1327,6 +1335,10 @@ func _on_moisture_map_toggled(is_pressed: bool) -> void:
 func _on_biome_map_toggled(is_pressed: bool) -> void:
 	_biome_overlay_enabled = is_pressed
 	_update_biome_overlay_visibility()
+
+func _on_culture_map_toggled(is_pressed: bool) -> void:
+	_culture_overlay_enabled = is_pressed
+	_update_culture_overlay_visibility()
 
 func _configure_structure_context_menu() -> void:
 	if structure_context_menu == null:
@@ -1785,6 +1797,7 @@ func _generate_map() -> void:
 	_update_temperature_overlay()
 	_update_moisture_overlay()
 	_update_biome_overlay()
+	_update_culture_overlay()
 	_update_terrain_shading_overlay(base_biome_map)
 	_configure_globe_viewport()
 	_configure_overworld_camera_bounds()
@@ -1827,9 +1840,25 @@ func _apply_overlays_and_metadata(
 					highland_layer.erase_cell(coord)
 			var biome := biome_map.get(coord, base_biome) as String
 			var region_name := String(region_names.get(coord, ""))
+			var overlay_label := ""
+			if tree_layer != null:
+				var tree_tile := tree_layer.get_cell_atlas_coords(coord)
+				if tree_tile == TREE_TILE or tree_tile == TREE_SNOW_TILE:
+					overlay_label = "tree"
+				elif tree_tile == JUNGLE_TREE_TILE:
+					overlay_label = "forest"
 			_tile_data[coord] = {
+				"base": base_biome,
 				"biome_type": biome,
 				"base_biome": base_biome,
+				"overlay": overlay_label,
+				"hill_overlay": highland_map.get(coord, ""),
+				"river": false,
+				"structure": "",
+				"structure_details": null,
+				"cultural_influence": null,
+				"cultural_influence_scores": null,
+				"ambient_structure": null,
 				"surface_variation": _surface_variation_for_coord(coord, base_biome),
 				"water_depth": _water_depth_for_coord(coord, base_biome, height_map),
 				"coast_proximity": float(coast_proximity_map.get(coord, 0.0)),
@@ -2662,90 +2691,95 @@ func _assign_cultural_groups(
 	height_map: Dictionary,
 	rng: RandomNumberGenerator
 ) -> void:
-	var land_cells: Array[Vector2i] = []
-	for coord: Vector2i in biome_map.keys():
-		if String(biome_map.get(coord, BIOME_GRASSLAND)) == BIOME_WATER:
-			continue
-		land_cells.append(coord)
-	if land_cells.is_empty():
-		return
-
-	var culture_profiles: Array[Dictionary] = []
-	for profile: Dictionary in CULTURAL_GROUP_PROFILES:
-		culture_profiles.append(profile.duplicate(true))
-	if culture_profiles.is_empty():
-		return
-
-	var desired_count := clampi(int(round(float(land_cells.size()) / 6400.0)) + 4, 4, 8)
-	var culture_count := mini(desired_count, culture_profiles.size())
-	culture_profiles.shuffle()
-	if culture_profiles.size() > culture_count:
-		culture_profiles = culture_profiles.slice(0, culture_count)
-
-	var culture_centers: Array[Vector2i] = []
-	for profile: Dictionary in culture_profiles:
-		var center := _choose_culture_center(profile, land_cells, culture_centers, biome_map, temperature_map, moisture_map, rng)
-		if center == Vector2i(-1, -1):
-			continue
-		profile["center"] = center
-		profile["id"] = culture_centers.size() + 1
-		culture_centers.append(center)
-
-	if culture_centers.is_empty():
-		return
-
-	var assignments := _expand_cultural_groups(culture_profiles, biome_map, temperature_map, moisture_map, height_map)
-	for coord: Vector2i in land_cells:
-		if not assignments.has(coord):
-			continue
-		var tile_info: Dictionary = _tile_data.get(coord, {}) as Dictionary
+	var pipeline := CULTURAL_INFLUENCE.new() as CulturalInfluence
+	var settlements := _collect_settlement_sources()
+	var factions := _collect_faction_sources()
+	var wood_elf_territory_info := _resolve_wood_elf_territory()
+	pipeline.apply_cultural_influence(
+		map_size.x,
+		map_size.y,
+		_tile_data,
+		settlements,
+		factions,
+		func(_coord: Vector2i, tile_data: Dictionary) -> bool:
+			var base := String(tile_data.get("base_biome", tile_data.get("base", tile_data.get("biome_type", BIOME_GRASSLAND))))
+			return base != BIOME_WATER,
+		map_seed,
+		wood_elf_territory_info
+	)
+	pipeline.spawn_ambient_structures(
+		map_size.x,
+		map_size.y,
+		_tile_data,
+		func(_coord: Vector2i, tile_data: Dictionary) -> bool:
+			var base := String(tile_data.get("base_biome", tile_data.get("base", tile_data.get("biome_type", BIOME_GRASSLAND))))
+			return base != BIOME_WATER,
+		map_seed,
+		CULTURE_TYPES.AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE
+	)
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
 		if tile_info.is_empty():
 			continue
-		var profile: Dictionary = assignments[coord] as Dictionary
-		var cultural_group := String(profile.get("name", "Wanderers")).strip_edges()
-		if cultural_group.is_empty():
-			cultural_group = "Wanderers"
-		var major_groups: Array[String] = []
-		for entry: Variant in tile_info.get("major_population_groups", []):
-			var value := String(entry).strip_edges()
-			if not value.is_empty() and not major_groups.has(value):
-				major_groups.append(value)
-		if major_groups.is_empty():
-			major_groups.append(cultural_group)
-		elif not major_groups.has(cultural_group):
-			major_groups.append(cultural_group)
-
-		var minor_groups: Array[String] = []
-		for entry: Variant in tile_info.get("minor_population_groups", []):
-			var value := String(entry).strip_edges()
-			if not value.is_empty() and not minor_groups.has(value) and not major_groups.has(value):
-				minor_groups.append(value)
-		for neighbor_culture in _get_neighbor_cultures(coord, assignments):
-			if minor_groups.size() >= 2:
-				break
-			if not major_groups.has(neighbor_culture) and not minor_groups.has(neighbor_culture):
-				minor_groups.append(neighbor_culture)
-
-		tile_info["cultural_group"] = cultural_group
-		tile_info["major_population_groups"] = major_groups
-		tile_info["minor_population_groups"] = minor_groups
+		var tooltip_data := pipeline.build_tooltip_data(tile_info)
+		if not tooltip_data.is_empty():
+			tile_info["cultural_group"] = String(tooltip_data.get("label", ""))
+			tile_info["major_population_groups"] = tooltip_data.get("major_population_groups", [])
+			tile_info["minor_population_groups"] = tooltip_data.get("minor_population_groups", [])
+		var ambient_structure := tile_info.get("ambient_structure", null)
+		if ambient_structure != null and ambient_structure is Dictionary:
+			var ambient_dict := ambient_structure as Dictionary
+			tile_info["structure"] = String(ambient_dict.get("id", "ambient"))
+			if settlement_layer != null and not tile_info.has("settlement_type") and ambient_dict.has("tile"):
+				settlement_layer.set_cell(coord, _atlas_source_id, ambient_dict.get("tile", TOWN_TILE) as Vector2i)
 		_tile_data[coord] = tile_info
 
-	for settlement_coord: Vector2i in _tile_data.keys():
-		var info: Dictionary = _tile_data.get(settlement_coord, {}) as Dictionary
-		if not info.has("settlement_type"):
+func _collect_settlement_sources() -> Array[Dictionary]:
+	var settlements: Array[Dictionary] = []
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		if tile_info.is_empty() or not tile_info.has("settlement_type"):
 			continue
-		var existing_major: Array[String] = []
-		for entry: Variant in info.get("major_population_groups", []):
-			var normalized := String(entry).strip_edges()
-			if normalized.is_empty():
-				continue
-			if CIVILIZATION_LABELS.has(normalized):
-				normalized = String(CIVILIZATION_LABELS.get(normalized, normalized))
-			if not existing_major.has(normalized):
-				existing_major.append(normalized)
-		info["major_population_groups"] = existing_major
-		_tile_data[settlement_coord] = info
+		settlements.append({
+			"x": coord.x,
+			"y": coord.y,
+			"type": String(tile_info.get("settlement_type", "town")),
+			"population_breakdown": tile_info.get("population_breakdown", [])
+		})
+	return settlements
+
+func _collect_faction_sources() -> Array[Dictionary]:
+	var factions: Array[Dictionary] = []
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		if not tile_info.has("settlement_type"):
+			continue
+		var settlement_type := String(tile_info.get("settlement_type", "")).to_lower()
+		if settlement_type == "":
+			continue
+		var faction_key := "humans"
+		if settlement_type == "dwarfhold":
+			faction_key = "dwarves"
+		elif settlement_type.find("woodelf") >= 0:
+			faction_key = "wood_elves"
+		elif settlement_type.find("lizard") >= 0:
+			faction_key = "lizardmen"
+		factions.append({
+			"key": faction_key,
+			"label": String(CIVILIZATION_LABELS.get(faction_key, faction_key.capitalize())),
+			"color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS.get(faction_key, Color.GRAY),
+			"capital": {"x": coord.x, "y": coord.y},
+			"claim_radius": 12
+		})
+	return factions
+
+func _resolve_wood_elf_territory() -> Dictionary:
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		var settlement_type := String(tile_info.get("settlement_type", "")).to_lower()
+		if settlement_type.find("woodelf") >= 0:
+			return {"center": {"x": coord.x, "y": coord.y}, "radius": 14}
+	return {}
 
 func _choose_culture_center(
 	profile: Dictionary,
@@ -3685,6 +3719,7 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_temperature_overlay_visibility()
 	_update_moisture_overlay_visibility()
 	_update_biome_overlay_visibility()
+	_update_culture_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
 
@@ -3770,13 +3805,24 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		var resource_text := _format_resource_list(resources)
 		tooltip_resources.text = resource_text if not resource_text.is_empty() else "None"
 
+	var culture_tooltip := (CULTURAL_INFLUENCE.new() as CulturalInfluence).build_tooltip_data(data)
 	var major_population_groups := _variant_array_to_strings(data.get("major_population_groups", []))
+	if major_population_groups.is_empty() and not culture_tooltip.is_empty():
+		major_population_groups = _variant_array_to_strings(culture_tooltip.get("major_population_groups", []))
 	_set_tooltip_label(
 		tooltip_major_population_groups,
 		_format_resource_list(major_population_groups),
 		not major_population_groups.is_empty()
 	)
 	var minor_population_groups := _variant_array_to_strings(data.get("minor_population_groups", []))
+	if minor_population_groups.is_empty() and not culture_tooltip.is_empty():
+		minor_population_groups = _variant_array_to_strings(culture_tooltip.get("minor_population_groups", []))
+	if not culture_tooltip.is_empty():
+		var influence_label := String(culture_tooltip.get("label", "Unknown"))
+		var strength_label := String(culture_tooltip.get("strength_label", ""))
+		var influence_summary := "%s (%s)" % [influence_label, strength_label]
+		if not minor_population_groups.has(influence_summary):
+			minor_population_groups.append(influence_summary)
 	_set_tooltip_label(
 		tooltip_minor_population_groups,
 		_format_resource_list(minor_population_groups),
@@ -4317,6 +4363,27 @@ func _update_biome_overlay() -> void:
 	biome_overlay.scale = Vector2(tile_size, tile_size)
 	biome_overlay.position = Vector2.ZERO
 	_update_biome_overlay_visibility()
+
+
+func _update_culture_overlay() -> void:
+	if culture_overlay == null:
+		return
+	if _tile_data.is_empty():
+		culture_overlay.texture = null
+		return
+	var pipeline := CULTURAL_INFLUENCE.new() as CulturalInfluence
+	var image := pipeline.build_culture_overlay_image(map_size.x, map_size.y, _tile_data, 0.08, 0.62)
+	var texture := ImageTexture.create_from_image(image)
+	culture_overlay.texture = texture
+	culture_overlay.centered = false
+	culture_overlay.scale = Vector2(tile_size, tile_size)
+	culture_overlay.position = Vector2.ZERO
+	_update_culture_overlay_visibility()
+
+func _update_culture_overlay_visibility() -> void:
+	if culture_overlay == null:
+		return
+	culture_overlay.visible = _culture_overlay_enabled and not _is_globe_view
 
 func _biome_to_overlay_color(biome: String) -> Color:
 	var alpha := 0.45
