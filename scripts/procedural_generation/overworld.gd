@@ -198,8 +198,6 @@ func _get_elevation(coord: Vector2i, curr_size: Vector2i) -> float:
 	var macro_fractal := _height_noise.get_noise_2dv(warped_coord * 0.9) * 0.09
 	var fine_fractal := _height_noise.get_noise_2dv(warped_coord * 6.2) * 0.05
 	var elevation := tectonic_uplift + coast_variation + micro_detail + breakup + macro_fractal + fine_fractal
-	var edge_ratio := clampf(edge_distance / maxf(edge_water_falloff, 0.01), 0.0, 1.0)
-	var edge_weight := 1.0 - edge_ratio
 	elevation -= edge_weight * edge_water_strength
 	return clampf(elevation, 0.0, 1.0)
 
