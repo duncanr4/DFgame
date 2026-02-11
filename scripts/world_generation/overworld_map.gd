@@ -2726,8 +2726,8 @@ func _assign_cultural_groups(
 			tile_info["cultural_group"] = String(tooltip_data.get("label", ""))
 			tile_info["major_population_groups"] = tooltip_data.get("major_population_groups", [])
 			tile_info["minor_population_groups"] = tooltip_data.get("minor_population_groups", [])
-		var ambient_structure := tile_info.get("ambient_structure", null)
-		if ambient_structure != null and ambient_structure is Dictionary:
+		var ambient_structure: Variant = tile_info.get("ambient_structure", null)
+		if ambient_structure is Dictionary:
 			var ambient_dict := ambient_structure as Dictionary
 			tile_info["structure"] = String(ambient_dict.get("id", "ambient"))
 			if settlement_layer != null and not tile_info.has("settlement_type") and ambient_dict.has("tile"):
