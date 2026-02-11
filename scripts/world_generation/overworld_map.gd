@@ -1691,10 +1691,18 @@ func _variant_array_to_strings(entries: Variant) -> Array[String]:
 	var result: Array[String] = []
 	if entries is Array:
 		for entry: Variant in entries:
-			var value := String(entry).strip_edges()
+			var value := _variant_to_clean_string(entry)
 			if not value.is_empty():
 				result.append(value)
 	return result
+
+func _variant_to_clean_string(value: Variant) -> String:
+	if value == null:
+		return ""
+	var text := String(value).strip_edges()
+	if text.to_lower() == "null":
+		return ""
+	return text
 
 func _string_or_unknown(value: String) -> String:
 	return value if not value.is_empty() else "Unknown"
@@ -4014,14 +4022,16 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	var settlement_type := String(data.get("settlement_type", ""))
 	var is_dwarfhold := settlement_type == "dwarfhold"
 	if is_dwarfhold:
-		var classification_label := String(data.get("settlement_classification", "Dwarfhold"))
+		var classification_label := _variant_to_clean_string(data.get("settlement_classification", "Dwarfhold"))
+		if classification_label.is_empty():
+			classification_label = "Dwarfhold"
 		_set_tooltip_label(tooltip_settlement, classification_label, true)
 
 		var population_value: Variant = data.get("population", null)
 		var population_text := ""
 		if typeof(population_value) == TYPE_INT or typeof(population_value) == TYPE_FLOAT:
 			var population_int := maxi(0, int(round(float(population_value))))
-			var population_descriptor := String(data.get("population_descriptor", "residents")).strip_edges()
+			var population_descriptor := _variant_to_clean_string(data.get("population_descriptor", "residents"))
 			population_text = str(population_int)
 			if not population_descriptor.is_empty():
 				population_text = "%s %s" % [population_text, population_descriptor]
@@ -4031,8 +4041,8 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			true
 		)
 
-		var ruler_title := String(data.get("ruler_title", "")).strip_edges()
-		var ruler_name := String(data.get("ruler_name", "")).strip_edges()
+		var ruler_title := _variant_to_clean_string(data.get("ruler_title", ""))
+		var ruler_name := _variant_to_clean_string(data.get("ruler_name", ""))
 		var ruler_text := "%s %s" % [ruler_title, ruler_name]
 		ruler_text = ruler_text.strip_edges()
 		_set_tooltip_label(tooltip_ruler, ruler_text if not ruler_text.is_empty() else "Unknown", true)
@@ -4047,41 +4057,35 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 			true
 		)
 
-		var prominent_clan := String(data.get("prominent_clan", "")).strip_edges()
+		var prominent_clan := _variant_to_clean_string(data.get("prominent_clan", ""))
 		_set_tooltip_label(
 			tooltip_prominent_clan,
 			prominent_clan if not prominent_clan.is_empty() else "Unknown",
 			true
 		)
 
-		var major_clans: Array[String] = []
-		for entry: Variant in data.get("major_clans", []):
-			major_clans.append(String(entry))
+		var major_clans := _variant_array_to_strings(data.get("major_clans", []))
 		_set_tooltip_label(
 			tooltip_major_clans,
 			_format_resource_list(major_clans),
 			not major_clans.is_empty()
 		)
 
-		var major_guilds: Array[String] = []
-		for entry: Variant in data.get("major_guilds", []):
-			major_guilds.append(String(entry))
+		var major_guilds := _variant_array_to_strings(data.get("major_guilds", []))
 		_set_tooltip_label(
 			tooltip_major_guilds,
 			_format_resource_list(major_guilds),
 			not major_guilds.is_empty()
 		)
 
-		var major_exports: Array[String] = []
-		for entry: Variant in data.get("major_exports", []):
-			major_exports.append(String(entry))
+		var major_exports := _variant_array_to_strings(data.get("major_exports", []))
 		_set_tooltip_label(
 			tooltip_major_exports,
 			_format_resource_list(major_exports),
 			not major_exports.is_empty()
 		)
 
-		var hallmark := String(data.get("hallmark", "")).strip_edges()
+		var hallmark := _variant_to_clean_string(data.get("hallmark", ""))
 		_set_tooltip_label(
 			tooltip_hallmark,
 			hallmark,
