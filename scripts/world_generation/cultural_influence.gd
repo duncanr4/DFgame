@@ -1,7 +1,7 @@
 class_name CulturalInfluence
 extends RefCounted
 
-const CultureTypes := preload("res://scripts/world_generation/culture_types.gd")
+const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
 const MIN_RADIUS := 2
 const MIN_SCORE := 0.0001
 
@@ -67,7 +67,7 @@ func resolve_culture_color(color: Variant, key: String) -> Color:
 		return color as Color
 	if color is String and not String(color).strip_edges().is_empty():
 		return Color(String(color))
-	return CultureTypes.DEFAULT_CULTURE_COLORS.get(key, Color.GRAY)
+	return CULTURE_TYPES.DEFAULT_CULTURE_COLORS.get(key, Color.GRAY)
 
 func describe_influence_strength(strength: float) -> String:
 	if strength < 0.18:
@@ -186,10 +186,10 @@ func _build_settlement_sources(settlements: Array[Dictionary]) -> void:
 		var entries := _entries_for_settlement(settlement, settlement_type)
 		if entries.is_empty():
 			continue
-		var base_claim_radius := int(CultureTypes.SETTLEMENT_CLAIM_RADIUS_BY_TYPE.get(settlement_type, 9))
-		var type_multiplier := float(CultureTypes.SETTLEMENT_RADIUS_MULTIPLIER_BY_TYPE.get(settlement_type, 1.0))
+		var base_claim_radius := int(CULTURE_TYPES.SETTLEMENT_CLAIM_RADIUS_BY_TYPE.get(settlement_type, 9))
+		var type_multiplier := float(CULTURE_TYPES.SETTLEMENT_RADIUS_MULTIPLIER_BY_TYPE.get(settlement_type, 1.0))
 		var radius := maxi(8, int(round(base_claim_radius * type_multiplier)))
-		var falloff := float(CultureTypes.SETTLEMENT_FALLOFF_BY_TYPE.get(settlement_type, 1.35))
+		var falloff := float(CULTURE_TYPES.SETTLEMENT_FALLOFF_BY_TYPE.get(settlement_type, 1.35))
 		add_cultural_source(x, y, radius, entries, falloff)
 
 func _build_faction_sources(factions: Array[Dictionary]) -> void:
@@ -236,7 +236,7 @@ func _build_ambient_sources(width: int, height: int, tiles: Dictionary, seed_num
 				cx,
 				cy,
 				radius,
-				[{"key": "wood_elves", "label": "Wood Elves", "color": CultureTypes.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}],
+				[{"key": "wood_elves", "label": "Wood Elves", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}],
 				1.1
 			)
 
@@ -244,30 +244,30 @@ func _add_biome_ambient_source(seed_number: int, coord: Vector2i, biome: String)
 	match biome:
 		"grassland":
 			if _hash_roll(seed_number, coord.x, coord.y, 17) < 0.06:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "steppe_clans", "label": "Steppe Clans", "color": CultureTypes.DEFAULT_CULTURE_COLORS["steppe_clans"], "share": 1.0}], 1.45)
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "steppe_clans", "label": "Steppe Clans", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["steppe_clans"], "share": 1.0}], 1.45)
 			elif _hash_roll(seed_number, coord.x, coord.y, 18) < 0.08:
-				add_cultural_source(coord.x, coord.y, 6, [{"key": "humans", "label": "Humans", "color": CultureTypes.DEFAULT_CULTURE_COLORS["humans"], "share": 1.0}], 1.35)
+				add_cultural_source(coord.x, coord.y, 6, [{"key": "humans", "label": "Humans", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["humans"], "share": 1.0}], 1.35)
 		"badlands":
 			if _hash_roll(seed_number, coord.x, coord.y, 27) < 0.08:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "badlander", "label": "Badlanders", "color": CultureTypes.DEFAULT_CULTURE_COLORS["badlander"], "share": 1.0}], 1.4)
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "badlander", "label": "Badlanders", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["badlander"], "share": 1.0}], 1.4)
 		"marsh":
 			if _hash_roll(seed_number, coord.x, coord.y, 31) < 0.11:
-				add_cultural_source(coord.x, coord.y, 6, [{"key": "marshfolk", "label": "Marshfolk", "color": CultureTypes.DEFAULT_CULTURE_COLORS["marshfolk"], "share": 1.0}], 1.25)
+				add_cultural_source(coord.x, coord.y, 6, [{"key": "marshfolk", "label": "Marshfolk", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["marshfolk"], "share": 1.0}], 1.25)
 		"forest", "jungle":
 			if _hash_roll(seed_number, coord.x, coord.y, 39) < 0.06:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "wood_elves", "label": "Wood Elves", "color": CultureTypes.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}], 1.2)
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "wood_elves", "label": "Wood Elves", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}], 1.2)
 		"tundra":
 			if _hash_roll(seed_number, coord.x, coord.y, 44) < 0.06:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "orcish", "label": "Orc Clans", "color": CultureTypes.DEFAULT_CULTURE_COLORS["orcish"], "share": 1.0}], 1.45)
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "orcish", "label": "Orc Clans", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["orcish"], "share": 1.0}], 1.45)
 	if ["grassland", "badlands", "marsh", "forest", "jungle"].has(biome) and _hash_roll(seed_number, coord.x, coord.y, 51) < 0.05:
-		add_cultural_source(coord.x, coord.y, 6, [{"key": "beastmen", "label": "Beastmen", "color": CultureTypes.DEFAULT_CULTURE_COLORS["beastmen"], "share": 1.0}], 1.4)
+		add_cultural_source(coord.x, coord.y, 6, [{"key": "beastmen", "label": "Beastmen", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["beastmen"], "share": 1.0}], 1.4)
 
 func _add_structure_ambient_source(seed_number: int, coord: Vector2i, structure: String) -> void:
 	if structure.find("dungeon") >= 0 or structure.find("wizard") >= 0 or structure.find("tower") >= 0:
 		if _hash_roll(seed_number, coord.x, coord.y, 61) < 0.6:
-			add_cultural_source(coord.x, coord.y, 8, [{"key": "demons", "label": "Demons", "color": CultureTypes.DEFAULT_CULTURE_COLORS["demons"], "share": 1.0}], 1.65)
+			add_cultural_source(coord.x, coord.y, 8, [{"key": "demons", "label": "Demons", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["demons"], "share": 1.0}], 1.65)
 	if structure.find("cave") >= 0 and _hash_roll(seed_number, coord.x, coord.y, 63) < 0.22:
-		add_cultural_source(coord.x, coord.y, 9, [{"key": "dragons", "label": "Dragons", "color": CultureTypes.DEFAULT_CULTURE_COLORS["dragons"], "share": 1.0}], 1.7)
+		add_cultural_source(coord.x, coord.y, 9, [{"key": "dragons", "label": "Dragons", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["dragons"], "share": 1.0}], 1.7)
 
 func _apply_sources(width: int, height: int, tiles: Dictionary, is_land_base_tile_fn: Callable) -> void:
 	for source: Dictionary in _sources:
@@ -378,7 +378,7 @@ func _entries_for_settlement(settlement: Dictionary, settlement_type: String) ->
 				"share": percentage / 100.0
 			})
 	if entries.is_empty():
-		var fallback := CultureTypes.DEFAULT_SETTLEMENT_BREAKDOWN_BY_TYPE.get(settlement_type, CultureTypes.DEFAULT_SETTLEMENT_BREAKDOWN_BY_TYPE.get("town", [])) as Array
+		var fallback := CULTURE_TYPES.DEFAULT_SETTLEMENT_BREAKDOWN_BY_TYPE.get(settlement_type, CULTURE_TYPES.DEFAULT_SETTLEMENT_BREAKDOWN_BY_TYPE.get("town", [])) as Array
 		for item_variant: Variant in fallback:
 			if item_variant is Dictionary:
 				entries.append((item_variant as Dictionary).duplicate(true))
