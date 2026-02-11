@@ -359,15 +359,6 @@ grow_vertical = 2
 [node name="DetailsTabs" type="TabContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin"]
 layout_mode = 2
 
-[node name="History" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
-
-[node name="HistoryText" type="RichTextLabel" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/History"]
-layout_mode = 2
-size_flags_vertical = 3
-bbcode_enabled = true
-fit_content = true
-text = ""
-
 [node name="Main" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
 
 [node name="MainText" type="RichTextLabel" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main"]
@@ -386,6 +377,15 @@ text = "Population history"
 custom_minimum_size = Vector2(0, 140)
 size_flags_horizontal = 3
 script = ExtResource("5_qcr4g")
+
+[node name="History" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
+
+[node name="HistoryText" type="RichTextLabel" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/History"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = true
+text = ""
 
 [node name="Features" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
 
