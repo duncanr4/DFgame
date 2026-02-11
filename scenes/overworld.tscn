@@ -80,6 +80,11 @@ visible = false
 z_index = 3
 centered = false
 
+[node name="CultureOverlay" type="Sprite2D" parent="MapOverlays"]
+visible = false
+z_index = 7
+centered = false
+
 [node name="TerrainShadingOverlay" type="Sprite2D" parent="MapOverlays"]
 z_index = 1
 centered = false
@@ -152,6 +157,11 @@ text = "Elevation Map"
 layout_mode = 2
 toggle_mode = true
 text = "Biome Map"
+
+[node name="CultureMapButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
+layout_mode = 2
+toggle_mode = true
+text = "Cultural Influence"
 
 [node name="MapTooltip" type="PanelContainer" parent="MapUi"]
 visible = false
