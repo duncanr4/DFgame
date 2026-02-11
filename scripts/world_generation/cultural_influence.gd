@@ -1,0 +1,466 @@
+class_name CulturalInfluence
+extends RefCounted
+
+const CultureTypes := preload("res://scripts/world_generation/culture_types.gd")
+const MIN_RADIUS := 2
+const MIN_SCORE := 0.0001
+
+var _sources: Array[Dictionary] = []
+
+func apply_cultural_influence(
+	width: int,
+	height: int,
+	tiles: Dictionary,
+	settlements: Array[Dictionary],
+	factions: Array[Dictionary],
+	is_land_base_tile_fn: Callable,
+	seed_number: int,
+	wood_elf_territory_info: Dictionary
+) -> void:
+	_sources.clear()
+	_clear_existing_influence(tiles)
+	_build_settlement_sources(settlements)
+	_build_faction_sources(factions)
+	_build_ambient_sources(width, height, tiles, seed_number, wood_elf_territory_info)
+	_apply_sources(width, height, tiles, is_land_base_tile_fn)
+	_resolve_scores(width, height, tiles)
+
+func add_cultural_source(
+	x: int,
+	y: int,
+	radius: int,
+	entries: Array[Dictionary],
+	falloff: float = 1.35,
+	tile_filter: Callable = Callable()
+) -> void:
+	if entries.is_empty():
+		return
+	var normalized_entries := _normalize_entries(entries)
+	if normalized_entries.is_empty():
+		return
+	_sources.append({
+		"x": x,
+		"y": y,
+		"radius": maxi(MIN_RADIUS, radius),
+		"falloff": maxf(0.01, falloff),
+		"entries": normalized_entries,
+		"tile_filter": tile_filter
+	})
+
+func normalise_culture_key(key: String, fallback_label: String) -> String:
+	var normalized := key.strip_edges().to_lower().replace(" ", "_").replace("-", "_")
+	if not normalized.is_empty():
+		return normalized
+	var fallback := fallback_label.strip_edges().to_lower().replace(" ", "_").replace("-", "_")
+	return fallback if not fallback.is_empty() else "wanderers"
+
+func format_culture_label(key: String) -> String:
+	var parts := key.replace("-", "_").split("_", false)
+	if parts.is_empty():
+		return "Wanderers"
+	for index in range(parts.size()):
+		parts[index] = String(parts[index]).capitalize()
+	return " ".join(parts)
+
+func resolve_culture_color(color: Variant, key: String) -> Color:
+	if color is Color:
+		return color as Color
+	if color is String and not String(color).strip_edges().is_empty():
+		return Color(String(color))
+	return CultureTypes.DEFAULT_CULTURE_COLORS.get(key, Color.GRAY)
+
+func describe_influence_strength(strength: float) -> String:
+	if strength < 0.18:
+		return "Faint"
+	if strength < 0.34:
+		return "Noticeable"
+	if strength < 0.55:
+		return "Strong"
+	if strength < 0.78:
+		return "Dominant"
+	return "Seat of Power"
+
+func derive_population_groups(breakdown: Array[Dictionary]) -> Dictionary:
+	var major: Array[String] = []
+	var minor: Array[String] = []
+	for entry: Dictionary in breakdown:
+		var share := float(entry.get("share", 0.0))
+		var label := String(entry.get("label", "")).strip_edges()
+		if label.is_empty():
+			continue
+		if share >= 0.22:
+			major.append(label)
+		elif share >= 0.08:
+			minor.append(label)
+	return {"major": major, "minor": minor}
+
+func build_tooltip_data(tile_data: Dictionary) -> Dictionary:
+	var influence: Dictionary = tile_data.get("cultural_influence", {}) as Dictionary
+	if influence.is_empty():
+		return {}
+	var strength := clampf(float(influence.get("strength", 0.0)), 0.0, 1.0)
+	var breakdown := influence.get("breakdown", []) as Array[Dictionary]
+	var population_groups := derive_population_groups(breakdown)
+	return {
+		"label": String(influence.get("label", "Unknown")),
+		"color": resolve_culture_color(influence.get("color", Color.GRAY), String(influence.get("key", "wanderers"))),
+		"strength": strength,
+		"strength_label": describe_influence_strength(strength),
+		"breakdown": breakdown,
+		"major_population_groups": population_groups.get("major", []),
+		"minor_population_groups": population_groups.get("minor", [])
+	}
+
+func spawn_ambient_structures(
+	width: int,
+	height: int,
+	tiles: Dictionary,
+	is_land_base_tile_fn: Callable,
+	seed_number: int,
+	ambient_structure_options_by_culture: Dictionary
+) -> void:
+	for y in range(height):
+		for x in range(width):
+			var coord := Vector2i(x, y)
+			var tile := tiles.get(coord, {}) as Dictionary
+			if tile.is_empty():
+				continue
+			tile["ambient_structure"] = null
+			if not _can_spawn_ambient_on_tile(coord, tile, is_land_base_tile_fn):
+				tiles[coord] = tile
+				continue
+			var influence := tile.get("cultural_influence", {}) as Dictionary
+			if influence.is_empty():
+				tiles[coord] = tile
+				continue
+			var culture_key := String(influence.get("key", ""))
+			var options := ambient_structure_options_by_culture.get(culture_key, []) as Array
+			if options.is_empty():
+				tiles[coord] = tile
+				continue
+			var strength := clampf(float(influence.get("strength", 0.0)), 0.0, 1.0)
+			if strength < 0.24:
+				tiles[coord] = tile
+				continue
+			var chance := clampf(0.015 + strength * 0.10, 0.0, 0.65)
+			if _hash_roll(seed_number, x, y, 433) > chance:
+				tiles[coord] = tile
+				continue
+			var option := options[int(_hash_u32(seed_number, x, y, 811) % options.size())] as Dictionary
+			if not _ambient_option_matches(option, coord, tiles):
+				tiles[coord] = tile
+				continue
+			tile["ambient_structure"] = option
+			tiles[coord] = tile
+
+func build_culture_overlay_image(width: int, height: int, tiles: Dictionary, base_alpha: float = 0.08, scale: float = 0.58) -> Image:
+	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	for y in range(height):
+		for x in range(width):
+			var tile: Dictionary = tiles.get(Vector2i(x, y), {}) as Dictionary
+			var influence := tile.get("cultural_influence", {}) as Dictionary
+			if influence.is_empty():
+				image.set_pixel(x, y, Color(0, 0, 0, 0))
+				continue
+			var strength := clampf(float(influence.get("strength", 0.0)), 0.0, 1.0)
+			var color := resolve_culture_color(influence.get("color", Color.GRAY), String(influence.get("key", "")))
+			color.a = clampf(base_alpha + strength * scale, 0.0, 0.78)
+			image.set_pixel(x, y, color)
+	return image
+
+func _clear_existing_influence(tiles: Dictionary) -> void:
+	for coord: Vector2i in tiles.keys():
+		var tile := tiles.get(coord, {}) as Dictionary
+		tile["cultural_influence"] = null
+		tile["cultural_influence_scores"] = null
+		tile["ambient_structure"] = null
+		tiles[coord] = tile
+
+func _build_settlement_sources(settlements: Array[Dictionary]) -> void:
+	for settlement: Dictionary in settlements:
+		var x := int(settlement.get("x", -1))
+		var y := int(settlement.get("y", -1))
+		if x < 0 or y < 0:
+			continue
+		var settlement_type := String(settlement.get("type", "town")).to_lower()
+		var entries := _entries_for_settlement(settlement, settlement_type)
+		if entries.is_empty():
+			continue
+		var base_claim_radius := int(CultureTypes.SETTLEMENT_CLAIM_RADIUS_BY_TYPE.get(settlement_type, 9))
+		var type_multiplier := float(CultureTypes.SETTLEMENT_RADIUS_MULTIPLIER_BY_TYPE.get(settlement_type, 1.0))
+		var radius := maxi(8, int(round(base_claim_radius * type_multiplier)))
+		var falloff := float(CultureTypes.SETTLEMENT_FALLOFF_BY_TYPE.get(settlement_type, 1.35))
+		add_cultural_source(x, y, radius, entries, falloff)
+
+func _build_faction_sources(factions: Array[Dictionary]) -> void:
+	for faction: Dictionary in factions:
+		if not faction.has("capital"):
+			continue
+		var capital := faction.get("capital", {}) as Dictionary
+		var x := int(capital.get("x", -1))
+		var y := int(capital.get("y", -1))
+		if x < 0 or y < 0:
+			continue
+		var radius := maxi(8, int(faction.get("claim_radius", 12)))
+		var key := normalise_culture_key(String(faction.get("key", "humans")), String(faction.get("label", "Humans")))
+		add_cultural_source(
+			x,
+			y,
+			radius,
+			[{"key": key, "label": format_culture_label(key), "color": resolve_culture_color(faction.get("color", null), key), "share": 1.0}],
+			1.28
+		)
+
+func _build_ambient_sources(width: int, height: int, tiles: Dictionary, seed_number: int, wood_elf_territory_info: Dictionary) -> void:
+	var stride := maxi(3, mini(6, int(round(float(maxi(width, height)) / 72.0)) + 2))
+	for y in range(0, height, stride):
+		for x in range(0, width, stride):
+			var coord := Vector2i(x, y)
+			var tile := tiles.get(coord, {}) as Dictionary
+			if tile.is_empty():
+				continue
+			var base := String(tile.get("base_biome", tile.get("base", tile.get("biome_type", ""))))
+			if base == "water":
+				continue
+			var biome := String(tile.get("biome_type", base))
+			var structure := String(tile.get("structure", "")).to_lower()
+			_add_biome_ambient_source(seed_number, coord, biome)
+			_add_structure_ambient_source(seed_number, coord, structure)
+	if wood_elf_territory_info.has("center"):
+		var center := wood_elf_territory_info.get("center", {}) as Dictionary
+		var cx := int(center.get("x", -1))
+		var cy := int(center.get("y", -1))
+		if cx >= 0 and cy >= 0:
+			var radius := maxi(10, int(wood_elf_territory_info.get("radius", 14)))
+			add_cultural_source(
+				cx,
+				cy,
+				radius,
+				[{"key": "wood_elves", "label": "Wood Elves", "color": CultureTypes.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}],
+				1.1
+			)
+
+func _add_biome_ambient_source(seed_number: int, coord: Vector2i, biome: String) -> void:
+	match biome:
+		"grassland":
+			if _hash_roll(seed_number, coord.x, coord.y, 17) < 0.06:
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "steppe_clans", "label": "Steppe Clans", "color": CultureTypes.DEFAULT_CULTURE_COLORS["steppe_clans"], "share": 1.0}], 1.45)
+			elif _hash_roll(seed_number, coord.x, coord.y, 18) < 0.08:
+				add_cultural_source(coord.x, coord.y, 6, [{"key": "humans", "label": "Humans", "color": CultureTypes.DEFAULT_CULTURE_COLORS["humans"], "share": 1.0}], 1.35)
+		"badlands":
+			if _hash_roll(seed_number, coord.x, coord.y, 27) < 0.08:
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "badlander", "label": "Badlanders", "color": CultureTypes.DEFAULT_CULTURE_COLORS["badlander"], "share": 1.0}], 1.4)
+		"marsh":
+			if _hash_roll(seed_number, coord.x, coord.y, 31) < 0.11:
+				add_cultural_source(coord.x, coord.y, 6, [{"key": "marshfolk", "label": "Marshfolk", "color": CultureTypes.DEFAULT_CULTURE_COLORS["marshfolk"], "share": 1.0}], 1.25)
+		"forest", "jungle":
+			if _hash_roll(seed_number, coord.x, coord.y, 39) < 0.06:
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "wood_elves", "label": "Wood Elves", "color": CultureTypes.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}], 1.2)
+		"tundra":
+			if _hash_roll(seed_number, coord.x, coord.y, 44) < 0.06:
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "orcish", "label": "Orc Clans", "color": CultureTypes.DEFAULT_CULTURE_COLORS["orcish"], "share": 1.0}], 1.45)
+	if ["grassland", "badlands", "marsh", "forest", "jungle"].has(biome) and _hash_roll(seed_number, coord.x, coord.y, 51) < 0.05:
+		add_cultural_source(coord.x, coord.y, 6, [{"key": "beastmen", "label": "Beastmen", "color": CultureTypes.DEFAULT_CULTURE_COLORS["beastmen"], "share": 1.0}], 1.4)
+
+func _add_structure_ambient_source(seed_number: int, coord: Vector2i, structure: String) -> void:
+	if structure.find("dungeon") >= 0 or structure.find("wizard") >= 0 or structure.find("tower") >= 0:
+		if _hash_roll(seed_number, coord.x, coord.y, 61) < 0.6:
+			add_cultural_source(coord.x, coord.y, 8, [{"key": "demons", "label": "Demons", "color": CultureTypes.DEFAULT_CULTURE_COLORS["demons"], "share": 1.0}], 1.65)
+	if structure.find("cave") >= 0 and _hash_roll(seed_number, coord.x, coord.y, 63) < 0.22:
+		add_cultural_source(coord.x, coord.y, 9, [{"key": "dragons", "label": "Dragons", "color": CultureTypes.DEFAULT_CULTURE_COLORS["dragons"], "share": 1.0}], 1.7)
+
+func _apply_sources(width: int, height: int, tiles: Dictionary, is_land_base_tile_fn: Callable) -> void:
+	for source: Dictionary in _sources:
+		var sx := int(source.get("x", 0))
+		var sy := int(source.get("y", 0))
+		var radius := int(source.get("radius", MIN_RADIUS))
+		var radius_sq := radius * radius
+		var falloff := float(source.get("falloff", 1.35))
+		var min_x := maxi(0, sx - radius)
+		var max_x := mini(width - 1, sx + radius)
+		var min_y := maxi(0, sy - radius)
+		var max_y := mini(height - 1, sy + radius)
+		var entries := source.get("entries", []) as Array[Dictionary]
+		var tile_filter := source.get("tile_filter", Callable()) as Callable
+		for y in range(min_y, max_y + 1):
+			var dy := y - sy
+			for x in range(min_x, max_x + 1):
+				var dx := x - sx
+				var dist_sq := dx * dx + dy * dy
+				if dist_sq > radius_sq:
+					continue
+				var coord := Vector2i(x, y)
+				if not _can_apply_to_tile(coord, tiles, is_land_base_tile_fn, tile_filter):
+					continue
+				var distance := sqrt(float(dist_sq))
+				var proximity := clampf(1.0 - distance / float(radius), 0.0, 1.0)
+				if proximity <= 0.0:
+					continue
+				var influence_factor := pow(proximity, falloff)
+				if influence_factor <= 0.0:
+					continue
+				var tile := tiles[coord] as Dictionary
+				var scores: Dictionary[String, float] = tile.get("cultural_influence_scores", {}) as Dictionary[String, float]
+				for entry: Dictionary in entries:
+					var key := String(entry.get("key", "wanderers"))
+					var score := float(entry.get("share", 0.0)) * influence_factor
+					if score <= 0.0:
+						continue
+					scores[key] = float(scores.get(key, 0.0)) + score
+				tile["cultural_influence_scores"] = scores
+				tiles[coord] = tile
+
+func _resolve_scores(width: int, height: int, tiles: Dictionary) -> void:
+	for y in range(height):
+		for x in range(width):
+			var coord := Vector2i(x, y)
+			var tile := tiles.get(coord, {}) as Dictionary
+			if tile.is_empty():
+				continue
+			var scores := tile.get("cultural_influence_scores", {}) as Dictionary[String, float]
+			if scores.is_empty():
+				tile["cultural_influence"] = null
+				tile["cultural_influence_scores"] = null
+				tiles[coord] = tile
+				continue
+			var total := 0.0
+			var dominant_key := ""
+			var dominant_score := -1.0
+			for key: String in scores.keys():
+				var value := maxf(0.0, float(scores.get(key, 0.0)))
+				total += value
+				if value > dominant_score:
+					dominant_score = value
+					dominant_key = key
+			if total <= MIN_SCORE or dominant_key.is_empty():
+				tile["cultural_influence"] = null
+				tile["cultural_influence_scores"] = null
+				tiles[coord] = tile
+				continue
+			var breakdown: Array[Dictionary] = []
+			for key: String in scores.keys():
+				var absolute_strength := clampf(float(scores.get(key, 0.0)), 0.0, 1.0)
+				if absolute_strength <= MIN_SCORE:
+					continue
+				breakdown.append({
+					"key": key,
+					"label": format_culture_label(key),
+					"color": resolve_culture_color(null, key),
+					"strength": absolute_strength,
+					"share": clampf(float(scores.get(key, 0.0)) / total, 0.0, 1.0)
+				})
+			breakdown.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.get("strength", 0.0)) > float(b.get("strength", 0.0)) )
+			tile["cultural_influence"] = {
+				"key": dominant_key,
+				"label": format_culture_label(dominant_key),
+				"color": resolve_culture_color(null, dominant_key),
+				"strength": clampf(dominant_score, 0.0, 1.0),
+				"breakdown": breakdown
+			}
+			tile["cultural_influence_scores"] = null
+			tiles[coord] = tile
+
+func _entries_for_settlement(settlement: Dictionary, settlement_type: String) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if settlement.has("population_breakdown"):
+		var population_breakdown := settlement.get("population_breakdown", []) as Array
+		for entry_variant: Variant in population_breakdown:
+			if not (entry_variant is Dictionary):
+				continue
+			var entry := entry_variant as Dictionary
+			var label := String(entry.get("label", ""))
+			var key := normalise_culture_key(String(entry.get("key", "")), label)
+			var percentage := maxf(0.0, float(entry.get("percentage", 0.0)))
+			entries.append({
+				"key": key,
+				"label": label if not label.is_empty() else format_culture_label(key),
+				"color": resolve_culture_color(entry.get("color", null), key),
+				"share": percentage / 100.0
+			})
+	if entries.is_empty():
+		var fallback := CultureTypes.DEFAULT_SETTLEMENT_BREAKDOWN_BY_TYPE.get(settlement_type, CultureTypes.DEFAULT_SETTLEMENT_BREAKDOWN_BY_TYPE.get("town", [])) as Array
+		for item_variant: Variant in fallback:
+			if item_variant is Dictionary:
+				entries.append((item_variant as Dictionary).duplicate(true))
+	return _normalize_entries(entries)
+
+func _normalize_entries(entries: Array[Dictionary]) -> Array[Dictionary]:
+	var normalized: Array[Dictionary] = []
+	var total := 0.0
+	for entry: Dictionary in entries:
+		var label := String(entry.get("label", "")).strip_edges()
+		var key := normalise_culture_key(String(entry.get("key", "")), label)
+		var share := maxf(0.0, float(entry.get("share", entry.get("percentage", 0.0))))
+		if share > 1.0:
+			share /= 100.0
+		if share <= 0.0:
+			continue
+		total += share
+		normalized.append({
+			"key": key,
+			"label": label if not label.is_empty() else format_culture_label(key),
+			"color": resolve_culture_color(entry.get("color", null), key),
+			"share": share
+		})
+	if total <= 0.0:
+		return []
+	for entry: Dictionary in normalized:
+		entry["share"] = float(entry.get("share", 0.0)) / total
+	return normalized
+
+func _can_apply_to_tile(coord: Vector2i, tiles: Dictionary, is_land_base_tile_fn: Callable, tile_filter: Callable) -> bool:
+	if not tiles.has(coord):
+		return false
+	if is_land_base_tile_fn.is_valid() and not bool(is_land_base_tile_fn.call(coord, tiles.get(coord, {}))):
+		return false
+	if tile_filter.is_valid() and not bool(tile_filter.call(coord, tiles.get(coord, {}))):
+		return false
+	return true
+
+func _can_spawn_ambient_on_tile(coord: Vector2i, tile: Dictionary, is_land_base_tile_fn: Callable) -> bool:
+	if is_land_base_tile_fn.is_valid() and not bool(is_land_base_tile_fn.call(coord, tile)):
+		return false
+	if String(tile.get("structure", "")).strip_edges() != "":
+		return false
+	return true
+
+func _ambient_option_matches(option: Dictionary, coord: Vector2i, tiles: Dictionary) -> bool:
+	if bool(option.get("requires_tree_overlay", false)) and not _has_overlay(coord, tiles, "tree"):
+		return false
+	if bool(option.get("requires_tree_neighbor", false)) and not _has_neighbor_overlay(coord, tiles, "tree"):
+		return false
+	if bool(option.get("disallow_forest_overlay", false)) and _has_neighbor_overlay(coord, tiles, "forest"):
+		return false
+	if bool(option.get("requires_cave_neighbor", false)) and not _has_neighbor_structure(coord, tiles, "cave"):
+		return false
+	return true
+
+func _has_overlay(coord: Vector2i, tiles: Dictionary, overlay_key: String) -> bool:
+	var tile := tiles.get(coord, {}) as Dictionary
+	var overlay := String(tile.get("overlay", "")).to_lower()
+	return overlay.find(overlay_key) >= 0
+
+func _has_neighbor_overlay(coord: Vector2i, tiles: Dictionary, overlay_key: String) -> bool:
+	for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN, Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
+		if _has_overlay(coord + offset, tiles, overlay_key):
+			return true
+	return false
+
+func _has_neighbor_structure(coord: Vector2i, tiles: Dictionary, structure_key: String) -> bool:
+	for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN, Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
+		var tile := tiles.get(coord + offset, {}) as Dictionary
+		if String(tile.get("structure", "")).to_lower().find(structure_key) >= 0:
+			return true
+	return false
+
+func _hash_u32(seed_number: int, x: int, y: int, salt: int) -> int:
+	var value: int = seed_number
+	value = int(value ^ (x * 374761393))
+	value = int(value ^ (y * 668265263))
+	value = int(value ^ (salt * 2246822519))
+	value = int((value ^ (value >> 13)) * 1274126177)
+	value = int(value ^ (value >> 16))
+	return value & 0x7fffffff
+
+func _hash_roll(seed_number: int, x: int, y: int, salt: int) -> float:
+	return float(_hash_u32(seed_number, x, y, salt) % 1000000) / 1000000.0
