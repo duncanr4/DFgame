@@ -807,6 +807,88 @@ const TREE_BASE_BIOMES: Array[String] = [
 	BIOME_TUNDRA
 ]
 
+const CULTURAL_GROUP_PROFILES: Array[Dictionary] = [
+	{
+		"name": "Highland Clans",
+		"preferred_biomes": [BIOME_MOUNTAIN, BIOME_HILLS, BIOME_TUNDRA],
+		"temperature_goal": 0.36,
+		"moisture_goal": 0.5,
+		"expansionism": 1.1,
+		"water_crossing_penalty": 16.0,
+		"mountain_crossing_penalty": 1.5
+	},
+	{
+		"name": "Riverfolk",
+		"preferred_biomes": [BIOME_GRASSLAND, BIOME_MARSH, BIOME_FOREST],
+		"temperature_goal": 0.58,
+		"moisture_goal": 0.72,
+		"expansionism": 1.35,
+		"water_crossing_penalty": 9.5,
+		"mountain_crossing_penalty": 4.5
+	},
+	{
+		"name": "Woodland Kin",
+		"preferred_biomes": [BIOME_FOREST, BIOME_JUNGLE, BIOME_MARSH],
+		"temperature_goal": 0.63,
+		"moisture_goal": 0.78,
+		"expansionism": 1.2,
+		"water_crossing_penalty": 12.5,
+		"mountain_crossing_penalty": 5.0
+	},
+	{
+		"name": "Sunstep Tribes",
+		"preferred_biomes": [BIOME_DESERT, BIOME_BADLANDS, BIOME_GRASSLAND],
+		"temperature_goal": 0.82,
+		"moisture_goal": 0.22,
+		"expansionism": 1.45,
+		"water_crossing_penalty": 15.0,
+		"mountain_crossing_penalty": 4.0
+	},
+	{
+		"name": "Coastal League",
+		"preferred_biomes": [BIOME_GRASSLAND, BIOME_FOREST, BIOME_JUNGLE],
+		"temperature_goal": 0.6,
+		"moisture_goal": 0.54,
+		"expansionism": 1.3,
+		"water_crossing_penalty": 7.5,
+		"mountain_crossing_penalty": 4.5
+	},
+	{
+		"name": "Steppe Hosts",
+		"preferred_biomes": [BIOME_GRASSLAND, BIOME_BADLANDS, BIOME_TUNDRA],
+		"temperature_goal": 0.46,
+		"moisture_goal": 0.34,
+		"expansionism": 1.4,
+		"water_crossing_penalty": 14.0,
+		"mountain_crossing_penalty": 5.5
+	},
+	{
+		"name": "Frostbound Houses",
+		"preferred_biomes": [BIOME_TUNDRA, BIOME_MOUNTAIN, BIOME_HILLS],
+		"temperature_goal": 0.22,
+		"moisture_goal": 0.5,
+		"expansionism": 1.05,
+		"water_crossing_penalty": 12.0,
+		"mountain_crossing_penalty": 2.5
+	},
+	{
+		"name": "Reed Confederacy",
+		"preferred_biomes": [BIOME_MARSH, BIOME_GRASSLAND, BIOME_JUNGLE],
+		"temperature_goal": 0.67,
+		"moisture_goal": 0.82,
+		"expansionism": 1.15,
+		"water_crossing_penalty": 10.0,
+		"mountain_crossing_penalty": 6.0
+	}
+]
+
+const CIVILIZATION_LABELS := {
+	"humans": "Humans",
+	"dwarves": "Dwarves",
+	"wood_elves": "Wood Elves",
+	"lizardmen": "Lizardmen"
+}
+
 @onready var map_layer: TileMapLayer = $MapLayer
 @onready var tree_layer: TileMapLayer = get_node_or_null("TreeLayer")
 @onready var highland_layer: TileMapLayer = get_node_or_null("HighlandLayer")
@@ -856,6 +938,8 @@ const TREE_BASE_BIOMES: Array[String] = [
 @onready var tooltip_biome: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipBiome")
 @onready var tooltip_climate: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipClimate")
 @onready var tooltip_resources: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipResources")
+@onready var tooltip_major_population_groups: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipMajorPopulationGroups")
+@onready var tooltip_minor_population_groups: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipMinorPopulationGroups")
 @onready var tooltip_settlement: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipSettlement")
 @onready var tooltip_population: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipPopulation")
 @onready var tooltip_ruler: Label = get_node_or_null("MapUi/MapTooltip/TooltipMargin/TooltipVBox/TooltipGrid/TooltipRuler")
@@ -1443,6 +1527,7 @@ func _generate_map() -> void:
 	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
 	await _yield_generation_wave()
 	_place_settlements(biome_map, rng)
+	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_height_map = height_map.duplicate()
 	_temperature_map = temperature_map.duplicate()
 	_moisture_map = moisture_map.duplicate()
@@ -2313,12 +2398,280 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			if civilization == "dwarves" and not DWARFHOLD_NAMES.is_empty():
 				settlement_name = DWARFHOLD_NAMES[rng.randi_range(0, DWARFHOLD_NAMES.size() - 1)]
 			tile_info["region_name"] = settlement_name
-			tile_info["major_population_groups"] = [civilization]
+			var civilization_label := String(CIVILIZATION_LABELS.get(civilization, civilization.capitalize()))
+			tile_info["major_population_groups"] = [civilization_label]
 			tile_info["minor_population_groups"] = []
 			tile_info["settlement_type"] = settlement_type
 			if settlement_type == "dwarfhold":
 				tile_info.merge(_generate_dwarfhold_details(settlement_name, chosen, tile, rng), true)
 			_tile_data[chosen] = tile_info
+
+func _assign_cultural_groups(
+	biome_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary,
+	height_map: Dictionary,
+	rng: RandomNumberGenerator
+) -> void:
+	var land_cells: Array[Vector2i] = []
+	for coord: Vector2i in biome_map.keys():
+		if String(biome_map.get(coord, BIOME_GRASSLAND)) == BIOME_WATER:
+			continue
+		land_cells.append(coord)
+	if land_cells.is_empty():
+		return
+
+	var culture_profiles: Array[Dictionary] = []
+	for profile: Dictionary in CULTURAL_GROUP_PROFILES:
+		culture_profiles.append(profile.duplicate(true))
+	if culture_profiles.is_empty():
+		return
+
+	var desired_count := clampi(int(round(float(land_cells.size()) / 6400.0)) + 4, 4, 8)
+	var culture_count := mini(desired_count, culture_profiles.size())
+	culture_profiles.shuffle()
+	if culture_profiles.size() > culture_count:
+		culture_profiles = culture_profiles.slice(0, culture_count)
+
+	var culture_centers: Array[Vector2i] = []
+	for profile: Dictionary in culture_profiles:
+		var center := _choose_culture_center(profile, land_cells, culture_centers, biome_map, temperature_map, moisture_map, rng)
+		if center == Vector2i(-1, -1):
+			continue
+		profile["center"] = center
+		profile["id"] = culture_centers.size() + 1
+		culture_centers.append(center)
+
+	if culture_centers.is_empty():
+		return
+
+	var assignments := _expand_cultural_groups(culture_profiles, biome_map, temperature_map, moisture_map, height_map)
+	for coord: Vector2i in land_cells:
+		if not assignments.has(coord):
+			continue
+		var tile_info: Dictionary = _tile_data.get(coord, {}) as Dictionary
+		if tile_info.is_empty():
+			continue
+		var profile: Dictionary = assignments[coord] as Dictionary
+		var cultural_group := String(profile.get("name", "Wanderers")).strip_edges()
+		if cultural_group.is_empty():
+			cultural_group = "Wanderers"
+		var major_groups: Array[String] = []
+		for entry: Variant in tile_info.get("major_population_groups", []):
+			var value := String(entry).strip_edges()
+			if not value.is_empty() and not major_groups.has(value):
+				major_groups.append(value)
+		if major_groups.is_empty():
+			major_groups.append(cultural_group)
+		elif not major_groups.has(cultural_group):
+			major_groups.append(cultural_group)
+
+		var minor_groups: Array[String] = []
+		for entry: Variant in tile_info.get("minor_population_groups", []):
+			var value := String(entry).strip_edges()
+			if not value.is_empty() and not minor_groups.has(value) and not major_groups.has(value):
+				minor_groups.append(value)
+		for neighbor_culture in _get_neighbor_cultures(coord, assignments):
+			if minor_groups.size() >= 2:
+				break
+			if not major_groups.has(neighbor_culture) and not minor_groups.has(neighbor_culture):
+				minor_groups.append(neighbor_culture)
+
+		tile_info["cultural_group"] = cultural_group
+		tile_info["major_population_groups"] = major_groups
+		tile_info["minor_population_groups"] = minor_groups
+		_tile_data[coord] = tile_info
+
+	for settlement_coord: Vector2i in _tile_data.keys():
+		var info: Dictionary = _tile_data.get(settlement_coord, {}) as Dictionary
+		if not info.has("settlement_type"):
+			continue
+		var existing_major: Array[String] = []
+		for entry: Variant in info.get("major_population_groups", []):
+			var normalized := String(entry).strip_edges()
+			if normalized.is_empty():
+				continue
+			if CIVILIZATION_LABELS.has(normalized):
+				normalized = String(CIVILIZATION_LABELS.get(normalized, normalized))
+			if not existing_major.has(normalized):
+				existing_major.append(normalized)
+		info["major_population_groups"] = existing_major
+		_tile_data[settlement_coord] = info
+
+func _choose_culture_center(
+	profile: Dictionary,
+	land_cells: Array[Vector2i],
+	existing_centers: Array[Vector2i],
+	biome_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary,
+	rng: RandomNumberGenerator
+) -> Vector2i:
+	if land_cells.is_empty():
+		return Vector2i(-1, -1)
+	var best := Vector2i(-1, -1)
+	var best_score := -1.0
+	var attempts := mini(land_cells.size(), 1600)
+	for _attempt in range(attempts):
+		var coord: Vector2i = land_cells[rng.randi_range(0, land_cells.size() - 1)]
+		var score := _culture_cell_score(profile, coord, biome_map, temperature_map, moisture_map)
+		if score <= 0.0:
+			continue
+		for existing: Vector2i in existing_centers:
+			var separation := maxf(1.0, coord.distance_to(existing))
+			if separation < 22.0:
+				score *= clampf(separation / 22.0, 0.1, 1.0)
+		if score > best_score:
+			best_score = score
+			best = coord
+	return best
+
+func _culture_cell_score(
+	profile: Dictionary,
+	coord: Vector2i,
+	biome_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary
+) -> float:
+	var biome := String(biome_map.get(coord, BIOME_GRASSLAND))
+	var score := 1.0
+	var preferred_biomes: Array = profile.get("preferred_biomes", []) as Array
+	if preferred_biomes.has(biome):
+		score += 1.2
+	elif biome == BIOME_MOUNTAIN or biome == BIOME_DESERT:
+		score *= 0.45
+	var temperature := float(temperature_map.get(coord, 0.5))
+	var moisture := float(moisture_map.get(coord, 0.5))
+	var temperature_goal := float(profile.get("temperature_goal", 0.5))
+	var moisture_goal := float(profile.get("moisture_goal", 0.5))
+	var climate_alignment := (1.0 - absf(temperature - temperature_goal)) * 0.55 + (1.0 - absf(moisture - moisture_goal)) * 0.45
+	return maxf(0.01, score * clampf(climate_alignment, 0.1, 1.0))
+
+func _expand_cultural_groups(
+	culture_profiles: Array[Dictionary],
+	biome_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary,
+	height_map: Dictionary
+) -> Dictionary:
+	var assignments: Dictionary = {}
+	var costs: Dictionary = {}
+	var frontier: Array[Dictionary] = []
+	for profile: Dictionary in culture_profiles:
+		var center := profile.get("center", Vector2i(-1, -1)) as Vector2i
+		if center == Vector2i(-1, -1):
+			continue
+		assignments[center] = profile
+		costs[center] = 0.0
+		_heap_push(frontier, {"coord": center, "cost": 0.0, "profile": profile})
+
+	while not frontier.is_empty():
+		var current := _heap_pop(frontier)
+		var coord := current["coord"] as Vector2i
+		var current_cost := float(current.get("cost", 0.0))
+		if current_cost > float(costs.get(coord, INF)):
+			continue
+		var profile := current["profile"] as Dictionary
+		for neighbor in [coord + Vector2i.LEFT, coord + Vector2i.RIGHT, coord + Vector2i.UP, coord + Vector2i.DOWN]:
+			if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
+				continue
+			var biome := String(biome_map.get(neighbor, BIOME_WATER))
+			if biome == BIOME_WATER:
+				continue
+			var travel_cost := _culture_travel_cost(profile, neighbor, biome_map, temperature_map, moisture_map, height_map)
+			var expansionism := maxf(0.2, float(profile.get("expansionism", 1.0)))
+			var total_cost := current_cost + (travel_cost / expansionism)
+			if total_cost > 280.0:
+				continue
+			var previous_cost := float(costs.get(neighbor, INF))
+			if total_cost < previous_cost:
+				costs[neighbor] = total_cost
+				assignments[neighbor] = profile
+				_heap_push(frontier, {"coord": neighbor, "cost": total_cost, "profile": profile})
+
+	return assignments
+
+func _culture_travel_cost(
+	profile: Dictionary,
+	coord: Vector2i,
+	biome_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary,
+	height_map: Dictionary
+) -> float:
+	var biome := String(biome_map.get(coord, BIOME_GRASSLAND))
+	var preferred_biomes: Array = profile.get("preferred_biomes", []) as Array
+	var biome_cost := 2.5 if preferred_biomes.has(biome) else 6.5
+	var elevation := float(height_map.get(coord, water_level))
+	if biome == BIOME_MOUNTAIN:
+		biome_cost += float(profile.get("mountain_crossing_penalty", 5.0))
+	elif biome == BIOME_HILLS:
+		biome_cost += 1.75
+	elif elevation < water_level:
+		biome_cost += float(profile.get("water_crossing_penalty", 14.0))
+	var temperature := float(temperature_map.get(coord, 0.5))
+	var moisture := float(moisture_map.get(coord, 0.5))
+	var temperature_goal := float(profile.get("temperature_goal", 0.5))
+	var moisture_goal := float(profile.get("moisture_goal", 0.5))
+	var climate_penalty := absf(temperature - temperature_goal) * 4.0 + absf(moisture - moisture_goal) * 3.0
+	return biome_cost + climate_penalty + 1.0
+
+func _get_neighbor_cultures(coord: Vector2i, assignments: Dictionary) -> Array[String]:
+	var cultures: Array[String] = []
+	for offset in [
+		Vector2i.LEFT,
+		Vector2i.RIGHT,
+		Vector2i.UP,
+		Vector2i.DOWN,
+		Vector2i(-1, -1),
+		Vector2i(1, -1),
+		Vector2i(-1, 1),
+		Vector2i(1, 1)
+	]:
+		var neighbor := coord + offset
+		if not assignments.has(neighbor):
+			continue
+		var culture := String((assignments[neighbor] as Dictionary).get("name", "")).strip_edges()
+		if culture.is_empty() or cultures.has(culture):
+			continue
+		cultures.append(culture)
+	return cultures
+
+func _heap_push(heap: Array[Dictionary], entry: Dictionary) -> void:
+	heap.append(entry)
+	var index := heap.size() - 1
+	while index > 0:
+		var parent := int((index - 1) / 2)
+		if float(heap[parent].get("cost", 0.0)) <= float(heap[index].get("cost", 0.0)):
+			break
+		var temp := heap[parent]
+		heap[parent] = heap[index]
+		heap[index] = temp
+		index = parent
+
+func _heap_pop(heap: Array[Dictionary]) -> Dictionary:
+	if heap.is_empty():
+		return {}
+	var root := heap[0]
+	var tail := heap.pop_back()
+	if not heap.is_empty():
+		heap[0] = tail
+		var index := 0
+		while true:
+			var left := index * 2 + 1
+			var right := left + 1
+			if left >= heap.size():
+				break
+			var smallest := left
+			if right < heap.size() and float(heap[right].get("cost", 0.0)) < float(heap[left].get("cost", 0.0)):
+				smallest = right
+			if float(heap[index].get("cost", 0.0)) <= float(heap[smallest].get("cost", 0.0)):
+				break
+			var temp := heap[index]
+			heap[index] = heap[smallest]
+			heap[smallest] = temp
+			index = smallest
+	return root
 
 func _build_settlement_candidates(biome_map: Dictionary) -> Array:
 	var candidates: Array = []
@@ -3164,6 +3517,19 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	if tooltip_resources != null:
 		var resource_text := _format_resource_list(resources)
 		tooltip_resources.text = resource_text if not resource_text.is_empty() else "None"
+
+	var major_population_groups := _variant_array_to_strings(data.get("major_population_groups", []))
+	_set_tooltip_label(
+		tooltip_major_population_groups,
+		_format_resource_list(major_population_groups),
+		not major_population_groups.is_empty()
+	)
+	var minor_population_groups := _variant_array_to_strings(data.get("minor_population_groups", []))
+	_set_tooltip_label(
+		tooltip_minor_population_groups,
+		_format_resource_list(minor_population_groups),
+		not minor_population_groups.is_empty()
+	)
 
 	var settlement_type := String(data.get("settlement_type", ""))
 	var is_dwarfhold := settlement_type == "dwarfhold"
