@@ -809,76 +809,325 @@ const TREE_BASE_BIOMES: Array[String] = [
 
 const CULTURAL_GROUP_PROFILES: Array[Dictionary] = [
 	{
-		"name": "Highland Clans",
-		"preferred_biomes": [BIOME_MOUNTAIN, BIOME_HILLS, BIOME_TUNDRA],
-		"temperature_goal": 0.36,
-		"moisture_goal": 0.5,
-		"expansionism": 1.1,
-		"water_crossing_penalty": 16.0,
-		"mountain_crossing_penalty": 1.5
+		"key": "elwetritsch",
+		"name": "Elwetritsch",
+		"preferred_biomes": [BIOME_FOREST, BIOME_GRASSLAND, BIOME_MOUNTAIN],
+		"temperature_goal": 0.54,
+		"moisture_goal": 0.56,
+		"expansionism": 1.25,
+		"water_crossing_penalty": 12.0,
+		"mountain_crossing_penalty": 3.0
 	},
 	{
-		"name": "Riverfolk",
-		"preferred_biomes": [BIOME_GRASSLAND, BIOME_MARSH, BIOME_FOREST],
+		"key": "karkinos",
+		"name": "Karkinos",
+		"preferred_biomes": [BIOME_WATER, BIOME_MARSH],
 		"temperature_goal": 0.58,
-		"moisture_goal": 0.72,
+		"moisture_goal": 0.9,
+		"expansionism": 1.1,
+		"water_crossing_penalty": 4.0,
+		"mountain_crossing_penalty": 7.0
+	},
+	{
+		"key": "blemaayae",
+		"name": "Blemaayae",
+		"preferred_biomes": [BIOME_DESERT, BIOME_BADLANDS, BIOME_JUNGLE, BIOME_MOUNTAIN],
+		"temperature_goal": 0.78,
+		"moisture_goal": 0.38,
+		"expansionism": 1.25,
+		"water_crossing_penalty": 14.0,
+		"mountain_crossing_penalty": 3.5
+	},
+	{
+		"key": "pygmy",
+		"name": "Pygmy",
+		"preferred_biomes": [BIOME_JUNGLE],
+		"temperature_goal": 0.74,
+		"moisture_goal": 0.86,
+		"expansionism": 1.05,
+		"water_crossing_penalty": 10.0,
+		"mountain_crossing_penalty": 6.0
+	},
+	{
+		"key": "half_orcs",
+		"name": "Half-Orcs",
+		"preferred_biomes": [BIOME_GRASSLAND, BIOME_BADLANDS, BIOME_DESERT],
+		"temperature_goal": 0.68,
+		"moisture_goal": 0.3,
 		"expansionism": 1.35,
-		"water_crossing_penalty": 9.5,
-		"mountain_crossing_penalty": 4.5
-	},
-	{
-		"name": "Woodland Kin",
-		"preferred_biomes": [BIOME_FOREST, BIOME_JUNGLE, BIOME_MARSH],
-		"temperature_goal": 0.63,
-		"moisture_goal": 0.78,
-		"expansionism": 1.2,
-		"water_crossing_penalty": 12.5,
-		"mountain_crossing_penalty": 5.0
-	},
-	{
-		"name": "Sunstep Tribes",
-		"preferred_biomes": [BIOME_DESERT, BIOME_BADLANDS, BIOME_GRASSLAND],
-		"temperature_goal": 0.82,
-		"moisture_goal": 0.22,
-		"expansionism": 1.45,
-		"water_crossing_penalty": 15.0,
+		"water_crossing_penalty": 13.5,
 		"mountain_crossing_penalty": 4.0
 	},
 	{
-		"name": "Coastal League",
-		"preferred_biomes": [BIOME_GRASSLAND, BIOME_FOREST, BIOME_JUNGLE],
-		"temperature_goal": 0.6,
-		"moisture_goal": 0.54,
-		"expansionism": 1.3,
-		"water_crossing_penalty": 7.5,
+		"key": "half_elves",
+		"name": "Half-Elves",
+		"preferred_biomes": [BIOME_FOREST, BIOME_GRASSLAND],
+		"temperature_goal": 0.56,
+		"moisture_goal": 0.58,
+		"expansionism": 1.2,
+		"water_crossing_penalty": 11.0,
 		"mountain_crossing_penalty": 4.5
 	},
 	{
-		"name": "Steppe Hosts",
-		"preferred_biomes": [BIOME_GRASSLAND, BIOME_BADLANDS, BIOME_TUNDRA],
-		"temperature_goal": 0.46,
-		"moisture_goal": 0.34,
-		"expansionism": 1.4,
-		"water_crossing_penalty": 14.0,
-		"mountain_crossing_penalty": 5.5
-	},
-	{
-		"name": "Frostbound Houses",
-		"preferred_biomes": [BIOME_TUNDRA, BIOME_MOUNTAIN, BIOME_HILLS],
-		"temperature_goal": 0.22,
-		"moisture_goal": 0.5,
-		"expansionism": 1.05,
-		"water_crossing_penalty": 12.0,
-		"mountain_crossing_penalty": 2.5
-	},
-	{
-		"name": "Reed Confederacy",
-		"preferred_biomes": [BIOME_MARSH, BIOME_GRASSLAND, BIOME_JUNGLE],
-		"temperature_goal": 0.67,
+		"key": "dryad",
+		"name": "Dryad",
+		"preferred_biomes": [BIOME_FOREST, BIOME_MARSH, BIOME_WATER],
+		"temperature_goal": 0.6,
 		"moisture_goal": 0.82,
-		"expansionism": 1.15,
-		"water_crossing_penalty": 10.0,
+		"expansionism": 1.0,
+		"water_crossing_penalty": 7.0,
 		"mountain_crossing_penalty": 6.0
+	},
+	{
+		"key": "leshy",
+		"name": "Leshy",
+		"preferred_biomes": [BIOME_FOREST, BIOME_MARSH],
+		"temperature_goal": 0.52,
+		"moisture_goal": 0.75,
+		"expansionism": 1.1,
+		"water_crossing_penalty": 10.0,
+		"mountain_crossing_penalty": 5.0
+	},
+	{
+		"key": "satyr",
+		"name": "Satyr",
+		"preferred_biomes": [BIOME_FOREST, BIOME_GRASSLAND],
+		"temperature_goal": 0.57,
+		"moisture_goal": 0.52,
+		"expansionism": 1.2,
+		"water_crossing_penalty": 11.0,
+		"mountain_crossing_penalty": 4.5
+	},
+	{
+		"key": "hobgoblin",
+		"name": "Hobgoblin",
+		"preferred_biomes": [BIOME_BADLANDS, BIOME_MOUNTAIN, BIOME_GRASSLAND],
+		"temperature_goal": 0.6,
+		"moisture_goal": 0.32,
+		"expansionism": 1.35,
+		"water_crossing_penalty": 14.5,
+		"mountain_crossing_penalty": 3.8
+	},
+	{
+		"key": "locathah",
+		"name": "Locathah",
+		"preferred_biomes": [BIOME_WATER, BIOME_MARSH],
+		"temperature_goal": 0.56,
+		"moisture_goal": 0.92,
+		"expansionism": 1.05,
+		"water_crossing_penalty": 3.5,
+		"mountain_crossing_penalty": 7.0
+	},
+	{
+		"key": "firbolg",
+		"name": "Firbolg",
+		"preferred_biomes": [BIOME_FOREST, BIOME_GRASSLAND],
+		"temperature_goal": 0.5,
+		"moisture_goal": 0.56,
+		"expansionism": 1.12,
+		"water_crossing_penalty": 11.5,
+		"mountain_crossing_penalty": 4.5
+	},
+	{
+		"key": "aarakocra",
+		"name": "Aarakocra",
+		"preferred_biomes": [BIOME_MOUNTAIN, BIOME_GRASSLAND],
+		"temperature_goal": 0.42,
+		"moisture_goal": 0.42,
+		"expansionism": 1.3,
+		"water_crossing_penalty": 12.5,
+		"mountain_crossing_penalty": 2.4
+	},
+	{
+		"key": "braxat",
+		"name": "Braxat",
+		"preferred_biomes": [BIOME_DESERT, BIOME_BADLANDS, BIOME_JUNGLE],
+		"temperature_goal": 0.77,
+		"moisture_goal": 0.36,
+		"expansionism": 1.28,
+		"water_crossing_penalty": 13.2,
+		"mountain_crossing_penalty": 4.2
+	},
+	{
+		"key": "hadozee",
+		"name": "Hadozee",
+		"preferred_biomes": [BIOME_WATER, BIOME_JUNGLE],
+		"temperature_goal": 0.72,
+		"moisture_goal": 0.84,
+		"expansionism": 1.18,
+		"water_crossing_penalty": 6.0,
+		"mountain_crossing_penalty": 6.0
+	},
+	{
+		"key": "quillboar",
+		"name": "Quillboar",
+		"preferred_biomes": [BIOME_BADLANDS, BIOME_DESERT, BIOME_GRASSLAND],
+		"temperature_goal": 0.69,
+		"moisture_goal": 0.31,
+		"expansionism": 1.34,
+		"water_crossing_penalty": 14.0,
+		"mountain_crossing_penalty": 4.0
+	},
+	{
+		"key": "demons",
+		"name": "Demons",
+		"share": 1,
+		"temperature_goal": 0.72,
+		"moisture_goal": 0.38,
+		"expansionism": 1.4,
+		"water_crossing_penalty": 16.0,
+		"mountain_crossing_penalty": 3.2
+	},
+	{
+		"key": "dragons",
+		"name": "Dragons",
+		"share": 1,
+		"temperature_goal": 0.5,
+		"moisture_goal": 0.4,
+		"expansionism": 1.1,
+		"water_crossing_penalty": 15.0,
+		"mountain_crossing_penalty": 1.8
+	},
+	{
+		"key": "merfolks",
+		"name": "Merfolks",
+		"share": 1,
+		"preferred_biomes": [BIOME_WATER, BIOME_MARSH],
+		"temperature_goal": 0.6,
+		"moisture_goal": 0.95,
+		"expansionism": 1.05,
+		"water_crossing_penalty": 3.0,
+		"mountain_crossing_penalty": 7.5
+	},
+	{
+		"key": "fae",
+		"name": "Fae",
+		"share": 1,
+		"temperature_goal": 0.57,
+		"moisture_goal": 0.68,
+		"expansionism": 1.18,
+		"water_crossing_penalty": 9.0,
+		"mountain_crossing_penalty": 4.8
+	},
+	{
+		"key": "beastmen",
+		"name": "Beastmen",
+		"share": 1,
+		"temperature_goal": 0.6,
+		"moisture_goal": 0.46,
+		"expansionism": 1.3,
+		"water_crossing_penalty": 12.5,
+		"mountain_crossing_penalty": 4.5
+	},
+	{
+		"key": "snakemen",
+		"name": "Snakemen",
+		"share": 1,
+		"temperature_goal": 0.76,
+		"moisture_goal": 0.48,
+		"expansionism": 1.22,
+		"water_crossing_penalty": 13.0,
+		"mountain_crossing_penalty": 4.0
+	},
+	{
+		"key": "gnomes",
+		"name": "Gnomes",
+		"share": 1,
+		"temperature_goal": 0.48,
+		"moisture_goal": 0.55,
+		"expansionism": 1.05,
+		"water_crossing_penalty": 10.5,
+		"mountain_crossing_penalty": 3.5
+	},
+	{
+		"key": "ogres",
+		"name": "Ogres",
+		"share": 1,
+		"temperature_goal": 0.54,
+		"moisture_goal": 0.42,
+		"expansionism": 1.2,
+		"water_crossing_penalty": 13.8,
+		"mountain_crossing_penalty": 3.6
+	},
+	{
+		"key": "trolls",
+		"name": "Trolls",
+		"share": 1,
+		"temperature_goal": 0.45,
+		"moisture_goal": 0.62,
+		"expansionism": 1.06,
+		"water_crossing_penalty": 11.0,
+		"mountain_crossing_penalty": 3.2
+	},
+	{
+		"key": "harpies",
+		"name": "Harpies",
+		"share": 1,
+		"temperature_goal": 0.5,
+		"moisture_goal": 0.44,
+		"expansionism": 1.24,
+		"water_crossing_penalty": 12.0,
+		"mountain_crossing_penalty": 2.2
+	},
+	{
+		"key": "giants",
+		"name": "Giants",
+		"share": 1,
+		"temperature_goal": 0.36,
+		"moisture_goal": 0.4,
+		"expansionism": 1.08,
+		"water_crossing_penalty": 13.0,
+		"mountain_crossing_penalty": 2.0
+	},
+	{
+		"key": "centaurs",
+		"name": "Centaurs",
+		"share": 1,
+		"temperature_goal": 0.58,
+		"moisture_goal": 0.42,
+		"expansionism": 1.3,
+		"water_crossing_penalty": 12.2,
+		"mountain_crossing_penalty": 4.2
+	},
+	{
+		"key": "gnolls",
+		"name": "Gnolls",
+		"share": 1,
+		"temperature_goal": 0.69,
+		"moisture_goal": 0.33,
+		"expansionism": 1.35,
+		"water_crossing_penalty": 14.0,
+		"mountain_crossing_penalty": 3.8
+	},
+	{
+		"key": "quilboar",
+		"name": "Quilboar",
+		"share": 1,
+		"temperature_goal": 0.66,
+		"moisture_goal": 0.34,
+		"expansionism": 1.33,
+		"water_crossing_penalty": 14.0,
+		"mountain_crossing_penalty": 4.1
+	},
+	{
+		"key": "tuskar",
+		"name": "Tuskar",
+		"share": 1,
+		"temperature_goal": 0.3,
+		"moisture_goal": 0.52,
+		"expansionism": 1.1,
+		"water_crossing_penalty": 10.0,
+		"mountain_crossing_penalty": 3.0
+	},
+	{
+		"key": "fimir",
+		"name": "Fimir",
+		"share": 1,
+		"temperature_goal": 0.47,
+		"moisture_goal": 0.7,
+		"expansionism": 1.08,
+		"water_crossing_penalty": 8.5,
+		"mountain_crossing_penalty": 4.8
 	}
 ]
 
