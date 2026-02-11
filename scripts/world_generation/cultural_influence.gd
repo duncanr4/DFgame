@@ -137,7 +137,10 @@ func spawn_ambient_structures(
 			if not _can_spawn_ambient_on_tile(coord, tile, is_land_base_tile_fn):
 				tiles[coord] = tile
 				continue
-			var influence := tile.get("cultural_influence", {}) as Dictionary
+			var influence_value: Variant = tile.get("cultural_influence", {})
+			var influence: Dictionary = {}
+			if influence_value is Dictionary:
+				influence = influence_value as Dictionary
 			if influence.is_empty():
 				tiles[coord] = tile
 				continue
@@ -166,7 +169,10 @@ func build_culture_overlay_image(width: int, height: int, tiles: Dictionary, bas
 	for y in range(height):
 		for x in range(width):
 			var tile: Dictionary = tiles.get(Vector2i(x, y), {}) as Dictionary
-			var influence := tile.get("cultural_influence", {}) as Dictionary
+			var influence_value: Variant = tile.get("cultural_influence", {})
+			var influence: Dictionary = {}
+			if influence_value is Dictionary:
+				influence = influence_value as Dictionary
 			if influence.is_empty():
 				image.set_pixel(x, y, Color(0, 0, 0, 0))
 				continue
@@ -308,7 +314,12 @@ func _apply_sources(width: int, height: int, tiles: Dictionary, is_land_base_til
 				if influence_factor <= 0.0:
 					continue
 				var tile := tiles[coord] as Dictionary
-				var scores: Dictionary[String, float] = tile.get("cultural_influence_scores", {}) as Dictionary[String, float]
+				var scores_value: Variant = tile.get("cultural_influence_scores", {})
+				var scores: Dictionary[String, float] = {}
+				if scores_value is Dictionary:
+					for key_variant: Variant in (scores_value as Dictionary).keys():
+						var score_key := String(key_variant)
+						scores[score_key] = float((scores_value as Dictionary).get(key_variant, 0.0))
 				for entry: Dictionary in entries:
 					var key := String(entry.get("key", "wanderers"))
 					var score := float(entry.get("share", 0.0)) * influence_factor
@@ -325,7 +336,12 @@ func _resolve_scores(width: int, height: int, tiles: Dictionary) -> void:
 			var tile := tiles.get(coord, {}) as Dictionary
 			if tile.is_empty():
 				continue
-			var scores := tile.get("cultural_influence_scores", {}) as Dictionary[String, float]
+			var scores_value: Variant = tile.get("cultural_influence_scores", {})
+			var scores: Dictionary[String, float] = {}
+			if scores_value is Dictionary:
+				for key_variant: Variant in (scores_value as Dictionary).keys():
+					var score_key := String(key_variant)
+					scores[score_key] = float((scores_value as Dictionary).get(key_variant, 0.0))
 			if scores.is_empty():
 				tile["cultural_influence"] = null
 				tile["cultural_influence_scores"] = null
