@@ -2821,24 +2821,56 @@ func _generate_population_breakdown_from_options(
 	if options.is_empty() or population <= 0:
 		return []
 
-	var weights: Array[float] = []
-	var total_weight := 0.0
-	for entry: Dictionary in options:
-		var key := String(entry.get("key", ""))
-		var weight := rng.randf_range(0.2, 1.3)
-		if not majority_key.is_empty() and key == majority_key:
-			weight = rng.randf_range(1.8, 3.2)
-		weights.append(weight)
-		total_weight += weight
+	var resolved_majority_key := majority_key
+	if resolved_majority_key.is_empty():
+		resolved_majority_key = String((options[0] as Dictionary).get("key", ""))
+	var majority_index := -1
+	for index in range(options.size()):
+		if String((options[index] as Dictionary).get("key", "")) == resolved_majority_key:
+			majority_index = index
+			break
+	if majority_index < 0:
+		majority_index = 0
 
-	if total_weight <= 0.0:
-		return []
+	var shares: Array[float] = []
+	shares.resize(options.size())
+	for index in range(options.size()):
+		shares[index] = 0.0
+
+	var majority_share := 1.0
+	if options.size() > 1:
+		majority_share = rng.randf_range(0.55, 0.8)
+	shares[majority_index] = majority_share
+
+	var remainder_share := maxf(0.0, 1.0 - majority_share)
+	if options.size() > 1 and remainder_share > 0.0:
+		var remainder_weights: Array[float] = []
+		remainder_weights.resize(options.size())
+		var total_remainder_weight := 0.0
+		for index in range(options.size()):
+			if index == majority_index:
+				remainder_weights[index] = 0.0
+				continue
+			var weight := rng.randf_range(0.25, 1.4)
+			remainder_weights[index] = weight
+			total_remainder_weight += weight
+		if total_remainder_weight <= 0.0:
+			var split := remainder_share / float(options.size() - 1)
+			for index in range(options.size()):
+				if index == majority_index:
+					continue
+				shares[index] = split
+		else:
+			for index in range(options.size()):
+				if index == majority_index:
+					continue
+				shares[index] = remainder_share * (remainder_weights[index] / total_remainder_weight)
 
 	var remaining := maxi(population, 0)
 	var results: Array[Dictionary] = []
 	for index in range(options.size()):
 		var entry: Dictionary = options[index]
-		var share := weights[index] / total_weight
+		var share := clampf(shares[index], 0.0, 1.0)
 		var count := int(round(float(population) * share))
 		if index == options.size() - 1:
 			count = maxi(0, remaining)
