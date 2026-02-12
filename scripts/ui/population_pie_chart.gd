@@ -35,8 +35,8 @@ func _draw() -> void:
 		for index in range(steps + 1):
 			var angle := start_angle + slice_angle * (float(index) / float(steps))
 			points.append(center + Vector2(cos(angle), sin(angle)) * radius)
-		var color_value := entry.get("color", Color(0.7, 0.7, 0.7))
-		var slice_color := color_value if color_value is Color else Color(str(color_value))
+		var color_value: Variant = entry.get("color", Color(0.7, 0.7, 0.7))
+		var slice_color: Color = color_value if color_value is Color else Color(str(color_value))
 		var colors := PackedColorArray()
 		colors.resize(points.size())
 		for i in range(points.size()):

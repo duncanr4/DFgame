@@ -20,7 +20,8 @@ func set_points(data: Array) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		var index := _point_index_at_position(event.position)
+		var mouse_motion_event := event as InputEventMouseMotion
+		var index := _point_index_at_position(mouse_motion_event.position)
 		if _hovered_index != index:
 			_hovered_index = index
 			queue_redraw()
@@ -50,14 +51,14 @@ func _chart_area() -> Rect2:
 		rect.size - Vector2(left_margin + right_margin, top_margin + bottom_margin)
 	)
 
-func _point_index_at_position(position: Vector2) -> int:
+func _point_index_at_position(pointer_position: Vector2) -> int:
 	var chart_points := _compute_chart_points()
 	if chart_points.is_empty():
 		return -1
 	var nearest := -1
 	var nearest_distance := INF
 	for index in range(chart_points.size()):
-		var distance := chart_points[index].distance_to(position)
+		var distance := chart_points[index].distance_to(pointer_position)
 		if distance < nearest_distance:
 			nearest = index
 			nearest_distance = distance
