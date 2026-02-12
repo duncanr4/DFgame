@@ -243,16 +243,58 @@ func _build_ambient_sources(width: int, height: int, tiles: Dictionary, seed_num
 			)
 
 func _add_biome_ambient_source(seed_number: int, coord: Vector2i, biome: String) -> void:
+	var add_roll := func(salt: int, threshold: float, radius: int, key: String, label: String, falloff: float) -> void:
+		if _hash_roll(seed_number, coord.x, coord.y, salt) < threshold:
+			add_cultural_source(coord.x, coord.y, radius, [{"key": key, "label": label, "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS.get(key, Color.GRAY), "share": 1.0}], falloff)
+
 	match biome:
+		"water":
+			add_roll(12, 0.07, 8, "karkinos", "Karkinos", 1.32)
+			add_roll(14, 0.06, 8, "locathah", "Locathah", 1.3)
+			add_roll(16, 0.055, 8, "merfolks", "Merfolks", 1.28)
+			add_roll(19, 0.045, 7, "hadozee", "Hadozee", 1.35)
 		"grassland":
-			if _hash_roll(seed_number, coord.x, coord.y, 18) < 0.08:
-				add_cultural_source(coord.x, coord.y, 6, [{"key": "humans", "label": "Humans", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["humans"], "share": 1.0}], 1.35)
+			add_roll(18, 0.08, 6, "humans", "Humans", 1.35)
+			add_roll(21, 0.05, 7, "half_orcs", "Half-Orcs", 1.4)
+			add_roll(23, 0.045, 7, "half_elves", "Half-Elves", 1.32)
+			add_roll(25, 0.04, 8, "centaurs", "Centaurs", 1.45)
+			add_roll(27, 0.038, 8, "firbolg", "Firbolg", 1.38)
+			add_roll(29, 0.032, 8, "aarakocra", "Aarakocra", 1.48)
+			add_roll(31, 0.036, 7, "gnomes", "Gnomes", 1.34)
+			add_roll(33, 0.028, 8, "ogres", "Ogres", 1.45)
 		"forest", "jungle":
-			if _hash_roll(seed_number, coord.x, coord.y, 39) < 0.06:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "wood_elves", "label": "Wood Elves", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}], 1.2)
+			add_roll(39, 0.06, 7, "wood_elves", "Wood Elves", 1.2)
+			add_roll(41, 0.05, 8, "dryad", "Dryad", 1.22)
+			add_roll(43, 0.048, 8, "leshy", "Leshy", 1.24)
+			add_roll(45, 0.045, 7, "satyr", "Satyr", 1.28)
+			add_roll(47, 0.04, 8, "fae", "Fae", 1.2)
+			add_roll(49, 0.055, 7, "pygmy", "Pygmy", 1.3)
+			add_roll(52, 0.043, 8, "hadozee", "Hadozee", 1.34)
+			add_roll(54, 0.042, 8, "snakemen", "Snakemen", 1.36)
 		"tundra":
-			if _hash_roll(seed_number, coord.x, coord.y, 44) < 0.06:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "orc", "label": "Orc", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["orc"], "share": 1.0}], 1.45)
+			add_roll(44, 0.06, 7, "orc", "Orc", 1.45)
+			add_roll(56, 0.045, 8, "tuskar", "Tuskar", 1.45)
+			add_roll(58, 0.04, 8, "fimir", "Fimir", 1.48)
+		"desert", "badlands":
+			add_roll(60, 0.055, 8, "blemaayae", "Blemaayae", 1.34)
+			add_roll(62, 0.05, 8, "braxat", "Braxat", 1.36)
+			add_roll(64, 0.048, 8, "quillboar", "Quillboar", 1.4)
+			add_roll(66, 0.045, 8, "quilboar", "Quilboar", 1.4)
+			add_roll(68, 0.042, 8, "hobgoblin", "Hobgoblin", 1.44)
+			add_roll(70, 0.038, 8, "gnolls", "Gnolls", 1.46)
+		"mountain", "hills":
+			add_roll(72, 0.045, 8, "aarakocra", "Aarakocra", 1.42)
+			add_roll(74, 0.04, 8, "giants", "Giants", 1.48)
+			add_roll(76, 0.038, 8, "harpies", "Harpies", 1.44)
+			add_roll(78, 0.034, 8, "trolls", "Trolls", 1.48)
+			add_roll(80, 0.03, 8, "fimir", "Fimir", 1.5)
+		"marsh":
+			add_roll(82, 0.055, 8, "karkinos", "Karkinos", 1.34)
+			add_roll(84, 0.05, 8, "locathah", "Locathah", 1.32)
+			add_roll(86, 0.048, 8, "dryad", "Dryad", 1.26)
+			add_roll(88, 0.046, 8, "leshy", "Leshy", 1.28)
+			add_roll(90, 0.042, 8, "snakemen", "Snakemen", 1.4)
+			add_roll(92, 0.04, 8, "merfolks", "Merfolks", 1.34)
 	if ["grassland", "badlands", "marsh", "forest", "jungle"].has(biome) and _hash_roll(seed_number, coord.x, coord.y, 51) < 0.05:
 		add_cultural_source(coord.x, coord.y, 6, [{"key": "beastmen", "label": "Beastmen", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["beastmen"], "share": 1.0}], 1.4)
 
