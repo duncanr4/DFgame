@@ -30,6 +30,5 @@ culture_overlay.visible = _culture_overlay_enabled
 
 ```gdscript
 var culture_tooltip := pipeline.build_tooltip_data(tile_data)
-var strength_label := String(culture_tooltip.get("strength_label", ""))
 var breakdown := culture_tooltip.get("breakdown", []) as Array[Dictionary]
 ```

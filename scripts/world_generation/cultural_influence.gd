@@ -69,17 +69,6 @@ func resolve_culture_color(color: Variant, key: String) -> Color:
 		return Color(String(color))
 	return CULTURE_TYPES.DEFAULT_CULTURE_COLORS.get(key, Color.GRAY)
 
-func describe_influence_strength(strength: float) -> String:
-	if strength < 0.18:
-		return "Faint"
-	if strength < 0.34:
-		return "Noticeable"
-	if strength < 0.55:
-		return "Strong"
-	if strength < 0.78:
-		return "Dominant"
-	return "Seat of Power"
-
 func derive_population_groups(breakdown: Array[Dictionary]) -> Dictionary:
 	var major: Array[String] = []
 	var minor: Array[String] = []
@@ -113,7 +102,6 @@ func build_tooltip_data(tile_data: Dictionary) -> Dictionary:
 		"label": String(influence.get("label", "Unknown")),
 		"color": resolve_culture_color(influence.get("color", Color.GRAY), String(influence.get("key", "humans"))),
 		"strength": strength,
-		"strength_label": describe_influence_strength(strength),
 		"breakdown": breakdown,
 		"major_population_groups": population_groups.get("major", []),
 		"minor_population_groups": population_groups.get("minor", [])
