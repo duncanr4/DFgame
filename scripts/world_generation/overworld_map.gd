@@ -1696,6 +1696,15 @@ func _variant_array_to_strings(entries: Variant) -> Array[String]:
 				result.append(value)
 	return result
 
+func _dedupe_trimmed_strings(entries: Array[String]) -> Array[String]:
+	var unique: Array[String] = []
+	for entry: String in entries:
+		var value := entry.strip_edges()
+		if value.is_empty() or unique.has(value):
+			continue
+		unique.append(value)
+	return unique
+
 func _variant_to_clean_string(value: Variant) -> String:
 	if value == null:
 		return ""
@@ -3999,6 +4008,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	var major_population_groups := _variant_array_to_strings(data.get("major_population_groups", []))
 	if major_population_groups.is_empty() and not culture_tooltip.is_empty():
 		major_population_groups = _variant_array_to_strings(culture_tooltip.get("major_population_groups", []))
+	major_population_groups = _dedupe_trimmed_strings(major_population_groups)
 	_set_tooltip_label(
 		tooltip_major_population_groups,
 		_format_resource_list(major_population_groups),
@@ -4007,12 +4017,17 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	var minor_population_groups := _variant_array_to_strings(data.get("minor_population_groups", []))
 	if minor_population_groups.is_empty() and not culture_tooltip.is_empty():
 		minor_population_groups = _variant_array_to_strings(culture_tooltip.get("minor_population_groups", []))
+	minor_population_groups = _dedupe_trimmed_strings(minor_population_groups)
+	var filtered_minor_population_groups: Array[String] = []
+	for group: String in minor_population_groups:
+		if major_population_groups.has(group):
+			continue
+		filtered_minor_population_groups.append(group)
+	minor_population_groups = filtered_minor_population_groups
 	if not culture_tooltip.is_empty():
 		var influence_label := String(culture_tooltip.get("label", "Unknown"))
-		var strength_label := String(culture_tooltip.get("strength_label", ""))
-		var influence_summary := "%s (%s)" % [influence_label, strength_label]
-		if not minor_population_groups.has(influence_summary):
-			minor_population_groups.append(influence_summary)
+		if not influence_label.is_empty() and not major_population_groups.has(influence_label) and not minor_population_groups.has(influence_label):
+			minor_population_groups.append(influence_label)
 	_set_tooltip_label(
 		tooltip_minor_population_groups,
 		_format_resource_list(minor_population_groups),
