@@ -126,6 +126,7 @@ const BIOME_JUNGLE := "jungle"
 const BIOME_GRASSLAND := "grassland"
 const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
 const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
+const CULTURAL_INFLUENCE := preload("res://scripts/world_generation/cultural_influence.gd")
 
 const FOREST_NAME_PREFIXES: Array[String] = [
 	"Verdant",
@@ -2912,7 +2913,7 @@ func _assign_cultural_groups(
 	height_map: Dictionary,
 	rng: RandomNumberGenerator
 ) -> void:
-	var pipeline := CulturalInfluence.new()
+	var pipeline := CULTURAL_INFLUENCE.new()
 	var settlements := _collect_settlement_sources()
 	var factions := _collect_faction_sources()
 	var wood_elf_territory_info := _resolve_wood_elf_territory()
@@ -4036,7 +4037,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		not resource_text.is_empty()
 	)
 
-	var culture_tooltip := CulturalInfluence.new().build_tooltip_data(data)
+	var culture_tooltip := CULTURAL_INFLUENCE.new().build_tooltip_data(data)
 	var major_population_groups := _variant_array_to_strings(data.get("major_population_groups", []))
 	if major_population_groups.is_empty() and not culture_tooltip.is_empty():
 		major_population_groups = _variant_array_to_strings(culture_tooltip.get("major_population_groups", []))
@@ -4604,7 +4605,7 @@ func _update_culture_overlay() -> void:
 	if _tile_data.is_empty():
 		culture_overlay.texture = null
 		return
-	var pipeline := CulturalInfluence.new()
+	var pipeline := CULTURAL_INFLUENCE.new()
 	var image := pipeline.build_culture_overlay_image(map_size.x, map_size.y, _tile_data, 0.08, 0.62)
 	var texture := ImageTexture.create_from_image(image)
 	culture_overlay.texture = texture
