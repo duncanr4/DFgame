@@ -700,7 +700,7 @@ func _on_return_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/mainmenu.tscn")
 
 func _on_create_button_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/overworld.tscn")
+	get_tree().change_scene_to_file("res://scenes/embark_preparation.tscn")
 
 func _on_randomize_button_pressed() -> void:
 	if profession_choice and profession_choice.item_count > 0:
