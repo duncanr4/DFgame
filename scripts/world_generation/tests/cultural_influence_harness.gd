@@ -1,6 +1,6 @@
 extends SceneTree
 
-const CulturalInfluence := preload("res://scripts/world_generation/cultural_influence.gd")
+const CulturalInfluenceScript := preload("res://scripts/world_generation/cultural_influence.gd")
 
 func _initialize() -> void:
 	var width := 12
@@ -21,7 +21,7 @@ func _initialize() -> void:
 	tiles[Vector2i(9, 2)]["structure"] = "cave"
 	tiles[Vector2i(4, 5)]["structure"] = "dungeon"
 
-	var pipeline := CulturalInfluence.new() as CulturalInfluence
+	var pipeline := CulturalInfluenceScript.new() as CulturalInfluence
 	var settlements: Array[Dictionary] = [
 		{
 			"x": 2,
@@ -54,9 +54,10 @@ func _initialize() -> void:
 		{"center": {"x": 6, "y": 6}, "radius": 7}
 	)
 
-	for sample in [Vector2i(2, 2), Vector2i(6, 3), Vector2i(9, 2), Vector2i(6, 6)]:
+	var samples: Array[Vector2i] = [Vector2i(2, 2), Vector2i(6, 3), Vector2i(9, 2), Vector2i(6, 6)]
+	for sample: Vector2i in samples:
 		var tile := tiles.get(sample, {}) as Dictionary
-		var influence := tile.get("cultural_influence", null)
+		var influence: Variant = tile.get("cultural_influence", null)
 		print("tile=", sample, " influence=", influence)
 
 	quit()
