@@ -1246,7 +1246,10 @@ const CIVILIZATION_LABELS := {
 	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/History/HistoryText"
 )
 @onready var structure_details_main_label: RichTextLabel = get_node_or_null(
-	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainText"
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainHeader/MainText"
+)
+@onready var structure_details_main_image: TextureRect = get_node_or_null(
+	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainHeader/MainImageFrame/MainImage"
 )
 @onready var structure_details_population_history_chart: Control = get_node_or_null(
 	"MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainPopulationHistory/MainPopulationHistoryChart"
@@ -1317,6 +1320,9 @@ var _context_menu_tile := Vector2i(-1, -1)
 
 const CONTEXT_MENU_BEGIN_JOURNEY_ID := 0
 const CONTEXT_MENU_MORE_INFORMATION_ID := 1
+const MORE_INFO_IMAGE_FOLDER := "res://resources/images/overworld/more_info"
+
+var _more_info_image_paths: Array[String] = []
 
 func _ready() -> void:
 	if map_layer == null:
@@ -1358,6 +1364,7 @@ func _ready() -> void:
 	_cache_overlay_parent()
 	_configure_globe_viewport()
 	_set_globe_view(false)
+	_cache_more_info_image_paths()
 	_configure_structure_context_menu()
 
 func _show_loading_screen() -> void:
@@ -1555,6 +1562,7 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 			hallmark
 		]
 	)
+	_set_structure_details_random_image()
 
 	var population_timeline: Array = []
 	for entry: Variant in details.get("population_timeline", []):
@@ -1585,6 +1593,38 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 	)
 
 	structure_details_dialog.popup_centered(Vector2i(700, 480))
+
+func _cache_more_info_image_paths() -> void:
+	_more_info_image_paths.clear()
+	var directory := DirAccess.open(MORE_INFO_IMAGE_FOLDER)
+	if directory == null:
+		return
+
+	directory.list_dir_begin()
+	while true:
+		var entry := directory.get_next()
+		if entry.is_empty():
+			break
+		if directory.current_is_dir():
+			continue
+
+		var lower_entry := entry.to_lower()
+		if lower_entry.ends_with(".png") or lower_entry.ends_with(".webp") or lower_entry.ends_with(".jpg") or lower_entry.ends_with(".jpeg"):
+			_more_info_image_paths.append("%s/%s" % [MORE_INFO_IMAGE_FOLDER, entry])
+	directory.list_dir_end()
+
+func _set_structure_details_random_image() -> void:
+	if structure_details_main_image == null:
+		return
+
+	if _more_info_image_paths.is_empty():
+		structure_details_main_image.texture = null
+		return
+
+	var random_index := randi_range(0, _more_info_image_paths.size() - 1)
+	var random_path := _more_info_image_paths[random_index]
+	var random_texture := load(random_path) as Texture2D
+	structure_details_main_image.texture = random_texture
 
 func _set_details_tab_text(target: RichTextLabel, text: String) -> void:
 	if target == null:
