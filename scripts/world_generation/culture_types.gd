@@ -5,18 +5,13 @@ const DEFAULT_CULTURE_COLORS: Dictionary[String, Color] = {
 	"humans": Color("#A0C6E5"),
 	"dwarves": Color("#C9A061"),
 	"wood_elves": Color("#6EBF7A"),
-	"high_elves": Color("#8FD8D2"),
 	"halflings": Color("#EBC28A"),
 	"lizardmen": Color("#6BBE88"),
 	"demons": Color("#D46A6A"),
 	"dragons": Color("#8A6BDA"),
 	"beastmen": Color("#8D6E63"),
 	"gnolls": Color("#A77B4E"),
-	"orcish": Color("#719A54"),
-	"marshfolk": Color("#6FA0A5"),
-	"steppe_clans": Color("#C8B66E"),
-	"badlander": Color("#B86F4B"),
-	"wanderers": Color("#A5A5A5")
+	"orc": Color("#719A54")
 }
 
 const SETTLEMENT_CLAIM_RADIUS_BY_TYPE: Dictionary[String, int] = {

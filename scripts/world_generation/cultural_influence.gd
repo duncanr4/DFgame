@@ -52,12 +52,12 @@ func normalise_culture_key(key: String, fallback_label: String) -> String:
 	if not normalized.is_empty():
 		return normalized
 	var fallback := fallback_label.strip_edges().to_lower().replace(" ", "_").replace("-", "_")
-	return fallback if not fallback.is_empty() else "wanderers"
+	return fallback if not fallback.is_empty() else "humans"
 
 func format_culture_label(key: String) -> String:
 	var parts := key.replace("-", "_").split("_", false)
 	if parts.is_empty():
-		return "Wanderers"
+		return "Humans"
 	for index in range(parts.size()):
 		parts[index] = String(parts[index]).capitalize()
 	return " ".join(parts)
@@ -111,7 +111,7 @@ func build_tooltip_data(tile_data: Dictionary) -> Dictionary:
 	var population_groups := derive_population_groups(breakdown)
 	return {
 		"label": String(influence.get("label", "Unknown")),
-		"color": resolve_culture_color(influence.get("color", Color.GRAY), String(influence.get("key", "wanderers"))),
+		"color": resolve_culture_color(influence.get("color", Color.GRAY), String(influence.get("key", "humans"))),
 		"strength": strength,
 		"strength_label": describe_influence_strength(strength),
 		"breakdown": breakdown,
@@ -257,22 +257,14 @@ func _build_ambient_sources(width: int, height: int, tiles: Dictionary, seed_num
 func _add_biome_ambient_source(seed_number: int, coord: Vector2i, biome: String) -> void:
 	match biome:
 		"grassland":
-			if _hash_roll(seed_number, coord.x, coord.y, 17) < 0.06:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "steppe_clans", "label": "Steppe Clans", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["steppe_clans"], "share": 1.0}], 1.45)
-			elif _hash_roll(seed_number, coord.x, coord.y, 18) < 0.08:
+			if _hash_roll(seed_number, coord.x, coord.y, 18) < 0.08:
 				add_cultural_source(coord.x, coord.y, 6, [{"key": "humans", "label": "Humans", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["humans"], "share": 1.0}], 1.35)
-		"badlands":
-			if _hash_roll(seed_number, coord.x, coord.y, 27) < 0.08:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "badlander", "label": "Badlanders", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["badlander"], "share": 1.0}], 1.4)
-		"marsh":
-			if _hash_roll(seed_number, coord.x, coord.y, 31) < 0.11:
-				add_cultural_source(coord.x, coord.y, 6, [{"key": "marshfolk", "label": "Marshfolk", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["marshfolk"], "share": 1.0}], 1.25)
 		"forest", "jungle":
 			if _hash_roll(seed_number, coord.x, coord.y, 39) < 0.06:
 				add_cultural_source(coord.x, coord.y, 7, [{"key": "wood_elves", "label": "Wood Elves", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["wood_elves"], "share": 1.0}], 1.2)
 		"tundra":
 			if _hash_roll(seed_number, coord.x, coord.y, 44) < 0.06:
-				add_cultural_source(coord.x, coord.y, 7, [{"key": "orcish", "label": "Orc Clans", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["orcish"], "share": 1.0}], 1.45)
+				add_cultural_source(coord.x, coord.y, 7, [{"key": "orc", "label": "Orc", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["orc"], "share": 1.0}], 1.45)
 	if ["grassland", "badlands", "marsh", "forest", "jungle"].has(biome) and _hash_roll(seed_number, coord.x, coord.y, 51) < 0.05:
 		add_cultural_source(coord.x, coord.y, 6, [{"key": "beastmen", "label": "Beastmen", "color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS["beastmen"], "share": 1.0}], 1.4)
 
@@ -321,7 +313,7 @@ func _apply_sources(width: int, height: int, tiles: Dictionary, is_land_base_til
 						var score_key := String(key_variant)
 						scores[score_key] = float((scores_value as Dictionary).get(key_variant, 0.0))
 				for entry: Dictionary in entries:
-					var key := String(entry.get("key", "wanderers"))
+					var key := String(entry.get("key", "humans"))
 					var score := float(entry.get("share", 0.0)) * influence_factor
 					if score <= 0.0:
 						continue
