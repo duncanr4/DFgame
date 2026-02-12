@@ -125,16 +125,14 @@ const AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE: Dictionary[String, Array] = {
 			"label": "Farm",
 			"tile": Vector2i(15, 1),
 			"requires_tree_neighbor": false,
-			"disallow_biomes": ["hills", "mountain", "snow"],
-			"disallow_overlays": ["tree", "forest"]
+			"requires_plain_grass": true
 		},
 		{
 			"id": "homestead",
 			"label": "Homestead",
 			"tile": Vector2i(13, 1),
 			"disallow_forest_overlay": false,
-			"disallow_biomes": ["hills", "mountain", "snow"],
-			"disallow_overlays": ["tree", "forest"]
+			"requires_plain_grass": true
 		}
 	],
 	"wood_elves": [

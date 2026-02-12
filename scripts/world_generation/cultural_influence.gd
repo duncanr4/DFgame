@@ -483,12 +483,15 @@ func _ambient_option_matches(option: Dictionary, coord: Vector2i, tiles: Diction
 		return false
 	var tile := tiles.get(coord, {}) as Dictionary
 	var tile_biome := String(tile.get("biome_type", tile.get("base_biome", tile.get("base", "")))).to_lower()
-	for disallowed_biome: Variant in option.get("disallow_biomes", []):
-		if String(disallowed_biome).to_lower() == tile_biome:
+	if bool(option.get("requires_plain_grass", false)):
+		if tile_biome != "grassland":
 			return false
-	var tile_overlay := String(tile.get("overlay", "")).to_lower()
-	for disallowed_overlay: Variant in option.get("disallow_overlays", []):
-		if tile_overlay.find(String(disallowed_overlay).to_lower()) >= 0:
+		var base_biome := String(tile.get("base_biome", tile.get("base", ""))).to_lower()
+		if base_biome != "grassland":
+			return false
+		if not String(tile.get("overlay", "")).strip_edges().is_empty():
+			return false
+		if not String(tile.get("hill_overlay", "")).strip_edges().is_empty():
 			return false
 	return true
 
