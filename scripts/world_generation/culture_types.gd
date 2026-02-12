@@ -21,7 +21,6 @@ const DEFAULT_CULTURE_COLORS: Dictionary[String, Color] = {
 	"aarakocra": Color("#a3a8c8"),
 	"braxat": Color("#c47d4a"),
 	"hadozee": Color("#4f8d74"),
-	"quillboar": Color("#8f5a59"),
 	"quilboar": Color("#8f5a59"),
 	"merfolks": Color("#4aa7d8"),
 	"fae": Color("#a58de2"),
@@ -94,6 +93,29 @@ const DEFAULT_SETTLEMENT_BREAKDOWN_BY_TYPE: Dictionary[String, Array] = {
 		{"key": "lizardmen", "label": "Lizardmen", "color": DEFAULT_CULTURE_COLORS["lizardmen"], "share": 0.88},
 		{"key": "humans", "label": "Humans", "color": DEFAULT_CULTURE_COLORS["humans"], "share": 0.12}
 	]
+}
+
+const CULTURE_BIOME_LIMITS: Dictionary[String, Array] = {
+	"dwarves": ["mountain", "hills"],
+	"karkinos": ["ocean", "lake", "marsh", "water"],
+	"blemaayae": ["desert", "badlands", "jungle", "mountain", "hills"],
+	"pygmy": ["jungle"],
+	"half_orcs": ["grassland", "badlands", "desert"],
+	"half_elves": ["forest", "grassland"],
+	"dryad": ["forest", "marsh", "lake"],
+	"leshy": ["forest", "marsh"],
+	"satyr": ["forest", "grassland"],
+	"snakemen": ["desert", "jungle"],
+	"hobgoblin": ["badlands", "mountain", "hills", "grassland"],
+	"locathah": ["ocean", "lake", "marsh", "water"],
+	"firbolg": ["forest", "grassland"],
+	"aarakocra": ["mountain", "hills", "grassland"],
+	"gnomes": ["mountain"],
+	"braxat": ["desert", "badlands", "jungle"],
+	"hadozee": ["ocean", "lake", "water", "jungle"],
+	"merfolks": ["ocean"],
+	"quilboar": ["badlands", "desert", "grassland"],
+	"fimir": ["marsh"]
 }
 
 const AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE: Dictionary[String, Array] = {

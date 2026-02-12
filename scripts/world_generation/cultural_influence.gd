@@ -278,11 +278,11 @@ func _add_biome_ambient_source(seed_number: int, coord: Vector2i, biome: String)
 		"desert", "badlands":
 			add_roll.call(60, 0.055, 8, "blemaayae", "Blemaayae", 1.34)
 			add_roll.call(62, 0.05, 8, "braxat", "Braxat", 1.36)
-			add_roll.call(64, 0.048, 8, "quillboar", "Quillboar", 1.4)
 			add_roll.call(66, 0.045, 8, "quilboar", "Quilboar", 1.4)
 			add_roll.call(68, 0.042, 8, "hobgoblin", "Hobgoblin", 1.44)
 			add_roll.call(70, 0.038, 8, "gnolls", "Gnolls", 1.46)
 		"mountain", "hills":
+			add_roll.call(71, 0.055, 8, "dwarves", "Dwarves", 1.38)
 			add_roll.call(72, 0.045, 8, "aarakocra", "Aarakocra", 1.42)
 			add_roll.call(74, 0.04, 8, "giants", "Giants", 1.48)
 			add_roll.call(76, 0.038, 8, "harpies", "Harpies", 1.44)
@@ -344,6 +344,8 @@ func _apply_sources(width: int, height: int, tiles: Dictionary, is_land_base_til
 						scores[score_key] = float((scores_value as Dictionary).get(key_variant, 0.0))
 				for entry: Dictionary in entries:
 					var key := String(entry.get("key", "humans"))
+					if not _culture_matches_tile_biome(key, tile):
+						continue
 					var score := float(entry.get("share", 0.0)) * influence_factor
 					if score <= 0.0:
 						continue
@@ -510,3 +512,14 @@ func _hash_u32(seed_number: int, x: int, y: int, salt: int) -> int:
 
 func _hash_roll(seed_number: int, x: int, y: int, salt: int) -> float:
 	return float(_hash_u32(seed_number, x, y, salt) % 1000000) / 1000000.0
+
+
+func _culture_matches_tile_biome(culture_key: String, tile: Dictionary) -> bool:
+	var allowed_biomes: Array = CULTURE_TYPES.CULTURE_BIOME_LIMITS.get(culture_key, [])
+	if allowed_biomes.is_empty():
+		return true
+	var biome := String(tile.get("biome_type", tile.get("base_biome", tile.get("base", "")))).to_lower()
+	for allowed: Variant in allowed_biomes:
+		if String(allowed).to_lower() == biome:
+			return true
+	return false
