@@ -46,92 +46,84 @@ const MASK_TWIN_RIGHT_CENTER := Vector2(0.68, 0.52)
 const MASK_TWIN_RADIUS := Vector2(0.55, 0.33)
 const MASK_SADDLE_SCALE := 2.2
 
-const TILE_DEFS := preload("res://scripts/world_generation/tile_defs.gd")
-const BIOME_DEFS := preload("res://scripts/world_generation/biome_defs.gd")
-const TERRAIN_GENERATOR_SCRIPT := preload("res://scripts/world_generation/overworld_terrain_generator.gd")
-const BIOME_CLASSIFIER_SCRIPT := preload("res://scripts/world_generation/overworld_biome_classifier.gd")
-const SETTLEMENT_GENERATOR_SCRIPT := preload("res://scripts/world_generation/overworld_settlement_generator.gd")
-const CULTURE_GENERATOR_SCRIPT := preload("res://scripts/world_generation/overworld_culture_generator.gd")
-
-const ATLAS_TEXTURE := TILE_DEFS.ATLAS_TEXTURE
-const SAND_TILE := TILE_DEFS.SAND_TILE
-const GRASS_TILE := TILE_DEFS.GRASS_TILE
-const BADLANDS_TILE := TILE_DEFS.BADLANDS_TILE
-const MINE_TILE := TILE_DEFS.MINE_TILE
-const MARSH_TILE := TILE_DEFS.MARSH_TILE
-const SNOW_TILE := TILE_DEFS.SNOW_TILE
-const TREE_TILE := TILE_DEFS.TREE_TILE
-const TREE_LONE_TILE := TILE_DEFS.TREE_LONE_TILE
-const JUNGLE_TREE_TILE := TILE_DEFS.JUNGLE_TREE_TILE
-const CUT_TREES_TILE := TILE_DEFS.CUT_TREES_TILE
-const AMBIENT_LUMBER_MILL_TILE := TILE_DEFS.AMBIENT_LUMBER_MILL_TILE
-const WATER_TILE := TILE_DEFS.WATER_TILE
-const MOUNTAIN_TILE := TILE_DEFS.MOUNTAIN_TILE
-const MOUNTAIN_TOP_A_TILE := TILE_DEFS.MOUNTAIN_TOP_A_TILE
-const MOUNTAIN_TOP_B_TILE := TILE_DEFS.MOUNTAIN_TOP_B_TILE
-const MOUNTAIN_BOTTOM_A_TILE := TILE_DEFS.MOUNTAIN_BOTTOM_A_TILE
-const MOUNTAIN_BOTTOM_B_TILE := TILE_DEFS.MOUNTAIN_BOTTOM_B_TILE
-const DAM_TILE := TILE_DEFS.DAM_TILE
-const MOUNTAIN_PEAK_TILE := TILE_DEFS.MOUNTAIN_PEAK_TILE
-const STONE_TILE := TILE_DEFS.STONE_TILE
-const DWARFHOLD_TILE := TILE_DEFS.DWARFHOLD_TILE
-const ABANDONED_DWARFHOLD_TILE := TILE_DEFS.ABANDONED_DWARFHOLD_TILE
-const GREAT_DWARFHOLD_TILE := TILE_DEFS.GREAT_DWARFHOLD_TILE
-const DARK_DWARFHOLD_TILE := TILE_DEFS.DARK_DWARFHOLD_TILE
-const HILLHOLD_TILE := TILE_DEFS.HILLHOLD_TILE
-const CAVE_TILE := TILE_DEFS.CAVE_TILE
-const TOWER_TILE := TILE_DEFS.TOWER_TILE
-const EVIL_WIZARDS_TOWER_TILE := TILE_DEFS.EVIL_WIZARDS_TOWER_TILE
-const WOOD_ELF_GROVES_TILE := TILE_DEFS.WOOD_ELF_GROVES_TILE
-const WOOD_ELF_GROVES_LARGE_TILE := TILE_DEFS.WOOD_ELF_GROVES_LARGE_TILE
-const WOOD_ELF_GROVES_GRAND_TILE := TILE_DEFS.WOOD_ELF_GROVES_GRAND_TILE
-const HILLS_TILE := TILE_DEFS.HILLS_TILE
-const HILLS_BADLANDS_TILE := TILE_DEFS.HILLS_BADLANDS_TILE
-const HILLS_VARIANT_A_TILE := TILE_DEFS.HILLS_VARIANT_A_TILE
-const HILLS_VARIANT_B_TILE := TILE_DEFS.HILLS_VARIANT_B_TILE
-const HILLS_SNOW_TILE := TILE_DEFS.HILLS_SNOW_TILE
-const TOWN_TILE := TILE_DEFS.TOWN_TILE
-const PORT_TOWN_TILE := TILE_DEFS.PORT_TOWN_TILE
-const CASTLE_TILE := TILE_DEFS.CASTLE_TILE
-const ROADSIDE_TAVERN_TILE := TILE_DEFS.ROADSIDE_TAVERN_TILE
-const HAMLET_TILE := TILE_DEFS.HAMLET_TILE
-const TREE_SNOW_TILE := TILE_DEFS.TREE_SNOW_TILE
-const ACTIVE_VOLCANO_TILE := TILE_DEFS.ACTIVE_VOLCANO_TILE
-const VOLCANO_TILE := TILE_DEFS.VOLCANO_TILE
-const LAVA_TILE := TILE_DEFS.LAVA_TILE
-const OASIS_TILE := TILE_DEFS.OASIS_TILE
-const HAMLET_SNOW_TILE := TILE_DEFS.HAMLET_SNOW_TILE
-const AMBIENT_SLEEPING_DRAGON_TILE := TILE_DEFS.AMBIENT_SLEEPING_DRAGON_TILE
-const AMBIENT_HUNTING_LODGE_TILE := TILE_DEFS.AMBIENT_HUNTING_LODGE_TILE
-const AMBIENT_HOMESTEAD_TILE := TILE_DEFS.AMBIENT_HOMESTEAD_TILE
-const AMBIENT_MOONWELL_TILE := TILE_DEFS.AMBIENT_MOONWELL_TILE
-const AMBIENT_FARM_TILE := TILE_DEFS.AMBIENT_FARM_TILE
-const FARM_CROPS_TILE := TILE_DEFS.FARM_CROPS_TILE
-const AMBIENT_FARM_VARIANT_TILE := TILE_DEFS.AMBIENT_FARM_VARIANT_TILE
-const AMBIENT_GREAT_TREE_TILE := TILE_DEFS.AMBIENT_GREAT_TREE_TILE
-const AMBIENT_GREAT_TREE_ALT_TILE := TILE_DEFS.AMBIENT_GREAT_TREE_ALT_TILE
-const LIZARDMEN_CITY_TILE := TILE_DEFS.LIZARDMEN_CITY_TILE
-const SAINT_SHRINE_TILE := TILE_DEFS.SAINT_SHRINE_TILE
-const MONASTERY_TILE := TILE_DEFS.MONASTERY_TILE
-const ORC_CAMP_TILE := TILE_DEFS.ORC_CAMP_TILE
-const GNOLL_CAMP_TILE := TILE_DEFS.GNOLL_CAMP_TILE
-const TROLL_CAMP_TILE := TILE_DEFS.TROLL_CAMP_TILE
-const OGRE_CAMP_TILE := TILE_DEFS.OGRE_CAMP_TILE
-const BANDIT_CAMP_TILE := TILE_DEFS.BANDIT_CAMP_TILE
-const TRAVELERS_CAMP_TILE := TILE_DEFS.TRAVELERS_CAMP_TILE
-const DUNGEON_TILE := TILE_DEFS.DUNGEON_TILE
-const CENTAUR_ENCAMPMENT_TILE := TILE_DEFS.CENTAUR_ENCAMPMENT_TILE
-
-const BIOME_WATER := BIOME_DEFS.WATER
-const BIOME_MOUNTAIN := BIOME_DEFS.MOUNTAIN
-const BIOME_HILLS := BIOME_DEFS.HILLS
-const BIOME_MARSH := BIOME_DEFS.MARSH
-const BIOME_TUNDRA := BIOME_DEFS.TUNDRA
-const BIOME_DESERT := BIOME_DEFS.DESERT
-const BIOME_BADLANDS := BIOME_DEFS.BADLANDS
-const BIOME_FOREST := BIOME_DEFS.FOREST
-const BIOME_JUNGLE := BIOME_DEFS.JUNGLE
-const BIOME_GRASSLAND := BIOME_DEFS.GRASSLAND
+const ATLAS_TEXTURE := "res://resources/images/overworld/atlas/overworld.png"
+const SAND_TILE := Vector2i(0, 0)
+const GRASS_TILE := Vector2i(1, 0)
+const BADLANDS_TILE := Vector2i(2, 1)
+const MINE_TILE := Vector2i(3, 1)
+const MARSH_TILE := Vector2i(2, 4)
+const SNOW_TILE := Vector2i(3, 2)
+const TREE_TILE := Vector2i(0, 1)
+const TREE_LONE_TILE := Vector2i(6, 5)
+const JUNGLE_TREE_TILE := Vector2i(0, 3)
+const CUT_TREES_TILE := Vector2i(1, 5)
+const AMBIENT_LUMBER_MILL_TILE := Vector2i(0, 5)
+const WATER_TILE := Vector2i(4, 1)
+const MOUNTAIN_TILE := Vector2i(3, 0)
+const MOUNTAIN_TOP_A_TILE := Vector2i(4, 0)
+const MOUNTAIN_TOP_B_TILE := Vector2i(5, 0)
+const MOUNTAIN_BOTTOM_A_TILE := Vector2i(7, 0)
+const MOUNTAIN_BOTTOM_B_TILE := Vector2i(8, 0)
+const DAM_TILE := Vector2i(8, 1)
+const MOUNTAIN_PEAK_TILE := Vector2i(10, 0)
+const STONE_TILE := Vector2i(2, 0)
+const DWARFHOLD_TILE := Vector2i(9, 2)
+const ABANDONED_DWARFHOLD_TILE := Vector2i(8, 2)
+const GREAT_DWARFHOLD_TILE := Vector2i(6, 0)
+const DARK_DWARFHOLD_TILE := Vector2i(17, 0)
+const HILLHOLD_TILE := Vector2i(7, 4)
+const CAVE_TILE := Vector2i(5, 1)
+const TOWER_TILE := Vector2i(6, 1)
+const EVIL_WIZARDS_TOWER_TILE := Vector2i(3, 3)
+const WOOD_ELF_GROVES_TILE := Vector2i(4, 2)
+const WOOD_ELF_GROVES_LARGE_TILE := Vector2i(5, 2)
+const WOOD_ELF_GROVES_GRAND_TILE := Vector2i(6, 2)
+const HILLS_TILE := Vector2i(1, 3)
+const HILLS_BADLANDS_TILE := Vector2i(1, 4)
+const HILLS_VARIANT_A_TILE := Vector2i(4, 4)
+const HILLS_VARIANT_B_TILE := Vector2i(2, 5)
+const HILLS_SNOW_TILE := Vector2i(2, 3)
+const TOWN_TILE := Vector2i(1, 2)
+const PORT_TOWN_TILE := Vector2i(5, 4)
+const CASTLE_TILE := Vector2i(6, 4)
+const ROADSIDE_TAVERN_TILE := Vector2i(12, 1)
+const HAMLET_TILE := Vector2i(16, 1)
+const TREE_SNOW_TILE := Vector2i(1, 1)
+const ACTIVE_VOLCANO_TILE := Vector2i(12, 2)
+const VOLCANO_TILE := Vector2i(13, 2)
+const LAVA_TILE := Vector2i(14, 2)
+const OASIS_TILE := Vector2i(12, 0)
+const HAMLET_SNOW_TILE := Vector2i(13, 0)
+const AMBIENT_SLEEPING_DRAGON_TILE := Vector2i(14, 0)
+const AMBIENT_HUNTING_LODGE_TILE := Vector2i(16, 0)
+const AMBIENT_HOMESTEAD_TILE := Vector2i(13, 1)
+const AMBIENT_MOONWELL_TILE := Vector2i(2, 5)
+const AMBIENT_FARM_TILE := Vector2i(15, 1)
+const FARM_CROPS_TILE := Vector2i(15, 0)
+const AMBIENT_FARM_VARIANT_TILE := Vector2i(15, 0)
+const AMBIENT_GREAT_TREE_TILE := Vector2i(14, 1)
+const AMBIENT_GREAT_TREE_ALT_TILE := Vector2i(14, 2)
+const LIZARDMEN_CITY_TILE := Vector2i(11, 2)
+const SAINT_SHRINE_TILE := Vector2i(11, 1)
+const MONASTERY_TILE := Vector2i(2, 2)
+const ORC_CAMP_TILE := Vector2i(11, 3)
+const GNOLL_CAMP_TILE := Vector2i(1, 5)
+const TROLL_CAMP_TILE := Vector2i(1, 5)
+const OGRE_CAMP_TILE := Vector2i(1, 5)
+const BANDIT_CAMP_TILE := Vector2i(1, 5)
+const TRAVELERS_CAMP_TILE := Vector2i(1, 5)
+const DUNGEON_TILE := Vector2i(7, 2)
+const CENTAUR_ENCAMPMENT_TILE := Vector2i(10, 2)
+const BIOME_WATER := "water"
+const BIOME_MOUNTAIN := "mountain"
+const BIOME_HILLS := "hills"
+const BIOME_MARSH := "marsh"
+const BIOME_TUNDRA := "tundra"
+const BIOME_DESERT := "desert"
+const BIOME_BADLANDS := "badlands"
+const BIOME_FOREST := "forest"
+const BIOME_JUNGLE := "jungle"
+const BIOME_GRASSLAND := "grassland"
 const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
 const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
 
@@ -1293,10 +1285,6 @@ var _atlas_source_id := -1
 var _temperature_noise: FastNoiseLite
 var _rainfall_noise: FastNoiseLite
 var _vegetation_noise: FastNoiseLite
-var _terrain_generator := TERRAIN_GENERATOR_SCRIPT.new()
-var _biome_classifier := BIOME_CLASSIFIER_SCRIPT.new()
-var _settlement_generator := SETTLEMENT_GENERATOR_SCRIPT.new()
-var _culture_generator := CULTURE_GENERATOR_SCRIPT.new()
 var _tile_data: Dictionary = {}
 var _height_map: Dictionary = {}
 var _temperature_map: Dictionary = {}
@@ -1763,19 +1751,106 @@ func _generate_map() -> void:
 	else:
 		rng.seed = map_seed
 	name_rng.seed = map_seed + 911
-	var terrain_maps := _terrain_generator.generate(self, map_seed, rng)
-	height_map = terrain_maps.height_map
-	temperature_map = terrain_maps.temperature_map
-	moisture_map = terrain_maps.moisture_map
-	vegetation_map = terrain_maps.vegetation_map
+	_configure_landmass_centers(rng)
 
-	var biome_maps := _biome_classifier.classify(self, terrain_maps, rng)
-	base_biome_map = biome_maps.base_biome_map
-	var tree_map: Dictionary = biome_maps.tree_map
-	highland_map = biome_maps.highland_map
-	var biome_map: Dictionary = biome_maps.biome_map
+	var continent_noise := FastNoiseLite.new()
+	continent_noise.seed = map_seed
+	continent_noise.frequency = (noise_frequency * 0.35) / float(map_size.x)
+	continent_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	continent_noise.fractal_octaves = maxi(4, noise_octaves)
+	continent_noise.fractal_lacunarity = 2.1
+	continent_noise.fractal_gain = 0.52
+	continent_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 
-	_biome_classifier.apply_base_tiles(self, base_biome_map)
+	var detail_noise := FastNoiseLite.new()
+	detail_noise.seed = map_seed + 37
+	detail_noise.frequency = (noise_frequency * 2.2) / float(map_size.x)
+	detail_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	detail_noise.fractal_octaves = 4
+	detail_noise.fractal_lacunarity = 2.3
+	detail_noise.fractal_gain = 0.55
+	detail_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+
+	var ridge_noise := FastNoiseLite.new()
+	ridge_noise.seed = map_seed + 83
+	ridge_noise.frequency = (noise_frequency * 1.1) / float(map_size.x)
+	ridge_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	ridge_noise.fractal_octaves = 3
+	ridge_noise.fractal_lacunarity = 2.0
+	ridge_noise.fractal_gain = 0.6
+	ridge_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+
+	_temperature_noise = FastNoiseLite.new()
+	_temperature_noise.seed = map_seed + 101
+	_temperature_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_temperature_noise.frequency = temperature_frequency / float(map_size.x)
+	_temperature_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	_temperature_noise.fractal_octaves = 3
+
+	_rainfall_noise = FastNoiseLite.new()
+	_rainfall_noise.seed = map_seed + 211
+	_rainfall_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_rainfall_noise.frequency = rainfall_frequency / float(map_size.x)
+	_rainfall_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	_rainfall_noise.fractal_octaves = 4
+
+	_vegetation_noise = FastNoiseLite.new()
+	_vegetation_noise.seed = map_seed + 317
+	_vegetation_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_vegetation_noise.frequency = (noise_frequency * 2.8) / float(map_size.x)
+	_vegetation_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	_vegetation_noise.fractal_octaves = 3
+
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var height := _sample_height(continent_noise, detail_noise, ridge_noise, x, y)
+			var coord := Vector2i(x, y)
+			height_map[coord] = height
+
+	_smooth_height_map(height_map, 1, 0.35)
+
+	var landmass_denom_x := maxf(1.0, float(map_size.x - 1))
+	var landmass_denom_y := maxf(1.0, float(map_size.y - 1))
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var nx := float(x) / landmass_denom_x
+			var ny := float(y) / landmass_denom_y
+			var height: float = height_map[coord]
+			var temperature := _sample_temperature(x, y, height)
+			var moisture := _sample_moisture(x, y, height)
+			var vegetation := _sample_vegetation(x, y, height, moisture, temperature)
+			temperature_map[coord] = temperature
+			moisture_map[coord] = moisture
+			vegetation_map[coord] = vegetation
+
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var height: float = height_map[coord]
+			var temperature: float = temperature_map[coord]
+			var moisture: float = moisture_map[coord]
+			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
+
+	_smooth_biomes(base_biome_map, 2)
+	if _count_biome(base_biome_map, BIOME_DESERT) == 0:
+		_seed_desert_biomes(base_biome_map, temperature_map, moisture_map, height_map)
+		_smooth_biomes(base_biome_map, 1)
+	var tree_biome_map: Dictionary = base_biome_map.duplicate()
+	var tree_map := _apply_tree_overlays(
+		tree_biome_map,
+		temperature_map,
+		moisture_map,
+		vegetation_map,
+		height_map,
+		rng
+	)
+	highland_map = _build_highland_overlays(base_biome_map, height_map)
+	var biome_map: Dictionary = tree_biome_map.duplicate()
+	for coord: Vector2i in highland_map.keys():
+		biome_map[coord] = highland_map[coord]
+
+	_apply_base_tiles(base_biome_map)
 	await _yield_generation_wave()
 	_apply_tree_tiles(tree_map, base_biome_map)
 	_apply_overlays_and_metadata(
@@ -1790,8 +1865,8 @@ func _generate_map() -> void:
 	await _yield_generation_wave()
 	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
 	await _yield_generation_wave()
-	_settlement_generator.place(self, biome_map, rng)
-	_culture_generator.apply(self, biome_map, terrain_maps, rng)
+	_place_settlements(biome_map, rng)
+	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_height_map = height_map.duplicate()
 	_temperature_map = temperature_map.duplicate()
 	_moisture_map = moisture_map.duplicate()
@@ -1808,7 +1883,12 @@ func _generate_map() -> void:
 		_update_globe_texture()
 
 func _apply_base_tiles(base_biome_map: Dictionary) -> void:
-	_biome_classifier.apply_base_tiles(self, base_biome_map)
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
+			var tile_coords := _biome_to_tile(base_biome)
+			map_layer.set_cell(coord, _atlas_source_id, tile_coords)
 
 func _apply_overlays_and_metadata(
 	base_biome_map: Dictionary,
