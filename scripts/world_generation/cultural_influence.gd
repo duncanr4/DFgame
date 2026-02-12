@@ -481,6 +481,18 @@ func _ambient_option_matches(option: Dictionary, coord: Vector2i, tiles: Diction
 		return false
 	if bool(option.get("requires_cave_neighbor", false)) and not _has_neighbor_structure(coord, tiles, "cave"):
 		return false
+	var tile := tiles.get(coord, {}) as Dictionary
+	var tile_biome := String(tile.get("biome_type", tile.get("base_biome", tile.get("base", "")))).to_lower()
+	if bool(option.get("requires_plain_grass", false)):
+		if tile_biome != "grassland":
+			return false
+		var base_biome := String(tile.get("base_biome", tile.get("base", ""))).to_lower()
+		if base_biome != "grassland":
+			return false
+		if not String(tile.get("overlay", "")).strip_edges().is_empty():
+			return false
+		if not String(tile.get("hill_overlay", "")).strip_edges().is_empty():
+			return false
 	return true
 
 func _has_overlay(coord: Vector2i, tiles: Dictionary, overlay_key: String) -> bool:
