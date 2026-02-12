@@ -2722,8 +2722,6 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 	var settings := _world_settings
 	var ratios: Dictionary = settings.get("settlement_ratios", {}) as Dictionary
 	var settlements: Dictionary = settings.get("settlements", {}) as Dictionary
-	# Increase baseline settlement spawn attempts so core overworld settlement types
-	# (town, dwarfhold, wood elf grove, lizardmen city) appear much more frequently.
 	var base_count: int = maxi(1, int(round(float(map_size.x * map_size.y) / 4096.0)))
 	var occupied: Array[Vector2i] = []
 	var candidates := _build_settlement_candidates(biome_map)
