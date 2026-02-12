@@ -6,7 +6,7 @@ signal world_options_applied(settings: Dictionary, regenerate_realm: bool)
 signal back_requested
 signal embark_requested(final_settings: Dictionary)
 
-const MAP_SIZES := ["Mini", "Small", "Normal", "Large", "Extra Large"]
+const MAP_SIZES := ["Mini", "Small", "Medium", "Large", "Extra Large"]
 const MAP_SIZE_KEYS: Array[String] = ["mini", "small", "normal", "large", "extra-large"]
 const WORLD_LAYOUTS := ["Normal", "Major Continent", "Twin Continents", "Inland Sea", "Archipelago"]
 const WORLD_AGES := ["Age of Myth", "Age of Heroes", "Age of Discovery", "Age of Discord", "Age of Ember"]
@@ -98,7 +98,6 @@ func _ready() -> void:
 
 func _on_back_pressed() -> void:
 	back_requested.emit()
-	get_tree().change_scene_to_file("res://scenes/mainmenu.tscn")
 
 func _populate_option_buttons() -> void:
 	for map_size: String in MAP_SIZES:
@@ -288,7 +287,4 @@ func _generate_world_name() -> String:
 func _store_world_settings(settings: Dictionary) -> void:
 	var game_session := get_node_or_null("/root/GameSession")
 	if game_session && game_session.has_method("set_world_settings"):
-		var normalized := settings
-		if game_session.has_method("normalize_world_settings"):
-			normalized = game_session.call("normalize_world_settings", settings)
-		game_session.call("set_world_settings", normalized)
+		game_session.call("set_world_settings", settings)
