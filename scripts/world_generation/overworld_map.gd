@@ -2809,6 +2809,8 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			if settlement_type == "dwarfhold":
 				tile_info.merge(_generate_dwarfhold_details(settlement_name, chosen, tile, rng), true)
 			else:
+				var founded_years_ago := _founded_years_ago_for_settlement_type(settlement_type, rng)
+				tile_info["founded_years_ago"] = founded_years_ago
 				var population_options := _population_options_for_settlement_type(settlement_type)
 				if not population_options.is_empty():
 					var population := _roll_population_for_settlement_type(settlement_type, rng)
@@ -2820,14 +2822,28 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 						rng,
 						majority_key
 					)
+					var population_timeline := _generate_population_timeline(population, rng, founded_years_ago)
 					tile_info["population"] = population
 					tile_info["population_label"] = "Population"
 					tile_info["population_descriptor"] = "residents"
 					tile_info["population_breakdown"] = population_breakdown
+					tile_info["population_timeline"] = population_timeline
 					var labels := _labels_from_population_breakdown(population_breakdown)
 					tile_info["major_population_groups"] = labels.get("major", [civilization_label])
 					tile_info["minor_population_groups"] = labels.get("minor", [])
 			_tile_data[chosen] = tile_info
+
+
+func _founded_years_ago_for_settlement_type(settlement_type: String, rng: RandomNumberGenerator) -> int:
+	match settlement_type:
+		"town":
+			return rng.randi_range(40, 900)
+		"woodElfGrove":
+			return rng.randi_range(120, 2200)
+		"lizardmenCity":
+			return rng.randi_range(180, 2600)
+		_:
+			return rng.randi_range(30, 600)
 
 func _population_options_for_settlement_type(settlement_type: String) -> Array:
 	match settlement_type:
