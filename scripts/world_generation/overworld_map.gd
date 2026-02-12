@@ -1650,14 +1650,12 @@ func _build_settlement_history_timeline(
 	)
 
 	var rows: Array[String] = []
-	rows.append("[table=2]")
 	for event: Dictionary in events:
 		var year_text := "[color=#d4a64a][b]%s[/b][/color]" % str(int(event.get("year", current_year)))
 		var description := String(event.get("description", "")).strip_edges()
 		if description.is_empty():
 			continue
-		rows.append("[cell]%s[/cell][cell]%s[/cell]" % [year_text, description])
-	rows.append("[/table]")
+		rows.append("• %s — %s" % [year_text, description])
 	return "\n".join(rows)
 
 func _resolve_history_kind(details: Dictionary) -> String:
