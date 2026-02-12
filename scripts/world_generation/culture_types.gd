@@ -120,8 +120,22 @@ const CULTURE_BIOME_LIMITS: Dictionary[String, Array] = {
 
 const AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE: Dictionary[String, Array] = {
 	"humans": [
-		{"id": "farm", "label": "Farm", "tile": Vector2i(15, 1), "requires_tree_neighbor": false},
-		{"id": "homestead", "label": "Homestead", "tile": Vector2i(13, 1), "disallow_forest_overlay": false}
+		{
+			"id": "farm",
+			"label": "Farm",
+			"tile": Vector2i(15, 1),
+			"requires_tree_neighbor": false,
+			"disallow_biomes": ["hills", "mountain", "snow"],
+			"disallow_overlays": ["tree", "forest"]
+		},
+		{
+			"id": "homestead",
+			"label": "Homestead",
+			"tile": Vector2i(13, 1),
+			"disallow_forest_overlay": false,
+			"disallow_biomes": ["hills", "mountain", "snow"],
+			"disallow_overlays": ["tree", "forest"]
+		}
 	],
 	"wood_elves": [
 		{"id": "moonwell", "label": "Moonwell", "tile": Vector2i(2, 5), "requires_tree_neighbor": true},
