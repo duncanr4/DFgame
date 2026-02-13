@@ -150,11 +150,12 @@ func _update_summary(grid: Array, seed_text: String) -> void:
 				CELL_GATE:
 					tile_counts["Gates"] += 1
 
+	var summary_lines: Array[String] = []
+	for name in tile_counts.keys():
+		summary_lines.append("%s: %d" % [name, tile_counts[name]])
+
 	city_summary.text = "Seed %s\nDistrict count: %d\n%s" % [
 		seed_text,
 		district_count,
-		"\n".join([
-			"%s: %d" % [name, tile_counts[name]]
-			for name in tile_counts.keys()
-		])
+		"\n".join(summary_lines)
 	]
