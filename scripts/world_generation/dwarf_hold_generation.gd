@@ -13,8 +13,8 @@ const CELL_GATE := 5
 @export var tilesheet_path := "res://Github Game/tilesheet/Interior_Tileset.png"
 
 # Atlas coordinates are 1-based (row, col) to match design docs.
-const TILE_LIBRARY := {
-	"stone": Vector2i(4, 5),
+const NAMED_TILE_LIBRARY := {
+	"stone": Vector2i(3, 3),
 	"stone_alt": Vector2i(4, 6),
 	"stone_dark": Vector2i(4, 7),
 	"wall": Vector2i(3, 5),
@@ -55,6 +55,92 @@ const TILE_LIBRARY := {
 	"brazier": Vector2i(7, 6)
 }
 
+
+
+# Pre-scanned non-empty cells from Interior_Tileset (1-based atlas coords as Vector2i(col, row)).
+const INTERIOR_TILESET_NON_EMPTY_CELLS: Array[Vector2i] = [
+	Vector2i(5, 1),
+	Vector2i(7, 1),
+	Vector2i(9, 1),
+	Vector2i(13, 1),
+	Vector2i(15, 1),
+	Vector2i(2, 2),
+	Vector2i(5, 2),
+	Vector2i(13, 2),
+	Vector2i(1, 3),
+	Vector2i(3, 3),
+	Vector2i(4, 3),
+	Vector2i(5, 3),
+	Vector2i(6, 3),
+	Vector2i(7, 3),
+	Vector2i(3, 4),
+	Vector2i(5, 4),
+	Vector2i(6, 4),
+	Vector2i(7, 4),
+	Vector2i(1, 5),
+	Vector2i(3, 5),
+	Vector2i(4, 5),
+	Vector2i(3, 6),
+	Vector2i(4, 6),
+	Vector2i(7, 6),
+	Vector2i(10, 6),
+	Vector2i(11, 6),
+	Vector2i(1, 7),
+	Vector2i(3, 7),
+	Vector2i(4, 7),
+	Vector2i(5, 7),
+	Vector2i(6, 7),
+	Vector2i(7, 7),
+	Vector2i(9, 7),
+	Vector2i(11, 7),
+	Vector2i(13, 7),
+	Vector2i(14, 7),
+	Vector2i(2, 8),
+	Vector2i(11, 8),
+	Vector2i(13, 8),
+	Vector2i(14, 8),
+	Vector2i(1, 9),
+	Vector2i(5, 9),
+	Vector2i(7, 9),
+	Vector2i(11, 9),
+	Vector2i(14, 9),
+	Vector2i(6, 10),
+	Vector2i(10, 10),
+	Vector2i(11, 10),
+	Vector2i(13, 10),
+	Vector2i(14, 10),
+	Vector2i(6, 11),
+	Vector2i(7, 11),
+	Vector2i(8, 11),
+	Vector2i(9, 11),
+	Vector2i(10, 11),
+	Vector2i(13, 11),
+	Vector2i(14, 11),
+	Vector2i(15, 11),
+	Vector2i(15, 12),
+	Vector2i(1, 13),
+	Vector2i(2, 13),
+	Vector2i(3, 13),
+	Vector2i(4, 13),
+	Vector2i(7, 13),
+	Vector2i(8, 13),
+	Vector2i(10, 13),
+	Vector2i(11, 13),
+	Vector2i(13, 13),
+	Vector2i(7, 14),
+	Vector2i(8, 14),
+	Vector2i(9, 14),
+	Vector2i(10, 14),
+	Vector2i(11, 14),
+	Vector2i(12, 14),
+	Vector2i(13, 14),
+	Vector2i(1, 15),
+	Vector2i(11, 15),
+	Vector2i(12, 15),
+	Vector2i(13, 15),
+	Vector2i(14, 15)
+]
+
 const TILE_POOLS := {
 	"stone": ["stone", "stone_alt", "stone_dark"],
 	"wall": ["wall", "wall_inner_left", "wall_inner_right"],
@@ -72,8 +158,10 @@ const TILE_POOLS := {
 
 var _rng := RandomNumberGenerator.new()
 var _tilesheet_image: Image
+var _tile_library: Dictionary = NAMED_TILE_LIBRARY.duplicate(true)
 
 func _ready() -> void:
+	_build_tile_library_from_static_index()
 	_load_tilesheet_image()
 	generate_button.pressed.connect(_on_generate_pressed)
 	seed_input.text_submitted.connect(func(_text: String) -> void:
@@ -172,7 +260,6 @@ func _render_city(grid: Array) -> void:
 	if _tilesheet_image == null:
 		return
 
-	var keep_bounds := _find_bounds(grid, CELL_KEEP)
 	var output_size := Vector2i(map_size.x * tile_size.x, map_size.y * tile_size.y)
 	var image := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0, 0, 0, 0))
@@ -180,12 +267,9 @@ func _render_city(grid: Array) -> void:
 	for y in map_size.y:
 		for x in map_size.x:
 			var cell := int(grid[y][x])
-			var base_key := _pick_base_tile_key(grid, x, y, cell)
-			_draw_named_tile(image, base_key, Vector2i(x, y))
-
-			var overlay_key := _pick_overlay_tile_key(grid, x, y, cell, keep_bounds)
-			if not overlay_key.is_empty():
-				_draw_named_tile(image, overlay_key, Vector2i(x, y))
+			if cell == CELL_ROCK:
+				continue
+			_draw_named_tile(image, "stone", Vector2i(x, y))
 
 	city_texture_rect.texture = ImageTexture.create_from_image(image)
 
@@ -196,6 +280,13 @@ func _load_tilesheet_image() -> void:
 	if loaded_image == null or loaded_image.is_empty():
 		return
 	_tilesheet_image = loaded_image
+
+func _build_tile_library_from_static_index() -> void:
+	_tile_library = NAMED_TILE_LIBRARY.duplicate(true)
+	for atlas_cell in INTERIOR_TILESET_NON_EMPTY_CELLS:
+		var auto_key := "interior_r%02d_c%02d" % [atlas_cell.y, atlas_cell.x]
+		if not _tile_library.has(auto_key):
+			_tile_library[auto_key] = atlas_cell
 
 func _pick_base_tile_key(grid: Array, x: int, y: int, cell: int) -> String:
 	if cell == CELL_ROCK:
@@ -256,7 +347,7 @@ func _pick_overlay_tile_key(grid: Array, x: int, y: int, cell: int, keep_bounds:
 	return ""
 
 func _draw_named_tile(image: Image, key: String, map_cell: Vector2i) -> void:
-	var atlas_cell: Vector2i = TILE_LIBRARY.get(key, Vector2i.ZERO)
+	var atlas_cell: Vector2i = _tile_library.get(key, Vector2i.ZERO)
 	if atlas_cell == Vector2i.ZERO:
 		return
 	var atlas_zero_based := atlas_cell - Vector2i.ONE
