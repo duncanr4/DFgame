@@ -6,9 +6,16 @@ const CELL_TUNNEL := 2
 const CELL_DISTRICT := 3
 const CELL_KEEP := 4
 const CELL_GATE := 5
+const CELL_ROOM := 6
+const CELL_HOUSE := 7
+const CELL_BUILDING := 8
 
 @export var map_size := Vector2i(96, 64)
 @export var district_count := 14
+@export var hall_count := 18
+@export var room_count := 120
+@export var housing_count := 180
+@export var civic_building_count := 70
 @export var tile_size := Vector2i(16, 16)
 @export var tilesheet_path := "res://Github Game/tilesheet/Interior_Tileset.png"
 
@@ -183,21 +190,52 @@ func _generate_city() -> void:
 	var grid := _create_grid(CELL_ROCK)
 	var keep_center := map_size / 2
 	var keep_size := Vector2i(
-		clampi(map_size.x / 8, 6, 16),
-		clampi(map_size.y / 6, 6, 14)
+		clampi(map_size.x / 6, 10, 22),
+		clampi(map_size.y / 5, 10, 18)
 	)
 	_dig_rect(grid, keep_center - keep_size / 2, keep_center + keep_size / 2, CELL_KEEP)
 
-	var district_centers: Array[Vector2i] = [keep_center]
-	for i in district_count:
+	var hubs: Array[Vector2i] = [keep_center]
+	for i in hall_count:
 		var center := Vector2i(
+			_rng.randi_range(7, map_size.x - 8),
+			_rng.randi_range(7, map_size.y - 8)
+		)
+		var hall_size := Vector2i(_rng.randi_range(4, 10), _rng.randi_range(3, 7))
+		_dig_rect(grid, center - hall_size / 2, center + hall_size / 2, CELL_HALL)
+		_connect_points(grid, center, _nearest_point(center, hubs), CELL_TUNNEL)
+		hubs.append(center)
+
+	for i in district_count:
+		var district_center := Vector2i(
 			_rng.randi_range(6, map_size.x - 7),
 			_rng.randi_range(6, map_size.y - 7)
 		)
-		var radius := Vector2i(_rng.randi_range(3, 8), _rng.randi_range(2, 6))
-		_dig_ellipse(grid, center, radius, CELL_DISTRICT)
-		_connect_points(grid, center, _nearest_point(center, district_centers), CELL_TUNNEL)
-		district_centers.append(center)
+		var radius := Vector2i(_rng.randi_range(6, 12), _rng.randi_range(4, 9))
+		_dig_ellipse(grid, district_center, radius, CELL_DISTRICT)
+		_connect_points(grid, district_center, _nearest_point(district_center, hubs), CELL_TUNNEL)
+		hubs.append(district_center)
+
+	for i in room_count:
+		var hall_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+		var room_center := hall_anchor + Vector2i(_rng.randi_range(-12, 12), _rng.randi_range(-8, 8))
+		var room_size := Vector2i(_rng.randi_range(2, 5), _rng.randi_range(2, 4))
+		_dig_rect(grid, room_center - room_size, room_center + room_size, CELL_ROOM)
+		_connect_points(grid, room_center, hall_anchor, CELL_TUNNEL)
+
+	for i in housing_count:
+		var home_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+		var home_center := home_anchor + Vector2i(_rng.randi_range(-10, 10), _rng.randi_range(-7, 7))
+		var home_size := Vector2i(_rng.randi_range(1, 3), _rng.randi_range(1, 2))
+		_dig_rect(grid, home_center - home_size, home_center + home_size, CELL_HOUSE)
+		_connect_points(grid, home_center, home_anchor, CELL_TUNNEL)
+
+	for i in civic_building_count:
+		var civic_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+		var civic_center := civic_anchor + Vector2i(_rng.randi_range(-10, 10), _rng.randi_range(-8, 8))
+		var civic_size := Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
+		_dig_rect(grid, civic_center - civic_size, civic_center + civic_size, CELL_BUILDING)
+		_connect_points(grid, civic_center, civic_anchor, CELL_TUNNEL)
 
 	var gate_y := keep_center.y
 	for x in range(0, 4):
@@ -263,13 +301,16 @@ func _render_city(grid: Array) -> void:
 	var output_size := Vector2i(map_size.x * tile_size.x, map_size.y * tile_size.y)
 	var image := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0, 0, 0, 0))
+	var keep_bounds := _find_bounds(grid, CELL_KEEP)
 
 	for y in map_size.y:
 		for x in map_size.x:
 			var cell := int(grid[y][x])
-			if cell == CELL_ROCK:
-				continue
-			_draw_named_tile(image, "stone", Vector2i(x, y))
+			var base_tile := _pick_base_tile_key(grid, x, y, cell)
+			_draw_named_tile(image, base_tile, Vector2i(x, y))
+			var overlay_tile := _pick_overlay_tile_key(grid, x, y, cell, keep_bounds)
+			if not overlay_tile.is_empty():
+				_draw_named_tile(image, overlay_tile, Vector2i(x, y))
 
 	city_texture_rect.texture = ImageTexture.create_from_image(image)
 
@@ -314,6 +355,12 @@ func _pick_base_tile_key(grid: Array, x: int, y: int, cell: int) -> String:
 		return _pick_from_pool("floor_polished")
 	if cell == CELL_DISTRICT:
 		return _pick_from_pool("floor_workshop") if _rng.randf() < 0.35 else _pick_from_pool("floor_polished")
+	if cell == CELL_ROOM:
+		return _pick_from_pool("floor_carved") if _rng.randf() < 0.45 else _pick_from_pool("floor_polished")
+	if cell == CELL_HOUSE:
+		return _pick_from_pool("floor_damp") if _rng.randf() < 0.28 else _pick_from_pool("floor_polished")
+	if cell == CELL_BUILDING:
+		return _pick_from_pool("floor_workshop")
 	if cell == CELL_GATE:
 		return _pick_from_pool("floor_carved")
 	return _pick_from_pool("floor_carved")
@@ -342,6 +389,12 @@ func _pick_overlay_tile_key(grid: Array, x: int, y: int, cell: int, keep_bounds:
 		return "crate"
 	if cell == CELL_DISTRICT and _is_focal_tile(x, y, 37):
 		return "barrel"
+	if cell == CELL_HOUSE and _is_focal_tile(x, y, 27):
+		return "crate"
+	if cell == CELL_BUILDING and _is_focal_tile(x, y, 21):
+		return "forge"
+	if cell == CELL_ROOM and _is_focal_tile(x, y, 17):
+		return "door_open"
 	if cell == CELL_TUNNEL and _is_focal_tile(x, y, 53):
 		return "stairs"
 	return ""
@@ -414,6 +467,9 @@ func _update_summary(grid: Array, seed_text: String) -> void:
 	var tile_counts := {
 		"Districts": 0,
 		"Main Halls": 0,
+		"Rooms": 0,
+		"Houses": 0,
+		"Buildings": 0,
 		"Tunnels": 0,
 		"Citadel": 0,
 		"Gates": 0
@@ -425,6 +481,12 @@ func _update_summary(grid: Array, seed_text: String) -> void:
 					tile_counts["Districts"] += 1
 				CELL_HALL:
 					tile_counts["Main Halls"] += 1
+				CELL_ROOM:
+					tile_counts["Rooms"] += 1
+				CELL_HOUSE:
+					tile_counts["Houses"] += 1
+				CELL_BUILDING:
+					tile_counts["Buildings"] += 1
 				CELL_TUNNEL:
 					tile_counts["Tunnels"] += 1
 				CELL_KEEP:
@@ -445,9 +507,13 @@ func _update_summary(grid: Array, seed_text: String) -> void:
 		"anvil / crate / barrel / throne / stairs / brazier"
 	]
 
-	city_summary.text = "Seed %s\nDistrict count: %d\n%s\n\nTile roles\n%s" % [
+	city_summary.text = "Seed %s\nDistrict count: %d | Hall count: %d | Rooms: %d | Houses: %d | Buildings: %d\n%s\n\nTile roles\n%s" % [
 		seed_text,
 		district_count,
+		hall_count,
+		room_count,
+		housing_count,
+		civic_building_count,
 		"\n".join(summary_lines),
 		"\n".join(tile_role_lines)
 	]
