@@ -3006,6 +3006,9 @@ func _assign_cultural_groups(
 		if ambient_structure is Dictionary:
 			var ambient_dict := ambient_structure as Dictionary
 			tile_info["structure"] = String(ambient_dict.get("id", "ambient"))
+			if bool(ambient_dict.get("replace_tree_overlay", false)) and tree_layer != null:
+				tree_layer.erase_cell(coord)
+				tile_info["overlay"] = ""
 			if settlement_layer != null and not tile_info.has("settlement_type") and ambient_dict.has("tile"):
 				settlement_layer.set_cell(coord, _atlas_source_id, ambient_dict.get("tile", TOWN_TILE) as Vector2i)
 		_tile_data[coord] = tile_info

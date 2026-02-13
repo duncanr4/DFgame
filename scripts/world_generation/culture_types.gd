@@ -120,20 +120,40 @@ const CULTURE_BIOME_LIMITS: Dictionary[String, Array] = {
 
 const AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE: Dictionary[String, Array] = {
 	"humans": [
-		{"id": "farm", "label": "Farm", "tile": Vector2i(15, 1), "requires_tree_neighbor": false},
-		{"id": "homestead", "label": "Homestead", "tile": Vector2i(13, 1), "disallow_forest_overlay": false}
+		{
+			"id": "farm",
+			"label": "Farm",
+			"tile": Vector2i(15, 1),
+			"requires_tree_neighbor": false,
+			"requires_plain_grass": true
+		},
+		{
+			"id": "homestead",
+			"label": "Homestead",
+			"tile": Vector2i(13, 1),
+			"disallow_forest_overlay": false,
+			"requires_plain_grass": true
+		},
+		{
+			"id": "hunting_lodge",
+			"label": "Hunting Lodge",
+			"tile": Vector2i(16, 0),
+			"requires_tree_overlay": true,
+			"replace_tree_overlay": true
+		},
+		{
+			"id": "lumber_mill",
+			"label": "Lumber Mill",
+			"tile": Vector2i(0, 5),
+			"requires_tree_overlay": true,
+			"replace_tree_overlay": true
+		}
 	],
 	"wood_elves": [
 		{"id": "moonwell", "label": "Moonwell", "tile": Vector2i(2, 5), "requires_tree_neighbor": true},
 		{"id": "great_tree", "label": "Great Tree", "tile": Vector2i(14, 1), "requires_tree_overlay": true}
 	],
-	"dwarves": [
-		{"id": "lumber_mill", "label": "Lumber Mill", "tile": Vector2i(0, 5), "requires_tree_neighbor": true}
-	],
 	"dragons": [
 		{"id": "sleeping_dragon", "label": "Sleeping Dragon", "tile": Vector2i(14, 0), "requires_cave_neighbor": true}
-	],
-	"demons": [
-		{"id": "hunting_lodge", "label": "Forbidden Lodge", "tile": Vector2i(16, 0)}
 	]
 }
