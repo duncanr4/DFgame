@@ -328,12 +328,18 @@ func _build_tile_library_from_static_index() -> void:
 		if not _tile_library.has(auto_key):
 			_tile_library[auto_key] = atlas_cell
 
-func _pick_base_tile_key(_grid: Array, _x: int, _y: int, cell: int) -> String:
-	if _is_stone_floor_cell(cell):
-		return "stone"
-	return ""
+func _pick_base_tile_key(grid: Array, x: int, y: int, cell: int) -> String:
+	if not _is_stone_floor_cell(cell):
+		return ""
+	if _should_draw_wall(grid, x, y, cell):
+		return _pick_from_pool("wall")
+	return _floor_tile_for_cell(cell)
 
-func _pick_overlay_tile_key(_grid: Array, _x: int, _y: int, _cell: int) -> String:
+func _pick_overlay_tile_key(grid: Array, x: int, y: int, cell: int) -> String:
+	if not _should_draw_wall(grid, x, y, cell):
+		return ""
+	if _is_doorway_cell(grid, x, y, cell):
+		return "door_open" if _rng.randf() < 0.35 else "door_closed"
 	return ""
 
 func _draw_named_tile(image: Image, key: String, map_cell: Vector2i) -> void:
@@ -399,6 +405,59 @@ func _is_carved(grid: Array, x: int, y: int) -> bool:
 
 func _is_stone_floor_cell(cell: int) -> bool:
 	return cell != CELL_ROCK
+
+
+func _cell_at(grid: Array, x: int, y: int) -> int:
+	if x < 0 or y < 0 or x >= map_size.x or y >= map_size.y:
+		return CELL_ROCK
+	return int(grid[y][x])
+
+func _is_structural_cell(cell: int) -> bool:
+	return cell == CELL_ROOM or cell == CELL_HOUSE or cell == CELL_BUILDING or cell == CELL_KEEP
+
+func _is_corridor_cell(cell: int) -> bool:
+	return cell == CELL_TUNNEL or cell == CELL_HALL or cell == CELL_DISTRICT or cell == CELL_GATE
+
+func _should_draw_wall(grid: Array, x: int, y: int, cell: int) -> bool:
+	if not _is_structural_cell(cell):
+		return false
+	for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var neighbor := _cell_at(grid, x + offset.x, y + offset.y)
+		if neighbor != cell:
+			return true
+	return false
+
+func _is_doorway_cell(grid: Array, x: int, y: int, cell: int) -> bool:
+	if not _is_structural_cell(cell):
+		return false
+	var has_structural_neighbor := false
+	var has_corridor_neighbor := false
+	for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var neighbor := _cell_at(grid, x + offset.x, y + offset.y)
+		if neighbor == cell:
+			has_structural_neighbor = true
+		elif _is_corridor_cell(neighbor):
+			has_corridor_neighbor = true
+	if not has_structural_neighbor or not has_corridor_neighbor:
+		return false
+	return ((x * 37 + y * 19 + int(_rng.seed)) % 7) == 0
+
+func _floor_tile_for_cell(cell: int) -> String:
+	match cell:
+		CELL_KEEP:
+			return _pick_from_pool("floor_polished")
+		CELL_ROOM:
+			return _pick_from_pool("floor_carved")
+		CELL_HOUSE:
+			return _pick_from_pool("floor_damp")
+		CELL_BUILDING:
+			return _pick_from_pool("floor_workshop")
+		CELL_TUNNEL, CELL_HALL:
+			return _pick_from_pool("floor_carved")
+		CELL_DISTRICT, CELL_GATE:
+			return _pick_from_pool("floor_polished")
+		_:
+			return _pick_from_pool("stone")
 
 func _is_void_cell(grid: Array, x: int, y: int) -> bool:
 	if x < 0 or y < 0 or x >= map_size.x or y >= map_size.y:
