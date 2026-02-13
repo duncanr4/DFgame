@@ -301,14 +301,13 @@ func _render_city(grid: Array) -> void:
 	var output_size := Vector2i(map_size.x * tile_size.x, map_size.y * tile_size.y)
 	var image := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0, 0, 0, 0))
-	var keep_bounds := _find_bounds(grid, CELL_KEEP)
 
 	for y in map_size.y:
 		for x in map_size.x:
 			var cell := int(grid[y][x])
 			var base_tile := _pick_base_tile_key(grid, x, y, cell)
 			_draw_named_tile(image, base_tile, Vector2i(x, y))
-			var overlay_tile := _pick_overlay_tile_key(grid, x, y, cell, keep_bounds)
+			var overlay_tile := _pick_overlay_tile_key(grid, x, y, cell)
 			if not overlay_tile.is_empty():
 				_draw_named_tile(image, overlay_tile, Vector2i(x, y))
 
@@ -334,22 +333,7 @@ func _pick_base_tile_key(_grid: Array, _x: int, _y: int, cell: int) -> String:
 		return "stone"
 	return ""
 
-func _pick_overlay_tile_key(grid: Array, x: int, y: int, cell: int, _keep_bounds: Rect2i) -> String:
-	if not _is_stone_floor_cell(cell):
-		return ""
-
-	var north_void := _is_void_cell(grid, x, y - 1)
-	var south_void := _is_void_cell(grid, x, y + 1)
-	var west_void := _is_void_cell(grid, x - 1, y)
-	var east_void := _is_void_cell(grid, x + 1, y)
-
-	if north_void and west_void:
-		return "wall_left_corner"
-	if north_void and east_void:
-		return "wall_right_corner"
-	if north_void or south_void or west_void or east_void:
-		return "wall"
-
+func _pick_overlay_tile_key(_grid: Array, _x: int, _y: int, _cell: int) -> String:
 	return ""
 
 func _draw_named_tile(image: Image, key: String, map_cell: Vector2i) -> void:
@@ -414,7 +398,7 @@ func _is_carved(grid: Array, x: int, y: int) -> bool:
 	return int(grid[y][x]) != CELL_ROCK
 
 func _is_stone_floor_cell(cell: int) -> bool:
-	return cell == CELL_HALL or cell == CELL_TUNNEL or cell == CELL_KEEP
+	return cell != CELL_ROCK
 
 func _is_void_cell(grid: Array, x: int, y: int) -> bool:
 	if x < 0 or y < 0 or x >= map_size.x or y >= map_size.y:
