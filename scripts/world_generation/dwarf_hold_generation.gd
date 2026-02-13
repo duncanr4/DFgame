@@ -329,74 +329,10 @@ func _build_tile_library_from_static_index() -> void:
 		if not _tile_library.has(auto_key):
 			_tile_library[auto_key] = atlas_cell
 
-func _pick_base_tile_key(grid: Array, x: int, y: int, cell: int) -> String:
-	if cell == CELL_ROCK:
-		var north_open := _is_carved(grid, x, y - 1)
-		var south_open := _is_carved(grid, x, y + 1)
-		var west_open := _is_carved(grid, x - 1, y)
-		var east_open := _is_carved(grid, x + 1, y)
-		if north_open and east_open and not south_open and not west_open:
-			return "wall_left_corner"
-		if north_open and west_open and not south_open and not east_open:
-			return "wall_right_corner"
-		if west_open and not east_open:
-			return "wall_inner_left"
-		if east_open and not west_open:
-			return "wall_inner_right"
-		if north_open or south_open or west_open or east_open:
-			return _pick_from_pool("wall")
-		return _pick_from_pool("stone")
+func _pick_base_tile_key(_grid: Array, _x: int, _y: int, _cell: int) -> String:
+	return "stone"
 
-	if cell == CELL_TUNNEL:
-		return _pick_from_pool("floor_carved")
-	if cell == CELL_KEEP:
-		return _pick_from_pool("floor_polished")
-	if cell == CELL_HALL:
-		return _pick_from_pool("floor_polished")
-	if cell == CELL_DISTRICT:
-		return _pick_from_pool("floor_workshop") if _rng.randf() < 0.35 else _pick_from_pool("floor_polished")
-	if cell == CELL_ROOM:
-		return _pick_from_pool("floor_carved") if _rng.randf() < 0.45 else _pick_from_pool("floor_polished")
-	if cell == CELL_HOUSE:
-		return _pick_from_pool("floor_damp") if _rng.randf() < 0.28 else _pick_from_pool("floor_polished")
-	if cell == CELL_BUILDING:
-		return _pick_from_pool("floor_workshop")
-	if cell == CELL_GATE:
-		return _pick_from_pool("floor_carved")
-	return _pick_from_pool("floor_carved")
-
-func _pick_overlay_tile_key(grid: Array, x: int, y: int, cell: int, keep_bounds: Rect2i) -> String:
-	if cell == CELL_GATE and (x <= 1 or x >= map_size.x - 2):
-		return "door_closed" if _rng.randf() < 0.5 else "door_open"
-
-	if cell == CELL_KEEP and keep_bounds.size.x >= 3 and keep_bounds.size.y >= 3:
-		var inner := Rect2i(
-			keep_bounds.position.x + 1,
-			keep_bounds.position.y + 1,
-			maxi(1, keep_bounds.size.x - 2),
-			maxi(1, keep_bounds.size.y - 2)
-		)
-		if inner.has_point(Vector2i(x, y)):
-			return _carpet_tile_for(inner, Vector2i(x, y))
-
-	if cell == CELL_KEEP and _is_focal_tile(x, y, 29):
-		return "throne"
-	if (cell == CELL_HALL or cell == CELL_DISTRICT) and _is_focal_tile(x, y, 19):
-		return "brazier"
-	if cell == CELL_DISTRICT and _is_focal_tile(x, y, 23):
-		return "anvil"
-	if cell == CELL_DISTRICT and _is_focal_tile(x, y, 31):
-		return "crate"
-	if cell == CELL_DISTRICT and _is_focal_tile(x, y, 37):
-		return "barrel"
-	if cell == CELL_HOUSE and _is_focal_tile(x, y, 27):
-		return "crate"
-	if cell == CELL_BUILDING and _is_focal_tile(x, y, 21):
-		return "forge"
-	if cell == CELL_ROOM and _is_focal_tile(x, y, 17):
-		return "door_open"
-	if cell == CELL_TUNNEL and _is_focal_tile(x, y, 53):
-		return "stairs"
+func _pick_overlay_tile_key(_grid: Array, _x: int, _y: int, _cell: int, _keep_bounds: Rect2i) -> String:
 	return ""
 
 func _draw_named_tile(image: Image, key: String, map_cell: Vector2i) -> void:
