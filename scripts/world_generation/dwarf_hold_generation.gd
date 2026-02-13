@@ -421,7 +421,7 @@ func _is_corridor_cell(cell: int) -> bool:
 func _should_draw_wall(grid: Array, x: int, y: int, cell: int) -> bool:
 	if not _is_structural_cell(cell):
 		return false
-	for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+	for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 		var neighbor := _cell_at(grid, x + offset.x, y + offset.y)
 		if neighbor != cell:
 			return true
@@ -432,7 +432,7 @@ func _is_doorway_cell(grid: Array, x: int, y: int, cell: int) -> bool:
 		return false
 	var has_structural_neighbor := false
 	var has_corridor_neighbor := false
-	for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+	for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 		var neighbor := _cell_at(grid, x + offset.x, y + offset.y)
 		if neighbor == cell:
 			has_structural_neighbor = true
