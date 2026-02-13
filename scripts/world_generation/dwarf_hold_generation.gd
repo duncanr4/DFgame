@@ -329,7 +329,9 @@ func _build_tile_library_from_static_index() -> void:
 		if not _tile_library.has(auto_key):
 			_tile_library[auto_key] = atlas_cell
 
-func _pick_base_tile_key(_grid: Array, _x: int, _y: int, _cell: int) -> String:
+func _pick_base_tile_key(_grid: Array, _x: int, _y: int, cell: int) -> String:
+	if cell == CELL_ROCK:
+		return ""
 	return "stone"
 
 func _pick_overlay_tile_key(_grid: Array, _x: int, _y: int, _cell: int, _keep_bounds: Rect2i) -> String:
