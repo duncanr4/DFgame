@@ -136,8 +136,8 @@ func _update_summary(grid: Array, seed_text: String) -> void:
 		"Citadel": 0,
 		"Gates": 0
 	}
-	for row in grid:
-		for tile in row:
+	for row: Array in grid:
+		for tile: int in row:
 			match int(tile):
 				CELL_DISTRICT:
 					tile_counts["Districts"] += 1
@@ -151,8 +151,8 @@ func _update_summary(grid: Array, seed_text: String) -> void:
 					tile_counts["Gates"] += 1
 
 	var summary_lines: Array[String] = []
-	for name in tile_counts.keys():
-		summary_lines.append("%s: %d" % [name, tile_counts[name]])
+	for tile_label: String in tile_counts.keys():
+		summary_lines.append("%s: %d" % [tile_label, tile_counts[tile_label]])
 
 	city_summary.text = "Seed %s\nDistrict count: %d\n%s" % [
 		seed_text,
