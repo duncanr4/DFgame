@@ -330,11 +330,26 @@ func _build_tile_library_from_static_index() -> void:
 			_tile_library[auto_key] = atlas_cell
 
 func _pick_base_tile_key(_grid: Array, _x: int, _y: int, cell: int) -> String:
-	if cell == CELL_ROCK:
-		return ""
-	return "stone"
+	if _is_stone_floor_cell(cell):
+		return "stone"
+	return ""
 
-func _pick_overlay_tile_key(_grid: Array, _x: int, _y: int, _cell: int, _keep_bounds: Rect2i) -> String:
+func _pick_overlay_tile_key(grid: Array, x: int, y: int, cell: int, _keep_bounds: Rect2i) -> String:
+	if not _is_stone_floor_cell(cell):
+		return ""
+
+	var north_void := _is_void_cell(grid, x, y - 1)
+	var south_void := _is_void_cell(grid, x, y + 1)
+	var west_void := _is_void_cell(grid, x - 1, y)
+	var east_void := _is_void_cell(grid, x + 1, y)
+
+	if north_void and west_void:
+		return "wall_left_corner"
+	if north_void and east_void:
+		return "wall_right_corner"
+	if north_void or south_void or west_void or east_void:
+		return "wall"
+
 	return ""
 
 func _draw_named_tile(image: Image, key: String, map_cell: Vector2i) -> void:
@@ -397,6 +412,14 @@ func _is_carved(grid: Array, x: int, y: int) -> bool:
 	if x < 0 or y < 0 or x >= map_size.x or y >= map_size.y:
 		return false
 	return int(grid[y][x]) != CELL_ROCK
+
+func _is_stone_floor_cell(cell: int) -> bool:
+	return cell == CELL_HALL or cell == CELL_TUNNEL or cell == CELL_KEEP
+
+func _is_void_cell(grid: Array, x: int, y: int) -> bool:
+	if x < 0 or y < 0 or x >= map_size.x or y >= map_size.y:
+		return true
+	return not _is_stone_floor_cell(int(grid[y][x]))
 
 func _is_focal_tile(x: int, y: int, stride: int) -> bool:
 	return int(abs((x * 97 + y * 57 + int(_rng.seed)) % stride)) == 0
