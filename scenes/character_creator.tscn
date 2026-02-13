@@ -859,7 +859,7 @@ stretch_mode = 2
 [node name="AttributeReminderTitle" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=873200111]
 layout_mode = 2
 theme = ExtResource("3_0yffs")
-text = "Attribute Reminders"
+text = ""
 
 [node name="AttributeReminderEntries" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=147900310]
 custom_minimum_size = Vector2(250, 170)

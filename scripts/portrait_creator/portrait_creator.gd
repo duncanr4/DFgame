@@ -505,7 +505,7 @@ const FEMALE_NAME_POOL := [
 @export var beard_color: HSlider
 @export var beard_style: HSlider
 
-@export_group(&"Attribute Reminders")
+@export_group(&"Attribute Icons")
 @export var beardless_reminder: Control
 @export var dark_dwarf_reminder: Control
 @export var grey_dwarf_reminder: Control
@@ -583,8 +583,25 @@ func _ready() -> void:
 	_images.resize(3)
 	_colors.resize(3)
 	_setup_beard_style_slider()
+	_configure_attribute_reminder_entries()
 	_refresh_random_name()
 	_update_attribute_reminders()
+
+func _configure_attribute_reminder_entries() -> void:
+	_configure_attribute_reminder_entry(beardless_reminder)
+	_configure_attribute_reminder_entry(dark_dwarf_reminder)
+	_configure_attribute_reminder_entry(grey_dwarf_reminder)
+	_configure_attribute_reminder_entry(banker_reminder)
+
+func _configure_attribute_reminder_entry(entry: Control) -> void:
+	if entry == null:
+		return
+	var icon := entry.get_node_or_null("Icon") as Control
+	var text := entry.get_node_or_null("Text") as Label
+	if text:
+		text.visible = false
+	if icon and text:
+		icon.tooltip_text = text.text
 
 func _setup_gender_button(button: Button) -> void:
 	if !_gender_button_normal_shadow:
