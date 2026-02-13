@@ -14,7 +14,7 @@ const CELL_GATE := 5
 
 # Atlas coordinates are 1-based (row, col) to match design docs.
 const NAMED_TILE_LIBRARY := {
-	"stone": Vector2i(4, 5),
+	"stone": Vector2i(3, 3),
 	"stone_alt": Vector2i(4, 6),
 	"stone_dark": Vector2i(4, 7),
 	"wall": Vector2i(3, 5),
