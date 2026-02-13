@@ -503,6 +503,13 @@ const FEMALE_NAME_POOL := [
 @export var eye_color: HSlider
 @export var hair_color: HSlider
 @export var beard_color: HSlider
+@export var beard_style: HSlider
+
+@export_group(&"Attribute Reminders")
+@export var beardless_reminder: Control
+@export var dark_dwarf_reminder: Control
+@export var grey_dwarf_reminder: Control
+@export var banker_reminder: Control
 
 @export_group(&"Default images")
 @export var portrait: CompressedTexture2D:
@@ -547,10 +554,13 @@ func _exit_tree() -> void:
 
 func _ready() -> void:
 	_rng.randomize()
+	_load_available_beards()
 
 	skin_color.value_changed.connect(_on_color_changed.bind(Images.PORTRAIT))
 	hair_color.value_changed.connect(_on_color_changed.bind(Images.HAIR))
 	beard_color.value_changed.connect(_on_color_changed.bind(Images.BEARD))
+	if beard_style:
+		beard_style.value_changed.connect(_on_beard_style_changed)
 
 	character_name.text_changed.connect(_on_name_changed)
 	if female_button:
@@ -565,12 +575,16 @@ func _ready() -> void:
 		clan_name.add_item(clan)
 	if clan_name:
 		clan_name.item_selected.connect(_on_clan_selected)
+	if profession_choice:
+		profession_choice.item_selected.connect(_on_profession_selected)
 
 	resend_images.connect(_on_resend_images)
 
 	_images.resize(3)
 	_colors.resize(3)
+	_setup_beard_style_slider()
 	_refresh_random_name()
+	_update_attribute_reminders()
 
 func _setup_gender_button(button: Button) -> void:
 	if !_gender_button_normal_shadow:
@@ -667,11 +681,73 @@ func _on_name_changed(_new_text: String) -> void:
 	for curr_idx in AMOUNT_OF_IMAGES:
 		_colors[curr_idx].z = 1
 
+func _load_available_beards() -> void:
+	_available_beards.clear()
 	var dir := DirAccess.open(beard_dir)
+	if dir == null:
+		return
+	var beard_files := PackedStringArray()
 	for curr_file in dir.get_files():
-		if !curr_file.ends_with(".png"):
-			continue
+		if curr_file.ends_with(".png"):
+			beard_files.append(curr_file)
+	beard_files.sort()
+	for curr_file in beard_files:
 		_available_beards.append(load(beard_dir + curr_file))
+
+func _setup_beard_style_slider() -> void:
+	if beard_style == null:
+		return
+	beard_style.min_value = 0
+	beard_style.step = 1
+	beard_style.max_value = _available_beards.size()
+	beard_style.value = 0
+	_on_beard_style_changed(beard_style.value)
+
+func _on_beard_style_changed(value: float) -> void:
+	var style_index := int(round(value))
+	if _available_beards.is_empty():
+		beard = null
+	elif style_index >= _available_beards.size():
+		beard = null
+	else:
+		beard = _available_beards[clampi(style_index, 0, _available_beards.size() - 1)]
+	_update_attribute_reminders()
+
+func _on_profession_selected(_index: int) -> void:
+	_update_attribute_reminders()
+
+func _update_attribute_reminders() -> void:
+	if banker_reminder:
+		banker_reminder.visible = _is_banker_selected()
+	if dark_dwarf_reminder:
+		dark_dwarf_reminder.visible = _is_dark_dwarf_selected()
+	if grey_dwarf_reminder:
+		grey_dwarf_reminder.visible = _is_grey_dwarf_selected()
+	if beardless_reminder:
+		beardless_reminder.visible = _is_beardless_selected()
+
+func _is_banker_selected() -> bool:
+	if profession_choice == null or profession_choice.item_count == 0:
+		return false
+	var selected_index := profession_choice.selected
+	if selected_index < 0:
+		return false
+	return profession_choice.get_item_text(selected_index).to_lower() == "banker"
+
+func _is_dark_dwarf_selected() -> bool:
+	if skin_color == null:
+		return false
+	return is_equal_approx(skin_color.value, skin_color.max_value)
+
+func _is_grey_dwarf_selected() -> bool:
+	if skin_color == null:
+		return false
+	return is_equal_approx(skin_color.value, skin_color.min_value)
+
+func _is_beardless_selected() -> bool:
+	if beard_style == null:
+		return false
+	return is_equal_approx(beard_style.value, beard_style.max_value)
 
 func _on_resend_images() -> void:
 	_images[Images.PORTRAIT] = portrait
@@ -685,6 +761,8 @@ func _on_color_changed(value: float, type: Images) -> void:
 	_colors[type].x = value
 	var shader: ShaderMaterial = target_render.material
 	shader.set_shader_parameter(&"colors", _colors)
+	if type == Images.PORTRAIT:
+		_update_attribute_reminders()
 
 func swap_color(type: Images) -> void:
 	_selected = type
@@ -711,5 +789,8 @@ func _on_randomize_button_pressed() -> void:
 		skin_color.value = _rng.randf_range(skin_color.min_value, skin_color.max_value)
 	if eye_color:
 		eye_color.value = _rng.randf_range(eye_color.min_value, eye_color.max_value)
+	if beard_style:
+		beard_style.value = _rng.randi_range(int(beard_style.min_value), int(beard_style.max_value))
 
 	character_name.text = _generate_full_name()
+	_update_attribute_reminders()
