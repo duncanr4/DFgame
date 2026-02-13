@@ -879,6 +879,8 @@ const TREE_BASE_BIOMES: Array[String] = [
 	BIOME_GRASSLAND,
 	BIOME_TUNDRA
 ]
+const TREE_VARIANT_FOREST_LONE := "forest_lone"
+const TREE_VARIANT_TUNDRA_LONE := "tundra_lone"
 
 const CULTURAL_GROUP_PROFILES: Array[Dictionary] = [
 	{
@@ -1904,6 +1906,7 @@ func _generate_map() -> void:
 	_apply_overlays_and_metadata(
 		base_biome_map,
 		biome_map,
+		tree_map,
 		highland_map,
 		height_map,
 		temperature_map,
@@ -1941,6 +1944,7 @@ func _apply_base_tiles(base_biome_map: Dictionary) -> void:
 func _apply_overlays_and_metadata(
 	base_biome_map: Dictionary,
 	biome_map: Dictionary,
+	tree_map: Dictionary,
 	highland_map: Dictionary,
 	height_map: Dictionary,
 	temperature_map: Dictionary,
@@ -1950,7 +1954,8 @@ func _apply_overlays_and_metadata(
 	var coast_proximity_map := _build_proximity_map(base_biome_map, [BIOME_WATER], 8)
 	var marsh_proximity_map := _build_proximity_map(base_biome_map, [BIOME_MARSH], 7)
 	var desert_proximity_map := _build_proximity_map(base_biome_map, [BIOME_DESERT, BIOME_BADLANDS], 8)
-	var forest_proximity_map := _build_proximity_map(base_biome_map, [BIOME_FOREST, BIOME_JUNGLE], 6)
+	var tree_coverage_map := _build_tree_coverage_biome_map(base_biome_map, tree_map)
+	var forest_proximity_map := _build_proximity_map(tree_coverage_map, [BIOME_FOREST, BIOME_JUNGLE], 6)
 	var context_size := maxi(map_size.x, map_size.y)
 	var region_names := _build_region_name_map(biome_map, name_rng, context_size)
 	for y in range(map_size.y):
@@ -2454,92 +2459,92 @@ func _apply_tree_overlays(
 ) -> Dictionary:
 	var tree_map: Dictionary = {}
 	var next_map := biome_map.duplicate()
-	var tree_source_map := biome_map
-	var has_existing_trees := false
-	var moisture_threshold := forest_threshold * 0.6
-	var vegetation_threshold := 0.35
-	var spread_chance_floor := 0.12
-	var spread_chance_weight := 0.78
-	var climate_weight := 0.65
-	var vegetation_weight := 0.35
-	var elevation_falloff := 1.8
+	var tree_source_map := biome_map.duplicate()
+	var tree_density_map: Dictionary = {}
+	var density_threshold := maxf(0.2, forest_threshold * 0.55)
 	for coord: Vector2i in biome_map.keys():
 		if height_map.get(coord, 0.0) > mountain_level:
 			continue
-		if TREE_BIOMES.has(biome_map[coord]):
-			has_existing_trees = true
-			break
-	if not has_existing_trees:
-		var best_seeds: Array[Vector2i] = []
-		var best_scores: Array[float] = []
-		for coord: Vector2i in biome_map.keys():
-			if height_map.get(coord, 0.0) > mountain_level:
+		if not TREE_BASE_BIOMES.has(biome_map[coord]):
+			continue
+		var moisture: float = moisture_map.get(coord, 0.0)
+		var vegetation: float = vegetation_map.get(coord, 0.0)
+		var elevation: float = height_map.get(coord, 0.0)
+		var elevation_relative := clampf(inverse_lerp(water_level, 1.0, elevation), 0.0, 1.0)
+		var elevation_center := 0.34
+		var elevation_range := 0.28
+		var elevation_preference := clampf(1.0 - absf(elevation_relative - elevation_center) / elevation_range, 0.0, 1.0)
+		var nx := float(coord.x) / maxf(1.0, float(map_size.x - 1))
+		var ny := float(coord.y) / maxf(1.0, float(map_size.y - 1))
+		var large_scale_noise := _to_normalized(_vegetation_noise.get_noise_2d(coord.x, coord.y))
+		var detail_noise := _value_noise(nx * 28.0 + 1.7, ny * 28.0 + 7.3, map_seed + 0x3c6ef372)
+		var density := large_scale_noise * 0.6 + detail_noise * 0.4
+		density *= (0.75 + elevation_preference * 0.65)
+		density *= (0.55 + moisture * 0.9)
+		density += moisture * 0.2 + vegetation * 0.1
+		tree_density_map[coord] = clampf(density, 0.0, 1.0)
+
+	for coord: Vector2i in tree_density_map.keys():
+		var density: float = tree_density_map.get(coord, 0.0)
+		if density >= density_threshold:
+			pass
+		elif density <= density_threshold - 0.18:
+			continue
+		else:
+			var soft_chance := clampf((density - (density_threshold - 0.18)) / 0.18, 0.0, 1.0)
+			if rng.randf() > soft_chance:
 				continue
-			if not TREE_BASE_BIOMES.has(biome_map[coord]):
+		var seed_temperature: float = temperature_map.get(coord, 0.0)
+		var seed_moisture: float = moisture_map.get(coord, 0.0)
+		var seed_biome := _tree_overlay_biome(seed_temperature, seed_moisture)
+		next_map[coord] = seed_biome
+		tree_map[coord] = seed_biome
+		tree_source_map[coord] = seed_biome
+
+	for _spread_pass in range(3):
+		var grown_this_pass := false
+		for coord: Vector2i in tree_density_map.keys():
+			if tree_map.has(coord):
 				continue
-			var moisture: float = moisture_map.get(coord, 0.0)
-			if moisture < moisture_threshold:
+			var density: float = tree_density_map.get(coord, 0.0)
+			if density <= 0.12:
 				continue
-			var vegetation: float = vegetation_map.get(coord, 0.0)
-			if vegetation < vegetation_threshold:
+			var neighbor_trees := _count_tree_neighbors_in_map(coord, tree_source_map)
+			if neighbor_trees <= 0:
+				continue
+			var cluster_boost := minf(0.36, float(neighbor_trees) * 0.07)
+			var spread_chance := clampf(0.08 + density * 0.58 + cluster_boost, 0.0, 0.96)
+			if rng.randf() > spread_chance:
 				continue
 			var temperature: float = temperature_map.get(coord, 0.0)
-			var climate := clampf(moisture * climate_weight + temperature * (1.0 - climate_weight), 0.0, 1.0)
-			var elevation: float = height_map.get(coord, 0.0)
-			var elevation_limit := clampf(1.0 - maxf(0.0, elevation - hill_level) * elevation_falloff, 0.0, 1.0)
-			var suitability := clampf(climate * climate_weight + vegetation * vegetation_weight, 0.0, 1.0) * elevation_limit
-			var seed_score := suitability + rng.randf_range(0.0, 0.2)
-			if best_scores.size() < 6:
-				best_scores.append(seed_score)
-				best_seeds.append(coord)
-			else:
-				var lowest_index := 0
-				var lowest_score := best_scores[0]
-				for index in range(1, best_scores.size()):
-					if best_scores[index] < lowest_score:
-						lowest_score = best_scores[index]
-						lowest_index = index
-				if seed_score > lowest_score:
-					best_scores[lowest_index] = seed_score
-					best_seeds[lowest_index] = coord
-		if not best_seeds.is_empty():
-			tree_source_map = biome_map.duplicate()
-			for seed_coord: Vector2i in best_seeds:
-				var seed_moisture: float = moisture_map.get(seed_coord, 0.0)
-				var seed_temperature: float = temperature_map.get(seed_coord, 0.0)
-				var seeded_biome := _tree_overlay_biome(seed_temperature, seed_moisture)
-				tree_source_map[seed_coord] = seeded_biome
-				next_map[seed_coord] = seeded_biome
-				tree_map[seed_coord] = seeded_biome
-	for _spread_pass in range(2):
-		for coord: Vector2i in biome_map.keys():
-			if height_map.get(coord, 0.0) > mountain_level:
-				continue
-			if not TREE_BASE_BIOMES.has(biome_map[coord]):
-				continue
 			var moisture: float = moisture_map.get(coord, 0.0)
-			if moisture < moisture_threshold:
-				continue
-			var vegetation: float = vegetation_map.get(coord, 0.0)
-			if vegetation < vegetation_threshold:
-				continue
-			if _has_tree_neighbor(coord, tree_source_map):
-				var temperature: float = temperature_map.get(coord, 0.0)
-				var climate := clampf(moisture * climate_weight + temperature * (1.0 - climate_weight), 0.0, 1.0)
-				var elevation: float = height_map.get(coord, 0.0)
-				var elevation_limit := clampf(1.0 - maxf(0.0, elevation - hill_level) * elevation_falloff, 0.0, 1.0)
-				var suitability := clampf(climate * climate_weight + vegetation * vegetation_weight, 0.0, 1.0) * elevation_limit
-				var spread_chance := spread_chance_floor + suitability * spread_chance_weight
-				if rng.randf() > spread_chance:
-					continue
-				var tree_biome := _tree_overlay_biome(temperature, moisture)
-				next_map[coord] = tree_biome
-				tree_map[coord] = tree_biome
+			var tree_biome := _tree_overlay_biome(temperature, moisture)
+			next_map[coord] = tree_biome
+			tree_map[coord] = tree_biome
+			grown_this_pass = true
+		if not grown_this_pass:
+			break
 		tree_source_map = next_map.duplicate()
+
+	var cleaned_tree_map := tree_map.duplicate()
+	for coord: Vector2i in tree_map.keys():
+		if _is_adjacent_to_biomes(coord, biome_map, [BIOME_DESERT, BIOME_BADLANDS]):
+			if rng.randf() < 0.42:
+				cleaned_tree_map.erase(coord)
+				next_map[coord] = biome_map.get(coord, BIOME_GRASSLAND)
+	for coord: Vector2i in cleaned_tree_map.keys():
+		var tree_neighbors := _count_tree_neighbors_in_map(coord, cleaned_tree_map)
+		if tree_neighbors > 0:
+			continue
+		var base_biome: String = biome_map.get(coord, BIOME_GRASSLAND)
+		if base_biome == BIOME_TUNDRA:
+			cleaned_tree_map[coord] = TREE_VARIANT_TUNDRA_LONE
+		elif base_biome == BIOME_GRASSLAND:
+			cleaned_tree_map[coord] = TREE_VARIANT_FOREST_LONE
 	biome_map.clear()
 	for coord: Vector2i in next_map.keys():
 		biome_map[coord] = next_map[coord]
-	return tree_map
+	return cleaned_tree_map
 
 
 func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void:
@@ -2564,6 +2569,8 @@ func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void
 		var tile_coords := TREE_TILE
 		if tree_biome == BIOME_JUNGLE:
 			tile_coords = JUNGLE_TREE_TILE
+		elif tree_biome == TREE_VARIANT_FOREST_LONE or tree_biome == TREE_VARIANT_TUNDRA_LONE:
+			tile_coords = TREE_LONE_TILE
 		elif base_biome == BIOME_TUNDRA:
 			tile_coords = TREE_SNOW_TILE
 		tree_layer.set_cell(coord, _atlas_source_id, tile_coords)
@@ -2584,6 +2591,55 @@ func _has_tree_neighbor(coord: Vector2i, biome_map: Dictionary) -> bool:
 		if TREE_BIOMES.has(biome_map.get(neighbor, "")):
 			return true
 	return false
+
+
+func _count_tree_neighbors_in_map(coord: Vector2i, source_map: Dictionary) -> int:
+	var tree_neighbors := 0
+	for offset: Vector2i in [
+		Vector2i.LEFT,
+		Vector2i.RIGHT,
+		Vector2i.UP,
+		Vector2i.DOWN,
+		Vector2i(-1, -1),
+		Vector2i(1, -1),
+		Vector2i(-1, 1),
+		Vector2i(1, 1)
+	]:
+		var neighbor := coord + offset
+		var biome_value := String(source_map.get(neighbor, ""))
+		if TREE_BIOMES.has(biome_value):
+			tree_neighbors += 1
+		elif biome_value == TREE_VARIANT_FOREST_LONE or biome_value == TREE_VARIANT_TUNDRA_LONE:
+			tree_neighbors += 1
+	return tree_neighbors
+
+
+func _is_adjacent_to_biomes(coord: Vector2i, source_map: Dictionary, target_biomes: Array[String]) -> bool:
+	for offset: Vector2i in [
+		Vector2i.LEFT,
+		Vector2i.RIGHT,
+		Vector2i.UP,
+		Vector2i.DOWN,
+		Vector2i(-1, -1),
+		Vector2i(1, -1),
+		Vector2i(-1, 1),
+		Vector2i(1, 1)
+	]:
+		var neighbor := coord + offset
+		if target_biomes.has(String(source_map.get(neighbor, ""))):
+			return true
+	return false
+
+
+func _build_tree_coverage_biome_map(base_biome_map: Dictionary, tree_map: Dictionary) -> Dictionary:
+	var coverage_map := base_biome_map.duplicate()
+	for coord: Vector2i in tree_map.keys():
+		var tree_biome := String(tree_map.get(coord, BIOME_FOREST))
+		if tree_biome == BIOME_JUNGLE:
+			coverage_map[coord] = BIOME_JUNGLE
+		else:
+			coverage_map[coord] = BIOME_FOREST
+	return coverage_map
 
 
 func _is_marsh(coord: Vector2i, height: float, moisture: float, height_map: Dictionary) -> bool:
