@@ -514,17 +514,17 @@ const FEMALE_NAME_POOL := [
 @export_group(&"Default images")
 @export var portrait: CompressedTexture2D:
 	set(value):
-		portrait = value
+		field = value
 		resend_images.emit()
 
 @export var beard: CompressedTexture2D:
 	set(value):
-		beard = value
+		field = value
 		resend_images.emit()
 
 @export var hair: CompressedTexture2D:
 	set(value):
-		hair = value
+		field = value
 		resend_images.emit()
 
 var _images: Array[CompressedTexture2D]
