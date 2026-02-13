@@ -601,7 +601,18 @@ func _configure_attribute_reminder_entry(entry: Control) -> void:
 	if text:
 		text.visible = false
 	if icon and text:
+		icon.mouse_filter = Control.MOUSE_FILTER_STOP
 		icon.tooltip_text = text.text
+		icon.mouse_entered.connect(_on_attribute_icon_hovered.bind(text))
+		icon.mouse_exited.connect(_on_attribute_icon_unhovered.bind(text))
+
+func _on_attribute_icon_hovered(text: Label) -> void:
+	if text:
+		text.visible = true
+
+func _on_attribute_icon_unhovered(text: Label) -> void:
+	if text:
+		text.visible = false
 
 func _setup_gender_button(button: Button) -> void:
 	if !_gender_button_normal_shadow:
