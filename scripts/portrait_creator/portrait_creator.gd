@@ -602,6 +602,8 @@ func _configure_attribute_reminder_entry(entry: Control) -> void:
 		return
 	var icon := entry.get_node_or_null("Icon") as Control
 	var text := entry.get_node_or_null("Text") as Label
+	if icon:
+		entry.move_child(icon, 0)
 	if text:
 		text.visible = false
 	if icon and text:
