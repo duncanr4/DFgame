@@ -510,6 +510,8 @@ const FEMALE_NAME_POOL := [
 @export var dark_dwarf_reminder: Control
 @export var grey_dwarf_reminder: Control
 @export var banker_reminder: Control
+@export var attribute_reminder_title: Label
+@export var attribute_reminder_text: Label
 
 @export_group(&"Default images")
 @export var portrait: CompressedTexture2D:
@@ -543,6 +545,8 @@ const GENDER_BUTTON_BRIGHTNESS_NORMAL := 0.85
 const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
 const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
+
+var _hovered_attribute_icon: Control
 
 func _enter_tree() -> void:
 	instance = self
@@ -601,18 +605,41 @@ func _configure_attribute_reminder_entry(entry: Control) -> void:
 	if text:
 		text.visible = false
 	if icon and text:
+		var tooltip_text := text.text.strip_edges()
+		var title := tooltip_text.get_slice(":", 0).strip_edges()
+		var body := tooltip_text.substr(title.length()).trim_prefix(":").strip_edges()
+		icon.set_meta("attribute_title", title)
+		icon.set_meta("attribute_description", body)
 		icon.mouse_filter = Control.MOUSE_FILTER_STOP
-		icon.tooltip_text = text.text
-		icon.mouse_entered.connect(_on_attribute_icon_hovered.bind(text))
-		icon.mouse_exited.connect(_on_attribute_icon_unhovered.bind(text))
+		icon.tooltip_text = ""
+		icon.mouse_entered.connect(_on_attribute_icon_hovered.bind(icon))
+		icon.mouse_exited.connect(_on_attribute_icon_unhovered.bind(icon))
 
-func _on_attribute_icon_hovered(text: Label) -> void:
-	if text:
-		text.visible = true
+	_clear_attribute_description()
 
-func _on_attribute_icon_unhovered(text: Label) -> void:
-	if text:
-		text.visible = false
+func _on_attribute_icon_hovered(icon: Control) -> void:
+	if icon == null:
+		return
+	_hovered_attribute_icon = icon
+	var title := String(icon.get_meta("attribute_title", "")).strip_edges()
+	var description := String(icon.get_meta("attribute_description", "")).strip_edges()
+	if attribute_reminder_title:
+		attribute_reminder_title.text = title
+	if attribute_reminder_text:
+		attribute_reminder_text.text = description
+		attribute_reminder_text.visible = not description.is_empty()
+
+func _on_attribute_icon_unhovered(icon: Control) -> void:
+	if icon == _hovered_attribute_icon:
+		_hovered_attribute_icon = null
+		_clear_attribute_description()
+
+func _clear_attribute_description() -> void:
+	if attribute_reminder_title:
+		attribute_reminder_title.text = ""
+	if attribute_reminder_text:
+		attribute_reminder_text.text = ""
+		attribute_reminder_text.visible = false
 
 func _setup_gender_button(button: Button) -> void:
 	if !_gender_button_normal_shadow:
@@ -753,6 +780,10 @@ func _update_attribute_reminders() -> void:
 		grey_dwarf_reminder.visible = _is_grey_dwarf_selected()
 	if beardless_reminder:
 		beardless_reminder.visible = _is_beardless_selected()
+
+	if _hovered_attribute_icon and not _hovered_attribute_icon.is_visible_in_tree():
+		_hovered_attribute_icon = null
+		_clear_attribute_description()
 
 func _is_banker_selected() -> bool:
 	if profession_choice == null or profession_choice.item_count == 0:
