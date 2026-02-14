@@ -31,7 +31,7 @@ shader = ExtResource("2_0yffs")
 shader_parameter/images = Array[CompressedTexture2D]([ExtResource("2_6txqo"), ExtResource("3_ucp7b"), ExtResource("4_oy0w6")])
 shader_parameter/colors = Array[Vector3]([Vector3(0.07, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
 
-[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "beard_color", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder")]
+[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "beard_color", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_reminder_title", "attribute_reminder_text")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -59,6 +59,8 @@ beardless_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBox
 dark_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/DarkDwarfEntry")
 grey_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/GreyDwarfEntry")
 banker_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BankerEntry")
+attribute_reminder_title = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderTitle")
+attribute_reminder_text = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderBody")
 portrait = ExtResource("2_6txqo")
 beard = ExtResource("3_ucp7b")
 hair = ExtResource("4_oy0w6")
@@ -861,6 +863,16 @@ layout_mode = 2
 theme = ExtResource("3_0yffs")
 text = ""
 
+[node name="AttributeReminderBody" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=173200112]
+custom_minimum_size = Vector2(250, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 1
+vertical_alignment = 1
+text = ""
+visible = false
+
 [node name="AttributeReminderEntries" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=147900310]
 custom_minimum_size = Vector2(250, 170)
 layout_mode = 2
@@ -880,6 +892,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 autowrap_mode = 3
 text = "Beardless: You are the shame of your clan and the disgrace of your holdfast. Without a beard a dwarf is nothing, consider this path to be one that will lead to scorn and ridicule among your peers."
+visible = false
 
 [node name="DarkDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries" unique_id=147900314]
 layout_mode = 2
@@ -895,6 +908,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 autowrap_mode = 3
 text = "Dark Dwarf Heritage: Your soot colored skin indicates you hail from the ash covered lands of Dun Mortis. Your kind are known by your paler skinned cousins as the Dark Dwarves, a race cast away from the light of the All-father into the refuge bin of Stonebeard's furnace. You are hated by your kin as an oathbreaker by virtue of your birthright and if you attempt to enter into their holds will likely be killed on sight."
+visible = false
 
 [node name="GreyDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries" unique_id=147900317]
 layout_mode = 2
@@ -910,6 +924,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 autowrap_mode = 3
 text = "Grey Dwarf Heritage: Your skin is the colour of ash and your heart is that of steel. Known as a Dwagar you may not be as despised as the Dark Dwarves are, yet the kinship you have with the rest of Dwarfdom is strained. Your ancestors were followers of the Lawgiver and Forgebearers of the Forgotten Era who preached a strain of total dwarven separatism and supremacy that led your people to form holds far away from your homeland. You may be welcomed into any dwarf hold but not well liked and the races you hunt as slaves will attack you on sight."
+visible = false
 
 [node name="BankerEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries" unique_id=147900320]
 layout_mode = 2
@@ -925,6 +940,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 autowrap_mode = 3
 text = "Banker: Among men you would be in a respected profession, among dwarves you are the opposite, expect your increased income to be met with glaring judgments and disdain from your peers who think your livelihood to be undwarfsmen like."
+visible = false
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=236006476]
 layout_mode = 2
