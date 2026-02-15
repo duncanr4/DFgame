@@ -2478,7 +2478,7 @@ func _apply_tree_overlays(
 		var ny := float(coord.y) / maxf(1.0, float(map_size.y - 1))
 		var large_scale_noise := _to_normalized(_vegetation_noise.get_noise_2d(coord.x, coord.y))
 		var detail_noise := _value_noise(nx * 28.0 + 1.7, ny * 28.0 + 7.3, map_seed + 0x3c6ef372)
-		var density := large_scale_noise * 0.6 + detail_noise * 0.4
+		var density := (large_scale_noise * 0.6 + detail_noise * 0.4) * 0.5
 		density *= (0.75 + elevation_preference * 0.65)
 		density *= (0.55 + moisture * 0.9)
 		density += moisture * 0.2 + vegetation * 0.1
