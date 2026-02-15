@@ -515,19 +515,29 @@ const FEMALE_NAME_POOL := [
 
 @export_group(&"Default images")
 @export var portrait: CompressedTexture2D:
+	get:
+		return _portrait
 	set(value):
-		field = value
+		_portrait = value
 		resend_images.emit()
 
 @export var beard: CompressedTexture2D:
+	get:
+		return _beard
 	set(value):
-		field = value
+		_beard = value
 		resend_images.emit()
 
 @export var hair: CompressedTexture2D:
+	get:
+		return _hair
 	set(value):
-		field = value
+		_hair = value
 		resend_images.emit()
+
+var _portrait: CompressedTexture2D
+var _beard: CompressedTexture2D
+var _hair: CompressedTexture2D
 
 var _images: Array[CompressedTexture2D]
 var _colors: Array[Vector3]
@@ -607,9 +617,9 @@ func _configure_attribute_reminder_entry(entry: Control) -> void:
 	if text:
 		text.visible = false
 	if icon and text:
-		var tooltip_text := text.text.strip_edges()
-		var title := tooltip_text.get_slice(":", 0).strip_edges()
-		var body := tooltip_text.substr(title.length()).trim_prefix(":").strip_edges()
+		var description_text := text.text.strip_edges()
+		var title := description_text.get_slice(":", 0).strip_edges()
+		var body := description_text.substr(title.length()).trim_prefix(":").strip_edges()
 		icon.set_meta("attribute_title", title)
 		icon.set_meta("attribute_description", body)
 		icon.mouse_filter = Control.MOUSE_FILTER_STOP
