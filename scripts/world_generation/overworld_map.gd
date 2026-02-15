@@ -36,6 +36,7 @@ extends Node2D
 @export_range(0.0, 0.4, 0.01) var desert_moisture_bias: float = 0.08
 @export_range(0.0, 1.0, 0.01) var badlands_threshold: float = 0.4
 @export_range(0.0, 1.0, 0.01) var forest_threshold: float = 0.6
+@export_range(0.2, 0.95, 0.01) var forest_max_coverage: float = 0.68
 @export_range(0.0, 1.0, 0.01) var jungle_threshold: float = 0.75
 @export_range(0.0, 1.0, 0.01) var marsh_threshold: float = 0.68
 @export_range(0.0, 1.0, 0.01) var hot_threshold: float = 0.7
@@ -2541,6 +2542,25 @@ func _apply_tree_overlays(
 			cleaned_tree_map[coord] = TREE_VARIANT_TUNDRA_LONE
 		elif base_biome == BIOME_GRASSLAND:
 			cleaned_tree_map[coord] = TREE_VARIANT_FOREST_LONE
+
+	var max_tree_tiles := int(ceil(float(tree_density_map.size()) * clampf(forest_max_coverage, 0.2, 0.95)))
+	if cleaned_tree_map.size() > max_tree_tiles:
+		var trim_entries: Array[Dictionary] = []
+		for coord: Vector2i in cleaned_tree_map.keys():
+			var local_density := float(tree_density_map.get(coord, 0.0))
+			var local_neighbors := float(_count_tree_neighbors_in_map(coord, cleaned_tree_map))
+			trim_entries.append({
+				"coord": coord,
+				"score": local_density + local_neighbors * 0.035
+			})
+		trim_entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return float(a.get("score", 0.0)) < float(b.get("score", 0.0))
+		)
+		var remove_total := cleaned_tree_map.size() - max_tree_tiles
+		for i in range(mini(remove_total, trim_entries.size())):
+			var coord_to_remove: Vector2i = trim_entries[i].get("coord", Vector2i.ZERO)
+			cleaned_tree_map.erase(coord_to_remove)
+			next_map[coord_to_remove] = biome_map.get(coord_to_remove, BIOME_GRASSLAND)
 	biome_map.clear()
 	for coord: Vector2i in next_map.keys():
 		biome_map[coord] = next_map[coord]
