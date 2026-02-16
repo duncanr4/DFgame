@@ -42,463 +42,93 @@ extends Node2D
 @export_range(0.0, 1.0, 0.01) var hot_threshold: float = 0.7
 @export_range(0.0, 1.0, 0.01) var warm_threshold: float = 0.55
 
-const MASK_TWIN_LEFT_CENTER := Vector2(0.32, 0.48)
-const MASK_TWIN_RIGHT_CENTER := Vector2(0.68, 0.52)
-const MASK_TWIN_RADIUS := Vector2(0.55, 0.33)
-const MASK_SADDLE_SCALE := 2.2
-
-const ATLAS_TEXTURE := "res://resources/images/overworld/atlas/overworld.png"
-const SAND_TILE := Vector2i(0, 0)
-const GRASS_TILE := Vector2i(1, 0)
-const BADLANDS_TILE := Vector2i(2, 1)
-const MINE_TILE := Vector2i(3, 1)
-const MARSH_TILE := Vector2i(2, 4)
-const SNOW_TILE := Vector2i(3, 2)
-const TREE_TILE := Vector2i(0, 1)
-const TREE_LONE_TILE := Vector2i(6, 5)
-const JUNGLE_TREE_TILE := Vector2i(0, 3)
-const CUT_TREES_TILE := Vector2i(1, 5)
-const AMBIENT_LUMBER_MILL_TILE := Vector2i(0, 5)
-const WATER_TILE := Vector2i(4, 1)
-const MOUNTAIN_TILE := Vector2i(3, 0)
-const MOUNTAIN_TOP_A_TILE := Vector2i(4, 0)
-const MOUNTAIN_TOP_B_TILE := Vector2i(5, 0)
-const MOUNTAIN_BOTTOM_A_TILE := Vector2i(7, 0)
-const MOUNTAIN_BOTTOM_B_TILE := Vector2i(8, 0)
-const DAM_TILE := Vector2i(8, 1)
-const MOUNTAIN_PEAK_TILE := Vector2i(10, 0)
-const STONE_TILE := Vector2i(2, 0)
-const DWARFHOLD_TILE := Vector2i(9, 2)
-const ABANDONED_DWARFHOLD_TILE := Vector2i(8, 2)
-const GREAT_DWARFHOLD_TILE := Vector2i(6, 0)
-const DARK_DWARFHOLD_TILE := Vector2i(17, 0)
-const HILLHOLD_TILE := Vector2i(7, 4)
-const CAVE_TILE := Vector2i(5, 1)
-const TOWER_TILE := Vector2i(6, 1)
-const EVIL_WIZARDS_TOWER_TILE := Vector2i(3, 3)
-const WOOD_ELF_GROVES_TILE := Vector2i(4, 2)
-const WOOD_ELF_GROVES_LARGE_TILE := Vector2i(5, 2)
-const WOOD_ELF_GROVES_GRAND_TILE := Vector2i(6, 2)
-const HILLS_TILE := Vector2i(1, 3)
-const HILLS_BADLANDS_TILE := Vector2i(1, 4)
-const HILLS_VARIANT_A_TILE := Vector2i(4, 4)
-const HILLS_VARIANT_B_TILE := Vector2i(2, 5)
-const HILLS_SNOW_TILE := Vector2i(2, 3)
-const TOWN_TILE := Vector2i(1, 2)
-const PORT_TOWN_TILE := Vector2i(5, 4)
-const CASTLE_TILE := Vector2i(6, 4)
-const ROADSIDE_TAVERN_TILE := Vector2i(12, 1)
-const HAMLET_TILE := Vector2i(16, 1)
-const TREE_SNOW_TILE := Vector2i(1, 1)
-const ACTIVE_VOLCANO_TILE := Vector2i(12, 2)
-const VOLCANO_TILE := Vector2i(13, 2)
-const LAVA_TILE := Vector2i(14, 2)
-const OASIS_TILE := Vector2i(12, 0)
-const HAMLET_SNOW_TILE := Vector2i(13, 0)
-const AMBIENT_SLEEPING_DRAGON_TILE := Vector2i(14, 0)
-const AMBIENT_HUNTING_LODGE_TILE := Vector2i(16, 0)
-const AMBIENT_HOMESTEAD_TILE := Vector2i(13, 1)
-const AMBIENT_MOONWELL_TILE := Vector2i(2, 5)
-const AMBIENT_FARM_TILE := Vector2i(15, 1)
-const FARM_CROPS_TILE := Vector2i(15, 0)
-const AMBIENT_FARM_VARIANT_TILE := Vector2i(15, 0)
-const AMBIENT_GREAT_TREE_TILE := Vector2i(14, 1)
-const AMBIENT_GREAT_TREE_ALT_TILE := Vector2i(14, 2)
-const LIZARDMEN_CITY_TILE := Vector2i(11, 2)
-const SAINT_SHRINE_TILE := Vector2i(11, 1)
-const MONASTERY_TILE := Vector2i(2, 2)
-const ORC_CAMP_TILE := Vector2i(11, 3)
-const GNOLL_CAMP_TILE := Vector2i(1, 5)
-const TROLL_CAMP_TILE := Vector2i(1, 5)
-const OGRE_CAMP_TILE := Vector2i(1, 5)
-const BANDIT_CAMP_TILE := Vector2i(1, 5)
-const TRAVELERS_CAMP_TILE := Vector2i(1, 5)
-const DUNGEON_TILE := Vector2i(7, 2)
-const CENTAUR_ENCAMPMENT_TILE := Vector2i(10, 2)
-const BIOME_WATER := "water"
-const BIOME_MOUNTAIN := "mountain"
-const BIOME_HILLS := "hills"
-const BIOME_MARSH := "marsh"
-const BIOME_TUNDRA := "tundra"
-const BIOME_DESERT := "desert"
-const BIOME_BADLANDS := "badlands"
-const BIOME_FOREST := "forest"
-const BIOME_JUNGLE := "jungle"
-const BIOME_GRASSLAND := "grassland"
+const TILE_ATLAS_DEFS := preload("res://scripts/world_generation/tile_atlas_defs.gd")
+const TERRAIN_GENERATOR := preload("res://scripts/world_generation/terrain_generator.gd")
+const BIOME_CLASSIFIER := preload("res://scripts/world_generation/biome_classifier.gd")
+const STRUCTURE_PLACER := preload("res://scripts/world_generation/structure_placer.gd")
+const WORLD_NAMING := preload("res://scripts/world_generation/world_naming.gd")
 const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
 const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
 const CULTURAL_INFLUENCE := preload("res://scripts/world_generation/cultural_influence.gd")
 
-const FOREST_NAME_PREFIXES: Array[String] = [
-	"Verdant",
-	"Whispering",
-	"Emerald",
-	"Silver",
-	"Shadow",
-	"Golden",
-	"Moonlit",
-	"Ancient",
-	"Wild",
-	"Sunset"
-]
-const FOREST_NAME_SUFFIXES: Array[String] = [
-	"Groves",
-	"Woods",
-	"Thicket",
-	"Wilds",
-	"Canopy",
-	"Boughs",
-	"Hollows",
-	"Glade",
-	"Expanse",
-	"Reserve"
-]
-const FOREST_NAME_MOTIFS: Array[String] = [
-	"Echoes",
-	"Mists",
-	"Cicadas",
-	"Fables",
-	"Starlight",
-	"Owls",
-	"Whispers",
-	"Lanterns",
-	"Spirits",
-	"Willows"
-]
-
-const MOUNTAIN_NAME_PREFIXES: Array[String] = [
-	"Stone",
-	"Iron",
-	"Storm",
-	"Thunder",
-	"Frost",
-	"Dragon",
-	"Obsidian",
-	"Moon",
-	"Sunspire",
-	"Titan"
-]
-const MOUNTAIN_NAME_SUFFIXES: Array[String] = [
-	"Peaks",
-	"Range",
-	"Highlands",
-	"Crown",
-	"Mountains",
-	"Spines",
-	"Escarpment",
-	"Ridge",
-	"Tor",
-	"Bastions"
-]
-const MOUNTAIN_NAME_MOTIFS: Array[String] = [
-	"Storms",
-	"Giants",
-	"Dawn",
-	"Ash",
-	"Echoes",
-	"Legends",
-	"Stars",
-	"Anvils",
-	"Dragons",
-	"Auroras"
-]
-
-const DESERT_NAME_DESCRIPTORS: Array[String] = [
-	"Shifting",
-	"Burning",
-	"Golden",
-	"Silent",
-	"Glass",
-	"Crimson",
-	"Howling",
-	"Endless",
-	"Scoured",
-	"Sunken"
-]
-const DESERT_NAME_NOUNS: Array[String] = [
-	"Dunes",
-	"Waste",
-	"Expanse",
-	"Sea",
-	"Desert",
-	"Reach",
-	"Barrens",
-	"Quarter",
-	"Wastes",
-	"Sands"
-]
-const DESERT_NAME_MOTIFS: Array[String] = [
-	"Mirages",
-	"Ashes",
-	"Suns",
-	"Bones",
-	"Scorpions",
-	"Dust",
-	"Secrets",
-	"Hollows",
-	"Echoes",
-	"Zephyrs"
-]
-
-const TUNDRA_NAME_DESCRIPTORS: Array[String] = [
-	"Frozen",
-	"Ivory",
-	"Bleak",
-	"Glimmering",
-	"Shivering",
-	"Frostbound",
-	"Auric",
-	"Pale",
-	"Windshorn",
-	"Starlit"
-]
-const TUNDRA_NAME_NOUNS: Array[String] = [
-	"Tundra",
-	"Reach",
-	"Steppes",
-	"Barrens",
-	"Fields",
-	"Expanse",
-	"Marches",
-	"Plateau",
-	"Glade",
-	"March"
-]
-const TUNDRA_NAME_MOTIFS: Array[String] = [
-	"Auroras",
-	"Frost",
-	"Comets",
-	"Stars",
-	"Echoes",
-	"Drifts",
-	"Owls",
-	"Lights",
-	"Mammoths",
-	"Silence"
-]
-
-const GRASSLAND_NAME_DESCRIPTORS: Array[String] = [
-	"Windward",
-	"Emerald",
-	"Golden",
-	"Rolling",
-	"Open",
-	"Skylit",
-	"Silver",
-	"Gentle",
-	"Breezy",
-	"Sunlit"
-]
-const GRASSLAND_NAME_NOUNS: Array[String] = [
-	"Plains",
-	"Meadows",
-	"Fields",
-	"Prairies",
-	"Steppes",
-	"Expanse",
-	"Downs",
-	"Reach",
-	"Hearth",
-	"Lowlands"
-]
-const GRASSLAND_NAME_MOTIFS: Array[String] = [
-	"Larks",
-	"Horizon",
-	"Harvests",
-	"Echoes",
-	"Sunsets",
-	"Breezes",
-	"Lanterns",
-	"Auroras",
-	"Stones",
-	"Dreams"
-]
-
-const JUNGLE_NAME_DESCRIPTORS: Array[String] = [
-	"Emerald",
-	"Verdant",
-	"Sun-dappled",
-	"Obsidian",
-	"Mist-shrouded",
-	"Ancient",
-	"Thundering",
-	"Canopy",
-	"Moonlit",
-	"Serpent"
-]
-const JUNGLE_NAME_NOUNS: Array[String] = [
-	"Jungle",
-	"Wilds",
-	"Canopy",
-	"Rainforest",
-	"Tangle",
-	"Deepwood",
-	"Labyrinth",
-	"Greenway",
-	"Expanse",
-	"Verdure"
-]
-const JUNGLE_NAME_MOTIFS: Array[String] = [
-	"Serpents",
-	"Drums",
-	"Monsoons",
-	"Spirits",
-	"Cenotes",
-	"Orchids",
-	"Tempests",
-	"Roots",
-	"Jaguar Spirits",
-	"Emerald Dawn"
-]
-
-const MARSH_NAME_DESCRIPTORS: Array[String] = [
-	"Glimmer",
-	"Mire",
-	"Gloom",
-	"Low",
-	"Sodden",
-	"Willow",
-	"Brackish",
-	"Sable",
-	"Sunken",
-	"Twilight"
-]
-const MARSH_NAME_NOUNS: Array[String] = [
-	"Bog",
-	"Fen",
-	"Morass",
-	"Quagmire",
-	"Wetlands",
-	"Mires",
-	"Marsh",
-	"Reeds",
-	"Pools",
-	"Sinks"
-]
-const MARSH_NAME_MOTIFS: Array[String] = [
-	"Fireflies",
-	"Lilies",
-	"Secrets",
-	"Mist",
-	"Echoes",
-	"Cranes",
-	"Reeds",
-	"Moss",
-	"Shadows",
-	"Frogs"
-]
-
-const BADLANDS_NAME_DESCRIPTORS: Array[String] = [
-	"Shattered",
-	"Redstone",
-	"Sundered",
-	"Dustfallen",
-	"Sunblasted",
-	"Windswept",
-	"Bleached",
-	"Broken",
-	"Scorched",
-	"Cracked"
-]
-const BADLANDS_NAME_NOUNS: Array[String] = [
-	"Badlands",
-	"Wastes",
-	"Breaks",
-	"Barrens",
-	"Tablelands",
-	"Escarpment",
-	"Canyons",
-	"Bluffs",
-	"Ridges",
-	"Maze"
-]
-const BADLANDS_NAME_MOTIFS: Array[String] = [
-	"Bones",
-	"Dust",
-	"Echoes",
-	"Thunderheads",
-	"Vultures",
-	"Ash",
-	"Mirages",
-	"Sunstorms",
-	"Ruins",
-	"Storms"
-]
-
-const OCEAN_NAME_DESCRIPTORS: Array[String] = [
-	"Sapphire",
-	"Tempest",
-	"Sunken",
-	"Cerulean",
-	"Midnight",
-	"Gilded",
-	"Storm",
-	"Azure",
-	"Silent",
-	"Everdeep"
-]
-const OCEAN_NAME_NOUNS: Array[String] = [
-	"Sea",
-	"Ocean",
-	"Gulf",
-	"Sound",
-	"Reach",
-	"Current",
-	"Depths",
-	"Expanse",
-	"Waters",
-	"Strait"
-]
-const OCEAN_NAME_MOTIFS: Array[String] = [
-	"Sirens",
-	"Stars",
-	"Moons",
-	"Whales",
-	"Voyagers",
-	"Storms",
-	"Legends",
-	"Coral",
-	"Mists",
-	"Echoes"
-]
-
-const LAKE_NAME_DESCRIPTORS: Array[String] = [
-	"Silver",
-	"Crystal",
-	"Mirror",
-	"Still",
-	"Glimmer",
-	"Duskwater",
-	"Bright",
-	"Moon",
-	"Amber",
-	"Serene"
-]
-const LAKE_NAME_NOUNS: Array[String] = [
-	"Lake",
-	"Mere",
-	"Loch",
-	"Pond",
-	"Basin",
-	"Reservoir",
-	"Waters",
-	"Lagoon",
-	"Pool",
-	"Bay"
-]
-const LAKE_NAME_MOTIFS: Array[String] = [
-	"Echoes",
-	"Willows",
-	"Lanterns",
-	"Dreams",
-	"Reflections",
-	"Whispers",
-	"Herons",
-	"Lilies",
-	"Dawn",
-	"Stars"
-]
-
+const ATLAS_TEXTURE := TILE_ATLAS_DEFS.ATLAS_TEXTURE
+const SAND_TILE := TILE_ATLAS_DEFS.SAND_TILE
+const GRASS_TILE := TILE_ATLAS_DEFS.GRASS_TILE
+const BADLANDS_TILE := TILE_ATLAS_DEFS.BADLANDS_TILE
+const MINE_TILE := TILE_ATLAS_DEFS.MINE_TILE
+const MARSH_TILE := TILE_ATLAS_DEFS.MARSH_TILE
+const SNOW_TILE := TILE_ATLAS_DEFS.SNOW_TILE
+const TREE_TILE := TILE_ATLAS_DEFS.TREE_TILE
+const TREE_LONE_TILE := TILE_ATLAS_DEFS.TREE_LONE_TILE
+const JUNGLE_TREE_TILE := TILE_ATLAS_DEFS.JUNGLE_TREE_TILE
+const CUT_TREES_TILE := TILE_ATLAS_DEFS.CUT_TREES_TILE
+const AMBIENT_LUMBER_MILL_TILE := TILE_ATLAS_DEFS.AMBIENT_LUMBER_MILL_TILE
+const WATER_TILE := TILE_ATLAS_DEFS.WATER_TILE
+const MOUNTAIN_TILE := TILE_ATLAS_DEFS.MOUNTAIN_TILE
+const MOUNTAIN_TOP_A_TILE := TILE_ATLAS_DEFS.MOUNTAIN_TOP_A_TILE
+const MOUNTAIN_TOP_B_TILE := TILE_ATLAS_DEFS.MOUNTAIN_TOP_B_TILE
+const MOUNTAIN_BOTTOM_A_TILE := TILE_ATLAS_DEFS.MOUNTAIN_BOTTOM_A_TILE
+const MOUNTAIN_BOTTOM_B_TILE := TILE_ATLAS_DEFS.MOUNTAIN_BOTTOM_B_TILE
+const DAM_TILE := TILE_ATLAS_DEFS.DAM_TILE
+const MOUNTAIN_PEAK_TILE := TILE_ATLAS_DEFS.MOUNTAIN_PEAK_TILE
+const STONE_TILE := TILE_ATLAS_DEFS.STONE_TILE
+const DWARFHOLD_TILE := TILE_ATLAS_DEFS.DWARFHOLD_TILE
+const ABANDONED_DWARFHOLD_TILE := TILE_ATLAS_DEFS.ABANDONED_DWARFHOLD_TILE
+const GREAT_DWARFHOLD_TILE := TILE_ATLAS_DEFS.GREAT_DWARFHOLD_TILE
+const DARK_DWARFHOLD_TILE := TILE_ATLAS_DEFS.DARK_DWARFHOLD_TILE
+const HILLHOLD_TILE := TILE_ATLAS_DEFS.HILLHOLD_TILE
+const CAVE_TILE := TILE_ATLAS_DEFS.CAVE_TILE
+const TOWER_TILE := TILE_ATLAS_DEFS.TOWER_TILE
+const EVIL_WIZARDS_TOWER_TILE := TILE_ATLAS_DEFS.EVIL_WIZARDS_TOWER_TILE
+const WOOD_ELF_GROVES_TILE := TILE_ATLAS_DEFS.WOOD_ELF_GROVES_TILE
+const WOOD_ELF_GROVES_LARGE_TILE := TILE_ATLAS_DEFS.WOOD_ELF_GROVES_LARGE_TILE
+const WOOD_ELF_GROVES_GRAND_TILE := TILE_ATLAS_DEFS.WOOD_ELF_GROVES_GRAND_TILE
+const HILLS_TILE := TILE_ATLAS_DEFS.HILLS_TILE
+const HILLS_BADLANDS_TILE := TILE_ATLAS_DEFS.HILLS_BADLANDS_TILE
+const HILLS_VARIANT_A_TILE := TILE_ATLAS_DEFS.HILLS_VARIANT_A_TILE
+const HILLS_VARIANT_B_TILE := TILE_ATLAS_DEFS.HILLS_VARIANT_B_TILE
+const HILLS_SNOW_TILE := TILE_ATLAS_DEFS.HILLS_SNOW_TILE
+const TOWN_TILE := TILE_ATLAS_DEFS.TOWN_TILE
+const PORT_TOWN_TILE := TILE_ATLAS_DEFS.PORT_TOWN_TILE
+const CASTLE_TILE := TILE_ATLAS_DEFS.CASTLE_TILE
+const ROADSIDE_TAVERN_TILE := TILE_ATLAS_DEFS.ROADSIDE_TAVERN_TILE
+const HAMLET_TILE := TILE_ATLAS_DEFS.HAMLET_TILE
+const TREE_SNOW_TILE := TILE_ATLAS_DEFS.TREE_SNOW_TILE
+const ACTIVE_VOLCANO_TILE := TILE_ATLAS_DEFS.ACTIVE_VOLCANO_TILE
+const VOLCANO_TILE := TILE_ATLAS_DEFS.VOLCANO_TILE
+const LAVA_TILE := TILE_ATLAS_DEFS.LAVA_TILE
+const OASIS_TILE := TILE_ATLAS_DEFS.OASIS_TILE
+const HAMLET_SNOW_TILE := TILE_ATLAS_DEFS.HAMLET_SNOW_TILE
+const AMBIENT_SLEEPING_DRAGON_TILE := TILE_ATLAS_DEFS.AMBIENT_SLEEPING_DRAGON_TILE
+const AMBIENT_HUNTING_LODGE_TILE := TILE_ATLAS_DEFS.AMBIENT_HUNTING_LODGE_TILE
+const AMBIENT_HOMESTEAD_TILE := TILE_ATLAS_DEFS.AMBIENT_HOMESTEAD_TILE
+const AMBIENT_MOONWELL_TILE := TILE_ATLAS_DEFS.AMBIENT_MOONWELL_TILE
+const AMBIENT_FARM_TILE := TILE_ATLAS_DEFS.AMBIENT_FARM_TILE
+const FARM_CROPS_TILE := TILE_ATLAS_DEFS.FARM_CROPS_TILE
+const AMBIENT_FARM_VARIANT_TILE := TILE_ATLAS_DEFS.AMBIENT_FARM_VARIANT_TILE
+const AMBIENT_GREAT_TREE_TILE := TILE_ATLAS_DEFS.AMBIENT_GREAT_TREE_TILE
+const AMBIENT_GREAT_TREE_ALT_TILE := TILE_ATLAS_DEFS.AMBIENT_GREAT_TREE_ALT_TILE
+const LIZARDMEN_CITY_TILE := TILE_ATLAS_DEFS.LIZARDMEN_CITY_TILE
+const SAINT_SHRINE_TILE := TILE_ATLAS_DEFS.SAINT_SHRINE_TILE
+const MONASTERY_TILE := TILE_ATLAS_DEFS.MONASTERY_TILE
+const ORC_CAMP_TILE := TILE_ATLAS_DEFS.ORC_CAMP_TILE
+const GNOLL_CAMP_TILE := TILE_ATLAS_DEFS.GNOLL_CAMP_TILE
+const TROLL_CAMP_TILE := TILE_ATLAS_DEFS.TROLL_CAMP_TILE
+const OGRE_CAMP_TILE := TILE_ATLAS_DEFS.OGRE_CAMP_TILE
+const BANDIT_CAMP_TILE := TILE_ATLAS_DEFS.BANDIT_CAMP_TILE
+const TRAVELERS_CAMP_TILE := TILE_ATLAS_DEFS.TRAVELERS_CAMP_TILE
+const DUNGEON_TILE := TILE_ATLAS_DEFS.DUNGEON_TILE
+const CENTAUR_ENCAMPMENT_TILE := TILE_ATLAS_DEFS.CENTAUR_ENCAMPMENT_TILE
+const BIOME_WATER := TILE_ATLAS_DEFS.BIOME_WATER
+const BIOME_MOUNTAIN := TILE_ATLAS_DEFS.BIOME_MOUNTAIN
+const BIOME_HILLS := TILE_ATLAS_DEFS.BIOME_HILLS
+const BIOME_MARSH := TILE_ATLAS_DEFS.BIOME_MARSH
+const BIOME_TUNDRA := TILE_ATLAS_DEFS.BIOME_TUNDRA
+const BIOME_DESERT := TILE_ATLAS_DEFS.BIOME_DESERT
+const BIOME_BADLANDS := TILE_ATLAS_DEFS.BIOME_BADLANDS
+const BIOME_FOREST := TILE_ATLAS_DEFS.BIOME_FOREST
+const BIOME_JUNGLE := TILE_ATLAS_DEFS.BIOME_JUNGLE
+const BIOME_GRASSLAND := TILE_ATLAS_DEFS.BIOME_GRASSLAND
 const SETTLEMENT_TILES := {
 	"dwarfhold": [DWARFHOLD_TILE, ABANDONED_DWARFHOLD_TILE, GREAT_DWARFHOLD_TILE, DARK_DWARFHOLD_TILE],
 	"town": [TOWN_TILE, PORT_TOWN_TILE, CASTLE_TILE, HAMLET_TILE],
@@ -871,17 +501,10 @@ const DWARFHOLD_ABANDONED_HALLMARKS: Array[String] = [
 	"Echoes of abandoned forges linger in the dust."
 ]
 
-const TREE_BIOMES: Array[String] = [
-	BIOME_FOREST,
-	BIOME_JUNGLE,
-	BIOME_TUNDRA
-]
-const TREE_BASE_BIOMES: Array[String] = [
-	BIOME_GRASSLAND,
-	BIOME_TUNDRA
-]
-const TREE_VARIANT_FOREST_LONE := "forest_lone"
-const TREE_VARIANT_TUNDRA_LONE := "tundra_lone"
+const TREE_BIOMES: Array[String] = TILE_ATLAS_DEFS.TREE_BIOMES
+const TREE_BASE_BIOMES: Array[String] = TILE_ATLAS_DEFS.TREE_BASE_BIOMES
+const TREE_VARIANT_FOREST_LONE := TILE_ATLAS_DEFS.TREE_VARIANT_FOREST_LONE
+const TREE_VARIANT_TUNDRA_LONE := TILE_ATLAS_DEFS.TREE_VARIANT_TUNDRA_LONE
 
 const CULTURAL_GROUP_PROFILES: Array[Dictionary] = [
 	{
@@ -2289,6 +1912,66 @@ func _yield_generation_wave() -> void:
 	if is_inside_tree():
 		await get_tree().process_frame
 
+func _terrain_settings() -> Dictionary:
+	return {
+		"map_size": map_size,
+		"map_seed": map_seed,
+		"water_level": water_level,
+		"falloff_strength": falloff_strength,
+		"falloff_power": falloff_power,
+		"landmass_falloff_scale": landmass_falloff_scale,
+		"landmass_mask_strength": landmass_mask_strength,
+		"landmass_mask_power": landmass_mask_power,
+		"edge_ocean_strength": edge_ocean_strength,
+		"edge_ocean_falloff": edge_ocean_falloff,
+		"edge_ocean_curve": edge_ocean_curve
+	}
+
+
+func _biome_lookup() -> Dictionary:
+	return {
+		"water": BIOME_WATER,
+		"mountain": BIOME_MOUNTAIN,
+		"hills": BIOME_HILLS,
+		"marsh": BIOME_MARSH,
+		"tundra": BIOME_TUNDRA,
+		"desert": BIOME_DESERT,
+		"badlands": BIOME_BADLANDS,
+		"forest": BIOME_FOREST,
+		"jungle": BIOME_JUNGLE,
+		"grassland": BIOME_GRASSLAND
+	}
+
+
+func _tile_lookup() -> Dictionary:
+	return {
+		"sand": SAND_TILE,
+		"grass": GRASS_TILE,
+		"badlands": BADLANDS_TILE,
+		"marsh": MARSH_TILE,
+		"snow": SNOW_TILE,
+		"tree": TREE_TILE,
+		"jungle_tree": JUNGLE_TREE_TILE,
+		"water": WATER_TILE,
+		"mountain": MOUNTAIN_TILE,
+		"hills": HILLS_TILE
+	}
+
+
+func _biome_thresholds() -> Dictionary:
+	return {
+		"water_level": water_level,
+		"tundra_threshold": tundra_threshold,
+		"marsh_threshold": marsh_threshold,
+		"hot_threshold": hot_threshold,
+		"desert_threshold": desert_threshold,
+		"desert_temperature_bias": desert_temperature_bias,
+		"desert_moisture_bias": desert_moisture_bias,
+		"warm_threshold": warm_threshold,
+		"badlands_threshold": badlands_threshold
+	}
+
+
 func _sample_height(
 	continent_noise: FastNoiseLite,
 	detail_noise: FastNoiseLite,
@@ -2296,173 +1979,63 @@ func _sample_height(
 	x: int,
 	y: int
 ) -> float:
-	var continent := _to_normalized(continent_noise.get_noise_2d(float(x), float(y)))
-	var detail := _to_normalized(detail_noise.get_noise_2d(float(x), float(y)))
-	var ridges := 1.0 - absf(ridge_noise.get_noise_2d(float(x), float(y)))
-	var height := continent * 0.72 + detail * 0.18 + ridges * 0.1
-	var archipelago := (_to_normalized(detail_noise.get_noise_2d(float(x) * 2.6, float(y) * 2.6)) - 0.5) * 0.12
-	height += archipelago
-	var continent_bias := _sample_continent_bias(x, y)
-	height += continent_bias
-	var coast_mask := 1.0 - clampf(absf(height - water_level) / 0.15, 0.0, 1.0)
-	var coast_jag := detail_noise.get_noise_2d(float(x) * 5.1, float(y) * 5.1) * 0.06 * coast_mask
-	return clampf(height + coast_jag, 0.0, 1.0)
+	return TERRAIN_GENERATOR.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers)
 
 
 func _sample_continent_bias(x: int, y: int) -> float:
-	var denom_x := maxf(1.0, float(map_size.x - 1))
-	var denom_y := maxf(1.0, float(map_size.y - 1))
-	var nx := float(x) / denom_x
-	var ny := float(y) / denom_y
-	var centered_nx := nx * 2.0 - 1.0
-	var centered_ny := ny * 2.0 - 1.0
-	var base_seed := map_seed + 0x6a09e667
-	var fractal := (_value_noise(nx * 18.0 + 2.3, ny * 18.0 + 9.7, base_seed) - 0.5) * 0.1
-	fractal += (_value_noise(nx * 42.0 + 13.1, ny * 42.0 + 5.4, base_seed + 0xbb67ae85) - 0.5) * 0.05
-	var radial_falloff_bias := _sample_radial_falloff_bias(centered_nx, centered_ny)
-	var landmass_center_bias := _sample_landmass_center_bias(centered_nx, centered_ny)
-	var landmass_mask_bias := _sample_landmass_mask_bias(nx, ny)
-	return fractal + radial_falloff_bias + landmass_center_bias + landmass_mask_bias + _sample_edge_ocean_bias(x, y)
+	return TERRAIN_GENERATOR.sample_continent_bias(x, y, _terrain_settings(), _landmass_centers)
 
 
 func _sample_edge_ocean_bias(x: int, y: int) -> float:
-	var max_x := maxf(1.0, float(map_size.x - 1))
-	var max_y := maxf(1.0, float(map_size.y - 1))
-	var edge_distance := minf(minf(float(x), max_x - float(x)), minf(float(y), max_y - float(y)))
-	var half_span := minf(max_x, max_y) * 0.5
-	var edge_normalized := clampf(edge_distance / maxf(half_span, 1.0), 0.0, 1.0)
-	var edge_ratio := clampf(edge_normalized / maxf(edge_ocean_falloff, 0.01), 0.0, 1.0)
-	var edge_ocean := 1.0 - pow(edge_ratio, edge_ocean_curve)
-	var interior_support := pow(clampf(edge_normalized, 0.0, 1.0), 2.2) * (edge_ocean_strength * 0.28)
-	return interior_support - edge_ocean * edge_ocean_strength
+	return TERRAIN_GENERATOR.sample_edge_ocean_bias(x, y, _terrain_settings())
 
 
 func _sample_radial_falloff_bias(centered_nx: float, centered_ny: float) -> float:
-	if falloff_strength <= 0.0:
-		return 0.0
-	var radial_distance := Vector2(centered_nx, centered_ny).length() / sqrt(2.0)
-	var radial_ratio := clampf(radial_distance, 0.0, 1.0)
-	var attenuation := 1.0 - pow(radial_ratio, maxf(falloff_power, 0.05))
-	return (attenuation - 0.5) * 2.0 * falloff_strength
+	return TERRAIN_GENERATOR.sample_radial_falloff_bias(centered_nx, centered_ny, falloff_strength, falloff_power)
 
 
 func _sample_landmass_center_bias(centered_nx: float, centered_ny: float) -> float:
-	var clamped_scale := maxf(0.001, landmass_falloff_scale)
-	var center_distance := _distance_to_nearest_landmass_center(centered_nx, centered_ny)
-	var center_ratio := clampf(center_distance / clamped_scale, 0.0, 1.0)
-	var center_support := 1.0 - pow(center_ratio, maxf(falloff_power, 0.05))
-	return (center_support - 0.5) * 2.0 * (landmass_falloff_scale * 0.08)
+	return TERRAIN_GENERATOR.sample_landmass_center_bias(centered_nx, centered_ny, landmass_falloff_scale, falloff_power, _landmass_centers)
 
 
 func _sample_landmass_mask_bias(nx: float, ny: float) -> float:
-	if landmass_mask_strength <= 0.0:
-		return 0.0
-	var mask_sample := _sample_landmass_mask(nx, ny)
-	return (mask_sample - 0.5) * 2.0 * landmass_mask_strength
+	return TERRAIN_GENERATOR.sample_landmass_mask_bias(nx, ny, _terrain_settings())
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
-	_landmass_centers.clear()
-	var count := maxi(1, landmass_center_count)
-	var margin := clampf(landmass_center_margin, 0.0, 0.45)
-	for _i in range(count):
-		var cx := rng.randf_range(-1.0 + margin, 1.0 - margin)
-		var cy := rng.randf_range(-1.0 + margin, 1.0 - margin)
-		_landmass_centers.append(Vector2(cx, cy))
+	_landmass_centers = TERRAIN_GENERATOR.configure_landmass_centers(rng, landmass_center_count, landmass_center_margin)
 
 
 func _distance_to_nearest_landmass_center(nx: float, ny: float) -> float:
-	if _landmass_centers.is_empty():
-		return Vector2(nx, ny).length()
-	var sample_pos := Vector2(nx, ny)
-	var min_distance := INF
-	for center: Vector2 in _landmass_centers:
-		min_distance = minf(min_distance, sample_pos.distance_to(center))
-	return min_distance
+	return TERRAIN_GENERATOR.distance_to_nearest_landmass_center(nx, ny, _landmass_centers)
 
 
 func _smooth_height_map(height_map: Dictionary, passes: int, strength: float) -> void:
-	for _pass_index in range(passes):
-		var next_map := height_map.duplicate()
-		for coord: Vector2i in height_map.keys():
-			var current: float = height_map.get(coord, 0.0)
-			var is_land := current >= water_level
-			var accum := current
-			var count := 1
-			for offset: Vector2i in [
-				Vector2i.LEFT,
-				Vector2i.RIGHT,
-				Vector2i.UP,
-				Vector2i.DOWN,
-				Vector2i(-1, -1),
-				Vector2i(1, -1),
-				Vector2i(-1, 1),
-				Vector2i(1, 1)
-			]:
-				var neighbor := coord + offset
-				var neighbor_height: float = height_map.get(neighbor, current)
-				if is_land and neighbor_height < water_level:
-					continue
-				if not is_land and neighbor_height >= water_level:
-					continue
-				accum += neighbor_height
-				count += 1
-			var average := accum / float(count)
-			next_map[coord] = lerpf(current, average, strength)
-		height_map.clear()
-		for coord: Vector2i in next_map.keys():
-			height_map[coord] = next_map[coord]
+	TERRAIN_GENERATOR.smooth_height_map(height_map, passes, strength, water_level)
 
 
 func _sample_landmass_mask(nx: float, ny: float) -> float:
-	var left := _ellipse_distance(nx, ny, MASK_TWIN_LEFT_CENTER, MASK_TWIN_RADIUS)
-	var right := _ellipse_distance(nx, ny, MASK_TWIN_RIGHT_CENTER, MASK_TWIN_RADIUS)
-	var value := 1.0 - minf(left, right)
-	value = pow(clampf(value, 0.0, 1.0), landmass_mask_power)
-	var saddle := cos((ny - 0.5) * PI * MASK_SADDLE_SCALE) * 0.05
-	var base_seed := map_seed + 0x9e3779b
-	var noise := (_value_noise(nx * 12.5 + 3.1, ny * 12.5 + 7.9, base_seed) - 0.5) * 0.12
-	var detail := (_value_noise(nx * 34.2 + 11.3, ny * 34.2 + 4.6, base_seed + 0x85ebca6) - 0.5) * 0.06
-	value += saddle + noise + detail
-	return clampf(value, 0.0, 1.0)
+	return TERRAIN_GENERATOR.sample_landmass_mask(nx, ny, _terrain_settings())
 
 
 func _ellipse_distance(nx: float, ny: float, center: Vector2, radius: Vector2) -> float:
-	var dx := (nx - center.x) / maxf(0.001, radius.x)
-	var dy := (ny - center.y) / maxf(0.001, radius.y)
-	return sqrt(dx * dx + dy * dy)
+	return TERRAIN_GENERATOR.ellipse_distance(nx, ny, center, radius)
 
 
 func _value_noise(x: float, y: float, seed_value: int) -> float:
-	var x0 := floori(x)
-	var y0 := floori(y)
-	var x1 := x0 + 1
-	var y1 := y0 + 1
-	var sx := _fade(x - float(x0))
-	var sy := _fade(y - float(y0))
-	var n00 := _hash_coords(x0, y0, seed_value)
-	var n10 := _hash_coords(x1, y0, seed_value)
-	var n01 := _hash_coords(x0, y1, seed_value)
-	var n11 := _hash_coords(x1, y1, seed_value)
-	var ix0 := lerpf(n00, n10, sx)
-	var ix1 := lerpf(n01, n11, sx)
-	return lerpf(ix0, ix1, sy)
+	return TERRAIN_GENERATOR.value_noise(x, y, seed_value)
 
 
 func _hash_coords(x: int, y: int, seed_value: int) -> float:
-	var h := (x * 374761393) ^ (y * 668265263) ^ seed_value
-	h = int(h ^ (h >> 13)) * 1274126177
-	h = h ^ (h >> 16)
-	var unsigned := h & 0xffffffff
-	return float(unsigned) / 4294967295.0
+	return TERRAIN_GENERATOR.hash_coords(x, y, seed_value)
 
 
 func _fade(t: float) -> float:
-	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+	return TERRAIN_GENERATOR.fade(t)
 
 
 func _to_normalized(noise_sample: float) -> float:
-	return clampf((noise_sample + 1.0) * 0.5, 0.0, 1.0)
+	return TERRAIN_GENERATOR.to_normalized(noise_sample)
 
 
 func _sample_temperature(x: int, y: int, elevation: float) -> float:
@@ -2506,27 +2079,11 @@ func _assign_base_biome(
 	moisture: float,
 	height_map: Dictionary
 ) -> String:
-	if height < water_level:
-		return BIOME_WATER
-	if temperature < tundra_threshold:
-		return BIOME_TUNDRA
-	if _is_marsh(coord, height, moisture, height_map):
-		return BIOME_MARSH
-	var desert_temp_cutoff := clampf(hot_threshold - desert_temperature_bias, 0.0, 1.0)
-	var desert_moisture_cutoff := clampf(desert_threshold + desert_moisture_bias, 0.0, 1.0)
-	if temperature >= desert_temp_cutoff && moisture <= desert_moisture_cutoff:
-		return BIOME_DESERT
-	if temperature >= warm_threshold && moisture <= badlands_threshold:
-		return BIOME_BADLANDS
-	return BIOME_GRASSLAND
+	return BIOME_CLASSIFIER.assign_base_biome(coord, height, temperature, moisture, height_map, _biome_thresholds(), _biome_lookup())
 
 
 func _tree_overlay_biome(temperature: float, moisture: float) -> String:
-	if moisture >= jungle_threshold && temperature >= hot_threshold:
-		return BIOME_JUNGLE
-	if temperature < tundra_threshold:
-		return BIOME_TUNDRA
-	return BIOME_FOREST
+	return BIOME_CLASSIFIER.tree_overlay_biome(temperature, moisture, jungle_threshold, hot_threshold, tundra_threshold, _biome_lookup())
 
 
 func _build_highland_overlays(biome_map: Dictionary, height_map: Dictionary) -> Dictionary:
@@ -2755,25 +2312,7 @@ func _build_tree_coverage_biome_map(base_biome_map: Dictionary, tree_map: Dictio
 
 
 func _is_marsh(coord: Vector2i, height: float, moisture: float, height_map: Dictionary) -> bool:
-	if moisture < marsh_threshold:
-		return false
-	if height <= water_level + 0.08:
-		return true
-	for offset: Vector2i in [
-		Vector2i.LEFT,
-		Vector2i.RIGHT,
-		Vector2i.UP,
-		Vector2i.DOWN,
-		Vector2i(-1, -1),
-		Vector2i(1, -1),
-		Vector2i(-1, 1),
-		Vector2i(1, 1)
-	]:
-		var neighbor := coord + offset
-		var neighbor_height: float = height_map.get(neighbor, 1.0)
-		if neighbor_height < water_level:
-			return true
-	return false
+	return BIOME_CLASSIFIER.is_marsh(coord, height, moisture, height_map, marsh_threshold, water_level)
 
 
 func _smooth_biomes(biome_map: Dictionary, passes: int) -> void:
@@ -2847,27 +2386,7 @@ func _seed_desert_biomes(
 
 
 func _biome_to_tile(biome: String) -> Vector2i:
-	match biome:
-		BIOME_WATER:
-			return WATER_TILE
-		BIOME_MOUNTAIN:
-			return MOUNTAIN_TILE
-		BIOME_HILLS:
-			return HILLS_TILE
-		BIOME_MARSH:
-			return MARSH_TILE
-		BIOME_TUNDRA:
-			return SNOW_TILE
-		BIOME_DESERT:
-			return SAND_TILE
-		BIOME_BADLANDS:
-			return BADLANDS_TILE
-		BIOME_FOREST:
-			return TREE_TILE
-		BIOME_JUNGLE:
-			return JUNGLE_TREE_TILE
-		_:
-			return GRASS_TILE
+	return BIOME_CLASSIFIER.biome_to_tile(biome, _tile_lookup(), _biome_lookup())
 
 func _place_icebergs(
 	biome_map: Dictionary,
@@ -3028,32 +2547,18 @@ func _place_wizard_tower_settlements(
 	occupied: Array[Vector2i],
 	map_area: int
 ) -> void:
-	var tower_candidates: Array[Dictionary] = []
-	for coord: Vector2i in _tile_data.keys():
-		var tile_info := _tile_data.get(coord, {}) as Dictionary
-		if _is_coord_occupied(coord, occupied) or bool(tile_info.get("river", false)):
-			continue
-		var base_biome := String(tile_info.get("base_biome", biome_map.get(coord, BIOME_GRASSLAND))).to_lower()
-		if base_biome != BIOME_GRASSLAND and base_biome != BIOME_TUNDRA:
-			continue
-		if not String(tile_info.get("overlay", "")).strip_edges().is_empty():
-			continue
-		if not String(tile_info.get("hill_overlay", "")).strip_edges().is_empty():
-			continue
-		var height_value := float(height_map.get(coord, 0.0))
-		var dryness := clampf(1.0 - float(moisture_map.get(coord, 0.5)), 0.0, 1.0)
-		var edge_distance := mini(mini(coord.x, map_size.x - 1 - coord.x), mini(coord.y, map_size.y - 1 - coord.y))
-		var max_edge_distance := maxf(1.0, float(mini(map_size.x, map_size.y)) / 2.2)
-		var edge_score := clampf(float(edge_distance) / max_edge_distance, 0.0, 1.0)
-		var terrain_bonus := 0.12
-		if base_biome == BIOME_TUNDRA:
-			terrain_bonus = 0.18
-		var score := clampf((height_value * 1.35), 0.0, 1.0) * 0.35 + dryness * 0.2 + edge_score * 0.15 + terrain_bonus + rng.randf_range(0.0, 0.3)
-		tower_candidates.append({"coord": coord, "score": score, "base": base_biome})
-
+	var tower_candidates := STRUCTURE_PLACER.build_wizard_tower_candidates(
+		_tile_data,
+		biome_map,
+		height_map,
+		moisture_map,
+		occupied,
+		map_size,
+		_biome_lookup(),
+		rng
+	)
 	if tower_candidates.is_empty():
 		return
-	tower_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
 
 	var max_towers := maxi(1, int(round(float(map_area) / 20000.0)))
 	var min_distance := maxf(5.0, float(mini(map_size.x, map_size.y)) / 14.0)
@@ -3101,31 +2606,16 @@ func _place_hostile_camps(
 		{"id": "travelerCamp", "tile": TRAVELERS_CAMP_TILE},
 		{"id": "centaurEncampment", "tile": CENTAUR_ENCAMPMENT_TILE}
 	]
-	var camp_candidates: Array[Dictionary] = []
-	for coord: Vector2i in _tile_data.keys():
-		var tile_info := _tile_data.get(coord, {}) as Dictionary
-		if _is_coord_occupied(coord, occupied) or bool(tile_info.get("river", false)):
-			continue
-		var base_biome := String(tile_info.get("base_biome", biome_map.get(coord, BIOME_GRASSLAND))).to_lower()
-		if base_biome == BIOME_WATER or base_biome == BIOME_MOUNTAIN:
-			continue
-		if String(tile_info.get("overlay", "")).to_lower().contains("mountain"):
-			continue
-		var dryness := clampf(1.0 - float(moisture_map.get(coord, 0.5)), 0.0, 1.0)
-		var score := dryness * 0.35 + rng.randf_range(0.0, 0.28)
-		if base_biome == BIOME_BADLANDS:
-			score += 0.45
-		elif base_biome == BIOME_DESERT:
-			score += 0.36
-		elif base_biome == BIOME_MARSH:
-			score += 0.28
-		else:
-			score += 0.2
-		camp_candidates.append({"coord": coord, "score": score, "base_biome": base_biome})
-
+	var camp_candidates := STRUCTURE_PLACER.build_camp_candidates(
+		_tile_data,
+		biome_map,
+		moisture_map,
+		occupied,
+		_biome_lookup(),
+		rng
+	)
 	if camp_candidates.is_empty():
 		return
-	camp_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
 	var max_camps := maxi(1, int(round(float(map_area) / 14000.0)))
 	var min_distance := 8.0
 	var placed := 0
@@ -3160,15 +2650,7 @@ func _place_hostile_camps(
 
 
 func _select_camp_type_from_biome(base_biome: String, rng: RandomNumberGenerator) -> String:
-	var biome_key := base_biome.to_lower()
-	var options: Array[String] = ["orcCamp", "gnollCamp", "banditCamp"]
-	if biome_key == BIOME_BADLANDS or biome_key == BIOME_DESERT:
-		options = ["orcCamp", "gnollCamp", "trollCamp", "ogreCamp", "banditCamp"]
-	elif biome_key == BIOME_GRASSLAND:
-		options = ["banditCamp", "travelerCamp", "centaurEncampment", "orcCamp"]
-	elif biome_key == BIOME_MARSH:
-		options = ["gnollCamp", "trollCamp", "ogreCamp"]
-	return options[rng.randi_range(0, options.size() - 1)]
+	return STRUCTURE_PLACER.select_camp_type_from_biome(base_biome, rng, _biome_lookup())
 
 
 func _place_caves_and_dungeons(
@@ -3179,27 +2661,17 @@ func _place_caves_and_dungeons(
 	occupied: Array[Vector2i],
 	map_area: int
 ) -> void:
-	var cave_candidates: Array[Dictionary] = []
-	var dungeon_candidates: Array[Dictionary] = []
-	for coord: Vector2i in _tile_data.keys():
-		var tile_info := _tile_data.get(coord, {}) as Dictionary
-		if _is_coord_occupied(coord, occupied) or bool(tile_info.get("river", false)):
-			continue
-		var base_biome := String(tile_info.get("base_biome", biome_map.get(coord, BIOME_GRASSLAND))).to_lower()
-		var overlay := String(tile_info.get("overlay", "")).to_lower()
-		var height_value := float(height_map.get(coord, 0.0))
-		var dryness := clampf(1.0 - float(moisture_map.get(coord, 0.5)), 0.0, 1.0)
-		if base_biome == BIOME_MOUNTAIN or overlay.contains("hill"):
-			var cave_score := height_value * 0.55 + dryness * 0.1 + rng.randf_range(0.0, 0.35)
-			cave_candidates.append({"coord": coord, "score": cave_score})
-		if base_biome != BIOME_WATER and base_biome != BIOME_MOUNTAIN:
-			var dungeon_score := dryness * 0.45 + rng.randf_range(0.0, 0.35)
-			if base_biome == BIOME_BADLANDS:
-				dungeon_score += 0.12
-			dungeon_candidates.append({"coord": coord, "score": dungeon_score})
-
-	cave_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
-	dungeon_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
+	var candidates := STRUCTURE_PLACER.build_cave_and_dungeon_candidates(
+		_tile_data,
+		biome_map,
+		height_map,
+		moisture_map,
+		occupied,
+		_biome_lookup(),
+		rng
+	)
+	var cave_candidates: Array[Dictionary] = candidates.get("caves", [])
+	var dungeon_candidates: Array[Dictionary] = candidates.get("dungeons", [])
 
 	var max_caves := maxi(1, int(round(float(map_area) / 18000.0)))
 	var max_dungeons := maxi(1, int(round(float(map_area) / 22000.0)))
@@ -3797,134 +3269,7 @@ func _generate_biome_region_name(
 	rng: RandomNumberGenerator,
 	context_size: int
 ) -> String:
-	match biome:
-		BIOME_FOREST:
-			return _generate_forest_name(rng)
-		BIOME_MOUNTAIN, BIOME_HILLS:
-			return _generate_mountain_name(rng)
-		BIOME_DESERT:
-			return _generate_desert_name(rng)
-		BIOME_TUNDRA:
-			return _generate_tundra_name(rng)
-		BIOME_GRASSLAND:
-			return _generate_grassland_name(rng)
-		BIOME_JUNGLE:
-			return _generate_jungle_name(rng)
-		BIOME_MARSH:
-			return _generate_marsh_name(rng)
-		BIOME_BADLANDS:
-			return _generate_badlands_name(rng)
-		BIOME_WATER:
-			if water_body_type == "lake":
-				return _generate_lake_name(rng)
-			return _generate_ocean_name(rng, context_size)
-		_:
-			return ""
-
-func _generate_forest_name(rng: RandomNumberGenerator) -> String:
-	var prefix := _pick_random_entry(FOREST_NAME_PREFIXES, rng, "Verdant")
-	var suffix := _pick_random_entry(FOREST_NAME_SUFFIXES, rng, "Woods")
-	var motif := _pick_random_entry(FOREST_NAME_MOTIFS, rng)
-	var roll := rng.randf()
-	if roll < 0.34 and not motif.is_empty():
-		return "%s %s of the %s" % [prefix, suffix, motif]
-	if roll < 0.67:
-		return "The %s %s" % [prefix, suffix]
-	return "%s %s" % [prefix, suffix]
-
-func _generate_mountain_name(rng: RandomNumberGenerator) -> String:
-	var prefix := _pick_random_entry(MOUNTAIN_NAME_PREFIXES, rng, "Stone")
-	var suffix := _pick_random_entry(MOUNTAIN_NAME_SUFFIXES, rng, "Peaks")
-	var motif := _pick_random_entry(MOUNTAIN_NAME_MOTIFS, rng)
-	var use_motif := rng.randf() < 0.5
-	if use_motif and not motif.is_empty():
-		return "%s %s of the %s" % [prefix, suffix, motif]
-	return "The %s %s" % [prefix, suffix]
-
-func _generate_desert_name(rng: RandomNumberGenerator) -> String:
-	var descriptor := _pick_random_entry(DESERT_NAME_DESCRIPTORS, rng, "Shifting")
-	var noun := _pick_random_entry(DESERT_NAME_NOUNS, rng, "Dunes")
-	var motif := _pick_random_entry(DESERT_NAME_MOTIFS, rng)
-	var use_motif := rng.randf() < 0.5
-	if use_motif and not motif.is_empty():
-		return "%s of the %s" % [noun, motif]
-	return "The %s %s" % [descriptor, noun]
-
-func _generate_tundra_name(rng: RandomNumberGenerator) -> String:
-	var descriptor := _pick_random_entry(TUNDRA_NAME_DESCRIPTORS, rng, "Frozen")
-	var noun := _pick_random_entry(TUNDRA_NAME_NOUNS, rng, "Tundra")
-	var motif := _pick_random_entry(TUNDRA_NAME_MOTIFS, rng)
-	var use_motif := rng.randf() < 0.5
-	if use_motif and not motif.is_empty():
-		return "%s of the %s" % [noun, motif]
-	return "The %s %s" % [descriptor, noun]
-
-func _generate_grassland_name(rng: RandomNumberGenerator) -> String:
-	var descriptor := _pick_random_entry(GRASSLAND_NAME_DESCRIPTORS, rng, "Windward")
-	var noun := _pick_random_entry(GRASSLAND_NAME_NOUNS, rng, "Plains")
-	var motif := _pick_random_entry(GRASSLAND_NAME_MOTIFS, rng)
-	var roll := rng.randf()
-	if roll < 0.34 and not motif.is_empty():
-		return "%s of the %s" % [noun, motif]
-	if roll < 0.67:
-		return "The %s %s" % [descriptor, noun]
-	return "%s %s" % [descriptor, noun]
-
-func _generate_jungle_name(rng: RandomNumberGenerator) -> String:
-	var descriptor := _pick_random_entry(JUNGLE_NAME_DESCRIPTORS, rng, "Emerald")
-	var noun := _pick_random_entry(JUNGLE_NAME_NOUNS, rng, "Jungle")
-	var motif := _pick_random_entry(JUNGLE_NAME_MOTIFS, rng)
-	var roll := rng.randf()
-	if roll < 0.34 and not motif.is_empty():
-		return "%s of the %s" % [noun, motif]
-	if roll < 0.67:
-		return "The %s %s" % [descriptor, noun]
-	return "%s %s" % [descriptor, noun]
-
-func _generate_marsh_name(rng: RandomNumberGenerator) -> String:
-	var descriptor := _pick_random_entry(MARSH_NAME_DESCRIPTORS, rng, "Glimmer")
-	var noun := _pick_random_entry(MARSH_NAME_NOUNS, rng, "Bog")
-	var motif := _pick_random_entry(MARSH_NAME_MOTIFS, rng)
-	var use_motif := rng.randf() < 0.5
-	if use_motif and not motif.is_empty():
-		return "%s %s of the %s" % [descriptor, noun, motif]
-	return "The %s %s" % [descriptor, noun]
-
-func _generate_badlands_name(rng: RandomNumberGenerator) -> String:
-	var descriptor := _pick_random_entry(BADLANDS_NAME_DESCRIPTORS, rng, "Shattered")
-	var noun := _pick_random_entry(BADLANDS_NAME_NOUNS, rng, "Badlands")
-	var motif := _pick_random_entry(BADLANDS_NAME_MOTIFS, rng)
-	var roll := rng.randf()
-	if roll < 0.34 and not motif.is_empty():
-		return "%s of the %s" % [noun, motif]
-	if roll < 0.67:
-		return "The %s %s" % [descriptor, noun]
-	return "%s %s" % [descriptor, noun]
-
-func _generate_ocean_name(rng: RandomNumberGenerator, context_size: int) -> String:
-	var descriptor := _pick_random_entry(OCEAN_NAME_DESCRIPTORS, rng, "Sapphire")
-	var noun := _pick_random_entry(OCEAN_NAME_NOUNS, rng, "Sea")
-	var motif := _pick_random_entry(OCEAN_NAME_MOTIFS, rng)
-	if context_size < 120 and noun == "Ocean":
-		noun = "Sea"
-	var use_motif := rng.randf() < 0.5
-	if use_motif and not motif.is_empty():
-		return "%s of the %s" % [noun, motif]
-	return "The %s %s" % [descriptor, noun]
-
-func _generate_lake_name(rng: RandomNumberGenerator) -> String:
-	var descriptor := _pick_random_entry(LAKE_NAME_DESCRIPTORS, rng, "Silver")
-	var noun := _pick_random_entry(LAKE_NAME_NOUNS, rng, "Lake")
-	var motif := _pick_random_entry(LAKE_NAME_MOTIFS, rng)
-	var lower_noun := noun.to_lower()
-	var use_motif := rng.randf() < 0.5
-	if lower_noun == "lake" or lower_noun == "loch":
-		if use_motif and not motif.is_empty():
-			return "%s %s" % [noun, motif]
-		return "%s %s" % [noun, descriptor]
-	if use_motif and not motif.is_empty():
-		return "The %s %s of the %s" % [descriptor, noun, motif]
-	return "The %s %s" % [descriptor, noun]
+	return WORLD_NAMING.generate_biome_region_name(biome, water_body_type, rng, context_size)
 
 func _pick_random_entry(options: Array[String], rng: RandomNumberGenerator, fallback: String = "") -> String:
 	if options.is_empty():
