@@ -759,7 +759,7 @@ func _load_available_beards() -> void:
 			beard_files.append(curr_file)
 	beard_files.sort()
 	for curr_file in beard_files:
-		_available_beards.append(load(beard_dir + curr_file))
+		_available_beards.append(load(beard_dir.path_join(curr_file)))
 
 func _setup_beard_style_slider() -> void:
 	if beard_style == null:
