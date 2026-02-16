@@ -147,6 +147,30 @@ const AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE: Dictionary[String, Array] = {
 			"tile": Vector2i(0, 5),
 			"requires_tree_overlay": true,
 			"replace_tree_overlay": true
+		},
+		{
+			"id": "castle",
+			"label": "Castle",
+			"tile": Vector2i(6, 4),
+			"requires_plain_grass": true
+		},
+		{
+			"id": "monastery",
+			"label": "Monastery",
+			"tile": Vector2i(2, 2),
+			"requires_plain_grass": true
+		},
+		{
+			"id": "saintShrine",
+			"label": "Saint Shrine",
+			"tile": Vector2i(11, 1),
+			"requires_plain_grass": true
+		},
+		{
+			"id": "roadsideTavern",
+			"label": "Roadside Tavern",
+			"tile": Vector2i(12, 1),
+			"requires_plain_grass": true
 		}
 	],
 	"wood_elves": [

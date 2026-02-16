@@ -2002,6 +2002,7 @@ func _generate_map() -> void:
 
 	generation_started_ms = Time.get_ticks_msec()
 	_place_settlements(biome_map, rng)
+	_place_github_style_structures(biome_map, height_map, moisture_map, rng)
 	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_log_generation_stage("settlements and culture", generation_started_ms)
 	_height_map = height_map.duplicate()
@@ -2999,6 +3000,253 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 					tile_info["major_population_groups"] = labels.get("major", [civilization_label])
 					tile_info["minor_population_groups"] = labels.get("minor", [])
 			_tile_data[chosen] = tile_info
+
+
+func _place_github_style_structures(
+	biome_map: Dictionary,
+	height_map: Dictionary,
+	moisture_map: Dictionary,
+	rng: RandomNumberGenerator
+) -> void:
+	var map_area := maxi(1, map_size.x * map_size.y)
+	var occupied: Array[Vector2i] = []
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		if tile_info.has("settlement_type") or not String(tile_info.get("structure", "")).strip_edges().is_empty():
+			occupied.append(coord)
+
+	_place_wizard_tower_settlements(biome_map, height_map, moisture_map, rng, occupied, map_area)
+	_place_hostile_camps(biome_map, moisture_map, rng, occupied, map_area)
+	_place_caves_and_dungeons(biome_map, height_map, moisture_map, rng, occupied, map_area)
+
+
+func _place_wizard_tower_settlements(
+	biome_map: Dictionary,
+	height_map: Dictionary,
+	moisture_map: Dictionary,
+	rng: RandomNumberGenerator,
+	occupied: Array[Vector2i],
+	map_area: int
+) -> void:
+	var tower_candidates: Array[Dictionary] = []
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		if _is_coord_occupied(coord, occupied) or bool(tile_info.get("river", false)):
+			continue
+		var base_biome := String(tile_info.get("base_biome", biome_map.get(coord, BIOME_GRASSLAND))).to_lower()
+		if base_biome != BIOME_GRASSLAND and base_biome != BIOME_SNOW:
+			continue
+		if not String(tile_info.get("overlay", "")).strip_edges().is_empty():
+			continue
+		if not String(tile_info.get("hill_overlay", "")).strip_edges().is_empty():
+			continue
+		var height_value := float(height_map.get(coord, 0.0))
+		var dryness := clampf(1.0 - float(moisture_map.get(coord, 0.5)), 0.0, 1.0)
+		var edge_distance := mini(mini(coord.x, map_size.x - 1 - coord.x), mini(coord.y, map_size.y - 1 - coord.y))
+		var max_edge_distance := maxf(1.0, float(mini(map_size.x, map_size.y)) / 2.2)
+		var edge_score := clampf(float(edge_distance) / max_edge_distance, 0.0, 1.0)
+		var terrain_bonus := 0.12
+		if base_biome == BIOME_SNOW:
+			terrain_bonus = 0.18
+		var score := clampf((height_value * 1.35), 0.0, 1.0) * 0.35 + dryness * 0.2 + edge_score * 0.15 + terrain_bonus + rng.randf_range(0.0, 0.3)
+		tower_candidates.append({"coord": coord, "score": score, "base": base_biome})
+
+	if tower_candidates.is_empty():
+		return
+	tower_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
+
+	var max_towers := maxi(1, int(round(float(map_area) / 20000.0)))
+	var min_distance := maxf(5.0, float(mini(map_size.x, map_size.y)) / 14.0)
+	var settlements_created := 0
+	for candidate: Dictionary in tower_candidates:
+		if settlements_created >= max_towers:
+			break
+		if float(candidate.get("score", 0.0)) < 0.22:
+			continue
+		var coord := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
+		if _is_too_close(coord, occupied, min_distance):
+			continue
+		var is_evil := settlements_created % 2 == 0
+		var settlement_type := "evilWizardTower" if is_evil else "wizardTower"
+		var settlement_name := "Evil Wizard Tower" if is_evil else "Wizard Tower"
+		_place_structure_with_details(
+			coord,
+			EVIL_WIZARDS_TOWER_TILE if is_evil else TOWER_TILE,
+			"evilWizardTower" if is_evil else "tower",
+			{
+				"settlement_type": settlement_type,
+				"region_name": settlement_name,
+				"settlement_classification": "Evil Wizard Tower" if is_evil else "Wizard Tower",
+				"major_population_groups": ["Wizards"],
+				"minor_population_groups": ["Apprentices"]
+			}
+		)
+		occupied.append(coord)
+		settlements_created += 1
+
+
+func _place_hostile_camps(
+	biome_map: Dictionary,
+	moisture_map: Dictionary,
+	rng: RandomNumberGenerator,
+	occupied: Array[Vector2i],
+	map_area: int
+) -> void:
+	var camp_types: Array[Dictionary] = [
+		{"id": "orcCamp", "tile": ORC_CAMP_TILE},
+		{"id": "gnollCamp", "tile": GNOLL_CAMP_TILE},
+		{"id": "trollCamp", "tile": TROLL_CAMP_TILE},
+		{"id": "ogreCamp", "tile": OGRE_CAMP_TILE},
+		{"id": "banditCamp", "tile": BANDIT_CAMP_TILE},
+		{"id": "travelerCamp", "tile": TRAVELERS_CAMP_TILE},
+		{"id": "centaurEncampment", "tile": CENTAUR_ENCAMPMENT_TILE}
+	]
+	var camp_candidates: Array[Dictionary] = []
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		if _is_coord_occupied(coord, occupied) or bool(tile_info.get("river", false)):
+			continue
+		var base_biome := String(tile_info.get("base_biome", biome_map.get(coord, BIOME_GRASSLAND))).to_lower()
+		if base_biome == BIOME_WATER or base_biome == BIOME_MOUNTAIN:
+			continue
+		if String(tile_info.get("overlay", "")).to_lower().contains("mountain"):
+			continue
+		var dryness := clampf(1.0 - float(moisture_map.get(coord, 0.5)), 0.0, 1.0)
+		var score := dryness * 0.35 + rng.randf_range(0.0, 0.28)
+		if base_biome == BIOME_BADLANDS:
+			score += 0.45
+		elif base_biome == BIOME_DESERT:
+			score += 0.36
+		elif base_biome == BIOME_MARSH:
+			score += 0.28
+		else:
+			score += 0.2
+		camp_candidates.append({"coord": coord, "score": score, "base_biome": base_biome})
+
+	if camp_candidates.is_empty():
+		return
+	camp_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
+	var max_camps := maxi(1, int(round(float(map_area) / 14000.0)))
+	var min_distance := 8.0
+	var placed := 0
+	for candidate: Dictionary in camp_candidates:
+		if placed >= max_camps:
+			break
+		if float(candidate.get("score", 0.0)) < 0.3:
+			continue
+		var coord := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
+		if _is_too_close(coord, occupied, min_distance):
+			continue
+		var camp_id := _select_camp_type_from_biome(String(candidate.get("base_biome", BIOME_GRASSLAND)), rng)
+		var camp_def: Dictionary = {}
+		for def: Dictionary in camp_types:
+			if String(def.get("id", "")) == camp_id:
+				camp_def = def
+				break
+		if camp_def.is_empty():
+			camp_def = camp_types[0] as Dictionary
+		_place_structure_with_details(
+			coord,
+			camp_def.get("tile", ORC_CAMP_TILE) as Vector2i,
+			camp_id,
+			{
+				"region_name": camp_id.capitalize(),
+				"settlement_classification": camp_id.capitalize()
+			}
+		)
+		occupied.append(coord)
+		placed += 1
+
+
+
+func _select_camp_type_from_biome(base_biome: String, rng: RandomNumberGenerator) -> String:
+	var biome_key := base_biome.to_lower()
+	var options: Array[String] = ["orcCamp", "gnollCamp", "banditCamp"]
+	if biome_key == BIOME_BADLANDS or biome_key == BIOME_DESERT:
+		options = ["orcCamp", "gnollCamp", "trollCamp", "ogreCamp", "banditCamp"]
+	elif biome_key == BIOME_GRASSLAND:
+		options = ["banditCamp", "travelerCamp", "centaurEncampment", "orcCamp"]
+	elif biome_key == BIOME_MARSH:
+		options = ["gnollCamp", "trollCamp", "ogreCamp"]
+	return options[rng.randi_range(0, options.size() - 1)]
+
+
+func _place_caves_and_dungeons(
+	biome_map: Dictionary,
+	height_map: Dictionary,
+	moisture_map: Dictionary,
+	rng: RandomNumberGenerator,
+	occupied: Array[Vector2i],
+	map_area: int
+) -> void:
+	var cave_candidates: Array[Dictionary] = []
+	var dungeon_candidates: Array[Dictionary] = []
+	for coord: Vector2i in _tile_data.keys():
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		if _is_coord_occupied(coord, occupied) or bool(tile_info.get("river", false)):
+			continue
+		var base_biome := String(tile_info.get("base_biome", biome_map.get(coord, BIOME_GRASSLAND))).to_lower()
+		var overlay := String(tile_info.get("overlay", "")).to_lower()
+		var height_value := float(height_map.get(coord, 0.0))
+		var dryness := clampf(1.0 - float(moisture_map.get(coord, 0.5)), 0.0, 1.0)
+		if base_biome == BIOME_MOUNTAIN or overlay.contains("hill"):
+			var cave_score := height_value * 0.55 + dryness * 0.1 + rng.randf_range(0.0, 0.35)
+			cave_candidates.append({"coord": coord, "score": cave_score})
+		if base_biome != BIOME_WATER and base_biome != BIOME_MOUNTAIN:
+			var dungeon_score := dryness * 0.45 + rng.randf_range(0.0, 0.35)
+			if base_biome == BIOME_BADLANDS:
+				dungeon_score += 0.12
+			dungeon_candidates.append({"coord": coord, "score": dungeon_score})
+
+	cave_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
+	dungeon_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(b.get("score", 0.0)) < float(a.get("score", 0.0)))
+
+	var max_caves := maxi(1, int(round(float(map_area) / 18000.0)))
+	var max_dungeons := maxi(1, int(round(float(map_area) / 22000.0)))
+	_place_scored_structure_batch(cave_candidates, occupied, 7.0, max_caves, 0.3, CAVE_TILE, "cave")
+	_place_scored_structure_batch(dungeon_candidates, occupied, 9.0, max_dungeons, 0.32, DUNGEON_TILE, "dungeon")
+
+
+func _place_scored_structure_batch(
+	candidates: Array[Dictionary],
+	occupied: Array[Vector2i],
+	min_distance: float,
+	max_count: int,
+	min_score: float,
+	tile: Vector2i,
+	structure_id: String
+) -> void:
+	var placed := 0
+	for candidate: Dictionary in candidates:
+		if placed >= max_count:
+			break
+		if float(candidate.get("score", 0.0)) < min_score:
+			continue
+		var coord := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
+		if _is_too_close(coord, occupied, min_distance):
+			continue
+		_place_structure_with_details(coord, tile, structure_id, {"region_name": structure_id.capitalize()})
+		occupied.append(coord)
+		placed += 1
+
+
+func _place_structure_with_details(coord: Vector2i, tile: Vector2i, structure_id: String, extra: Dictionary = {}) -> void:
+	if settlement_layer != null:
+		settlement_layer.set_cell(coord, _atlas_source_id, tile)
+	else:
+		map_layer.set_cell(coord, _atlas_source_id, tile)
+	var tile_info := _tile_data.get(coord, {}) as Dictionary
+	tile_info["structure"] = structure_id
+	for key_variant: Variant in extra.keys():
+		tile_info[key_variant] = extra.get(key_variant)
+	_tile_data[coord] = tile_info
+
+
+func _is_coord_occupied(coord: Vector2i, occupied: Array[Vector2i]) -> bool:
+	for existing: Vector2i in occupied:
+		if existing == coord:
+			return true
+	return false
 
 
 func _founded_years_ago_for_settlement_type(settlement_type: String, rng: RandomNumberGenerator) -> int:
