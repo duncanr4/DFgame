@@ -4487,6 +4487,66 @@ func _update_biome_overlay_visibility() -> void:
 		return
 	biome_overlay.visible = _biome_overlay_enabled and not _is_globe_view
 
+func _get_layout_generation_preset(layout_label: String) -> Dictionary:
+	var layout_presets := {
+		"normal": {
+			"landmass_center_count": 4,
+			"landmass_mask_strength": 0.24,
+			"falloff_strength": 0.08,
+			"edge_ocean_strength": 0.2
+		},
+		"major continent": {
+			"landmass_center_count": 2,
+			"landmass_mask_strength": 0.62,
+			"falloff_strength": 0.2,
+			"edge_ocean_strength": 0.28
+		},
+		"twin continents": {
+			"landmass_center_count": 2,
+			"landmass_mask_strength": 0.5,
+			"falloff_strength": 0.16,
+			"edge_ocean_strength": 0.24
+		},
+		"inland sea": {
+			"landmass_center_count": 5,
+			"landmass_mask_strength": 0.36,
+			"falloff_strength": 0.12,
+			"edge_ocean_strength": 0.1
+		},
+		"archipelago": {
+			"landmass_center_count": 9,
+			"landmass_mask_strength": 0.08,
+			"falloff_strength": 0.04,
+			"edge_ocean_strength": 0.34
+		}
+	}
+	var key := layout_label.strip_edges().to_lower()
+	if layout_presets.has(key):
+		return layout_presets[key]
+	return layout_presets["normal"]
+
+func _seed_to_map_seed(seed_setting: Variant) -> int:
+	var seed_text := str(seed_setting).strip_edges()
+	if seed_text.is_empty():
+		return map_seed
+	if seed_text.is_valid_int():
+		return int(seed_text)
+	return int(seed_text.hash())
+
+func _apply_terrain_ratio_settings(terrain_ratios: Dictionary) -> void:
+	var forest_ratio := clampf(float(terrain_ratios.get("forest", 0.5)), 0.0, 1.0)
+	var mountain_ratio := clampf(float(terrain_ratios.get("mountain", 0.5)), 0.0, 1.0)
+	var river_ratio := clampf(float(terrain_ratios.get("river", 0.5)), 0.0, 1.0)
+
+	var forest_delta := forest_ratio - 0.5
+	var mountain_delta := mountain_ratio - 0.5
+	var river_delta := river_ratio - 0.5
+
+	water_level = clampf(water_level + (river_delta * 0.12) - (mountain_delta * 0.04), 0.2, 0.7)
+	noise_frequency = clampf(noise_frequency + (mountain_delta * 1.2) - (forest_delta * 0.3), 0.6, 4.0)
+	falloff_strength = clampf(falloff_strength + (river_delta * 0.16), 0.0, 0.45)
+	landmass_falloff_scale = clampf(landmass_falloff_scale + (mountain_delta * 0.35), 0.8, 2.2)
+
 func _apply_cached_world_settings() -> void:
 	var game_session := get_node_or_null("/root/GameSession")
 	if game_session == null:
@@ -4496,5 +4556,15 @@ func _apply_cached_world_settings() -> void:
 		_world_settings = settings.duplicate(true)
 		if settings.has("map_dimensions"):
 			map_size = settings["map_dimensions"]
+		if settings.has("world_seed"):
+			map_seed = _seed_to_map_seed(settings["world_seed"])
+		if settings.has("world_layout"):
+			var layout_preset := _get_layout_generation_preset(str(settings["world_layout"]))
+			landmass_center_count = int(layout_preset["landmass_center_count"])
+			landmass_mask_strength = float(layout_preset["landmass_mask_strength"])
+			falloff_strength = float(layout_preset["falloff_strength"])
+			edge_ocean_strength = float(layout_preset["edge_ocean_strength"])
+		if settings.has("terrain_ratios") and settings["terrain_ratios"] is Dictionary:
+			_apply_terrain_ratio_settings(settings["terrain_ratios"])
 	_configure_globe_viewport()
 	_update_globe_texture()
