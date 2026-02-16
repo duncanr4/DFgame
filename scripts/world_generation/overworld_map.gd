@@ -36,7 +36,7 @@ extends Node2D
 @export_range(0.0, 0.4, 0.01) var desert_moisture_bias: float = 0.08
 @export_range(0.0, 1.0, 0.01) var badlands_threshold: float = 0.4
 @export_range(0.0, 1.0, 0.01) var forest_threshold: float = 0.6
-@export_range(0.2, 0.95, 0.01) var forest_max_coverage: float = 0.68
+@export_range(0.2, 0.95, 0.01) var forest_max_coverage: float = 0.41
 @export_range(0.0, 1.0, 0.01) var jungle_threshold: float = 0.75
 @export_range(0.0, 1.0, 0.01) var marsh_threshold: float = 0.68
 @export_range(0.0, 1.0, 0.01) var hot_threshold: float = 0.7
