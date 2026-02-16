@@ -572,7 +572,8 @@ func _ready() -> void:
 
 	skin_color.value_changed.connect(_on_color_changed.bind(Images.PORTRAIT))
 	hair_color.value_changed.connect(_on_color_changed.bind(Images.HAIR))
-	beard_color.value_changed.connect(_on_color_changed.bind(Images.BEARD))
+	if beard_color:
+		beard_color.value_changed.connect(_on_color_changed.bind(Images.BEARD))
 	if beard_style:
 		beard_style.value_changed.connect(_on_beard_style_changed)
 
