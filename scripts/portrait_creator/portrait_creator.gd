@@ -592,6 +592,8 @@ func _ready() -> void:
 		clan_name.item_selected.connect(_on_clan_selected)
 	if profession_choice:
 		profession_choice.item_selected.connect(_on_profession_selected)
+		if profession_choice.item_count > 0 and profession_choice.selected < 0:
+			profession_choice.select(0)
 
 	resend_images.connect(_on_resend_images)
 
