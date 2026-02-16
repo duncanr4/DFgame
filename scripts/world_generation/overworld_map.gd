@@ -1536,7 +1536,6 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 	var history_timeline := _build_settlement_history_timeline(
 		details,
 		settlement_name,
-		settlement_type,
 		founded_years_ago
 	)
 
@@ -1637,7 +1636,6 @@ func _set_details_tab_text(target: RichTextLabel, text: String) -> void:
 func _build_settlement_history_timeline(
 	details: Dictionary,
 	settlement_name: String,
-	settlement_type_label: String,
 	founded_years_ago: int
 ) -> String:
 	var current_year := int(Time.get_datetime_dict_from_system().get("year", 0))
@@ -1657,9 +1655,7 @@ func _build_settlement_history_timeline(
 	rng.seed = int(seed_basis.hash())
 
 	var span := maxi(1, founded_years_ago)
-	var middle_event_count := clampi(span / 160, 2, 7)
-	if middle_event_count > event_pool.size():
-		middle_event_count = event_pool.size()
+	var middle_event_count := clampi(span / 16, 39, 89)
 
 	var selected_events: Array[String] = []
 	for _index in range(middle_event_count):
@@ -1667,7 +1663,6 @@ func _build_settlement_history_timeline(
 			break
 		var selected_index := rng.randi_range(0, event_pool.size() - 1)
 		selected_events.append(event_pool[selected_index])
-		event_pool.remove_at(selected_index)
 
 	var events: Array[Dictionary] = []
 	events.append({
@@ -1682,11 +1677,6 @@ func _build_settlement_history_timeline(
 			"year": year,
 			"description": selected_events[index]
 		})
-
-	events.append({
-		"year": current_year,
-		"description": "%s now endures as a %s." % [settlement_name, settlement_type_label.to_lower()]
-	})
 
 	events.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a.get("year", 0)) < int(b.get("year", 0))
