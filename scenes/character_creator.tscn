@@ -54,10 +54,10 @@ skin_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContaine
 eye_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer2/CenterContainer/HSlider")
 hair_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer3/CenterContainer/HSlider")
 beard_style = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer5/CenterContainer/HSlider")
-beardless_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BeardlessEntry")
-dark_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/DarkDwarfEntry")
-grey_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/GreyDwarfEntry")
-banker_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BankerEntry")
+beardless_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BeardlessEntry")
+dark_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/DarkDwarfEntry")
+grey_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/GreyDwarfEntry")
+banker_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BankerEntry")
 attribute_reminder_title = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderTitle")
 attribute_reminder_text = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderBody")
 portrait = ExtResource("2_6txqo")
@@ -263,6 +263,75 @@ step = 1.0
 layout_mode = 2
 icon = ExtResource("12_mdm0h")
 flat = true
+
+[node name="AttributeReminderEntries" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=147900310]
+custom_minimum_size = Vector2(250, 170)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BeardlessEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900311]
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BeardlessEntry" unique_id=147900312]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("18_u8m4a")
+stretch_mode = 5
+
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BeardlessEntry" unique_id=147900313]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+text = "Beardless: You are the shame of your clan and the disgrace of your holdfast. Without a beard a dwarf is nothing, consider this path to be one that will lead to scorn and ridicule among your peers."
+visible = false
+
+[node name="DarkDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900314]
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/DarkDwarfEntry" unique_id=147900315]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("19_jk7te")
+stretch_mode = 5
+
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/DarkDwarfEntry" unique_id=147900316]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+text = "Dark Dwarf Heritage: Your soot colored skin indicates you hail from the ash covered lands of Dun Mortis. Your kind are known by your paler skinned cousins as the Dark Dwarves, a race cast away from the light of the All-father into the refuge bin of Stonebeard's furnace. You are hated by your kin as an oathbreaker by virtue of your birthright and if you attempt to enter into their holds will likely be killed on sight."
+visible = false
+
+[node name="GreyDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900317]
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/GreyDwarfEntry" unique_id=147900318]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("20_g4yx5")
+stretch_mode = 5
+
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/GreyDwarfEntry" unique_id=147900319]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+text = "Grey Dwarf Heritage: Your skin is the colour of ash and your heart is that of steel. Known as a Dwagar you may not be as despised as the Dark Dwarves are, yet the kinship you have with the rest of Dwarfdom is strained. Your ancestors were followers of the Lawgiver and Forgebearers of the Forgotten Era who preached a strain of total dwarven separatism and supremacy that led your people to form holds far away from your homeland. You may be welcomed into any dwarf hold but not well liked and the races you hunt as slaves will attack you on sight."
+visible = false
+
+[node name="BankerEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900320]
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BankerEntry" unique_id=147900321]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+texture = ExtResource("21_6p2l2")
+stretch_mode = 5
+
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BankerEntry" unique_id=147900322]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+text = "Banker: Among men you would be in a respected profession, among dwarves you are the opposite, expect your increased income to be met with glaring judgments and disdain from your peers who think your livelihood to be undwarfsmen like."
+visible = false
 
 
 [node name="VBoxContainer2" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer" unique_id=1641120716]
@@ -845,75 +914,6 @@ autowrap_mode = 3
 horizontal_alignment = 1
 vertical_alignment = 1
 text = ""
-visible = false
-
-[node name="AttributeReminderEntries" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=147900310]
-custom_minimum_size = Vector2(250, 170)
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="BeardlessEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries" unique_id=147900311]
-layout_mode = 2
-
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BeardlessEntry" unique_id=147900312]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 2
-texture = ExtResource("18_u8m4a")
-stretch_mode = 5
-
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BeardlessEntry" unique_id=147900313]
-layout_mode = 2
-size_flags_horizontal = 3
-autowrap_mode = 3
-text = "Beardless: You are the shame of your clan and the disgrace of your holdfast. Without a beard a dwarf is nothing, consider this path to be one that will lead to scorn and ridicule among your peers."
-visible = false
-
-[node name="DarkDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries" unique_id=147900314]
-layout_mode = 2
-
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/DarkDwarfEntry" unique_id=147900315]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 2
-texture = ExtResource("19_jk7te")
-stretch_mode = 5
-
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/DarkDwarfEntry" unique_id=147900316]
-layout_mode = 2
-size_flags_horizontal = 3
-autowrap_mode = 3
-text = "Dark Dwarf Heritage: Your soot colored skin indicates you hail from the ash covered lands of Dun Mortis. Your kind are known by your paler skinned cousins as the Dark Dwarves, a race cast away from the light of the All-father into the refuge bin of Stonebeard's furnace. You are hated by your kin as an oathbreaker by virtue of your birthright and if you attempt to enter into their holds will likely be killed on sight."
-visible = false
-
-[node name="GreyDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries" unique_id=147900317]
-layout_mode = 2
-
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/GreyDwarfEntry" unique_id=147900318]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 2
-texture = ExtResource("20_g4yx5")
-stretch_mode = 5
-
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/GreyDwarfEntry" unique_id=147900319]
-layout_mode = 2
-size_flags_horizontal = 3
-autowrap_mode = 3
-text = "Grey Dwarf Heritage: Your skin is the colour of ash and your heart is that of steel. Known as a Dwagar you may not be as despised as the Dark Dwarves are, yet the kinship you have with the rest of Dwarfdom is strained. Your ancestors were followers of the Lawgiver and Forgebearers of the Forgotten Era who preached a strain of total dwarven separatism and supremacy that led your people to form holds far away from your homeland. You may be welcomed into any dwarf hold but not well liked and the races you hunt as slaves will attack you on sight."
-visible = false
-
-[node name="BankerEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries" unique_id=147900320]
-layout_mode = 2
-
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BankerEntry" unique_id=147900321]
-custom_minimum_size = Vector2(20, 20)
-layout_mode = 2
-texture = ExtResource("21_6p2l2")
-stretch_mode = 5
-
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BankerEntry" unique_id=147900322]
-layout_mode = 2
-size_flags_horizontal = 3
-autowrap_mode = 3
-text = "Banker: Among men you would be in a respected profession, among dwarves you are the opposite, expect your increased income to be met with glaring judgments and disdain from your peers who think your livelihood to be undwarfsmen like."
 visible = false
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=236006476]
