@@ -1694,8 +1694,11 @@ func _build_settlement_history_timeline(
 
 	var rows: Array[String] = []
 	for event: Dictionary in events:
-		var year_text := "[color=#d4a64a][b]%s[/b][/color]" % str(int(event.get("year", current_year)))
-		var description := String(event.get("description", "")).strip_edges()
+		var event_year := int(event.get("year", current_year))
+		var years_ago := maxi(0, current_year - event_year)
+		var years_label := "year ago" if years_ago == 1 else "years ago"
+		var year_text := "[color=#d4a64a][b]%d %s[/b][/color]" % [years_ago, years_label]
+		var description := _capitalize_timeline_detail(String(event.get("description", "")).strip_edges())
 		if description.is_empty():
 			continue
 		rows.append("• %s — %s" % [year_text, description])
@@ -1742,6 +1745,19 @@ func _build_founding_event_text(history_kind: String, settlement_name: String) -
 			return "%s was raised as a sacred city of scaled priest-kings." % settlement_name
 		_:
 			return "%s first appears in the oldest surviving chronicles." % settlement_name
+
+func _capitalize_timeline_detail(detail: String) -> String:
+	if detail.is_empty():
+		return detail
+
+	for index in range(detail.length()):
+		var character := detail.unicode_at(index)
+		if character >= 65 and character <= 90:
+			return detail
+		if character >= 97 and character <= 122:
+			return "%s%s%s" % [detail.substr(0, index), char(character - 32), detail.substr(index + 1)]
+
+	return detail
 
 func _variant_array_to_strings(entries: Variant) -> Array[String]:
 	var result: Array[String] = []
