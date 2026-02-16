@@ -21,10 +21,10 @@
 [ext_resource type="Texture2D" uid="uid://dgj1gpoublgwt" path="res://resources/images/character_creator/ui/create.png" id="17_8ugf3"]
 [ext_resource type="Texture2D" uid="uid://cma2myns1va2j" path="res://resources/images/character_creator/ui/randombase.png" id="17_s8202"]
 
-[ext_resource type="Texture2D" uid="uid://d11w7kr5pbhyw" path="res://resources/images/character_creator/ui/beardless.png" id="18_u8m4a"]
-[ext_resource type="Texture2D" uid="uid://cf6g6v7j4s0y4" path="res://resources/images/character_creator/ui/darkdwarf.png" id="19_jk7te"]
-[ext_resource type="Texture2D" uid="uid://cs3vjiu8x2ets" path="res://resources/images/character_creator/ui/greydwarf.png" id="20_g4yx5"]
-[ext_resource type="Texture2D" uid="uid://cexxgcy64kjie" path="res://resources/images/character_creator/ui/banker.png" id="21_6p2l2"]
+[ext_resource type="Texture2D" path="res://resources/images/character_creator/ui/beardless.png" id="18_u8m4a"]
+[ext_resource type="Texture2D" path="res://resources/images/character_creator/ui/darkdwarf.png" id="19_jk7te"]
+[ext_resource type="Texture2D" path="res://resources/images/character_creator/ui/greydwarf.png" id="20_g4yx5"]
+[ext_resource type="Texture2D" path="res://resources/images/character_creator/ui/banker.png" id="21_6p2l2"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ja2xc"]
 shader = ExtResource("2_0yffs")

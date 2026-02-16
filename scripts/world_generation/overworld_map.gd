@@ -3034,7 +3034,7 @@ func _place_wizard_tower_settlements(
 		if _is_coord_occupied(coord, occupied) or bool(tile_info.get("river", false)):
 			continue
 		var base_biome := String(tile_info.get("base_biome", biome_map.get(coord, BIOME_GRASSLAND))).to_lower()
-		if base_biome != BIOME_GRASSLAND and base_biome != BIOME_SNOW:
+		if base_biome != BIOME_GRASSLAND and base_biome != BIOME_TUNDRA:
 			continue
 		if not String(tile_info.get("overlay", "")).strip_edges().is_empty():
 			continue
@@ -3046,7 +3046,7 @@ func _place_wizard_tower_settlements(
 		var max_edge_distance := maxf(1.0, float(mini(map_size.x, map_size.y)) / 2.2)
 		var edge_score := clampf(float(edge_distance) / max_edge_distance, 0.0, 1.0)
 		var terrain_bonus := 0.12
-		if base_biome == BIOME_SNOW:
+		if base_biome == BIOME_TUNDRA:
 			terrain_bonus = 0.18
 		var score := clampf((height_value * 1.35), 0.0, 1.0) * 0.35 + dryness * 0.2 + edge_score * 0.15 + terrain_bonus + rng.randf_range(0.0, 0.3)
 		tower_candidates.append({"coord": coord, "score": score, "base": base_biome})
