@@ -967,6 +967,9 @@ function enterStandardView() {
 }
 
 async function enter3dView(type) {
+  const controlsTip =
+    "Left mouse to change angle, middle mouse. Mousewheel to zoom. Right mouse or hold Shift to pan. <b>O</b> to toggle options";
+
   const canvas = document.createElement("canvas");
   canvas.id = "canvas3d";
   canvas.dataset.type = type;
@@ -985,11 +988,11 @@ async function enter3dView(type) {
   const started = await ThreeD.create(canvas, type);
   if (!started) return;
 
+  if (type === "viewGlobe") tip(controlsTip, true);
+
   canvas.style.display = "block";
   canvas.onmouseenter = () => {
-    const help =
-      "Left mouse to change angle, middle mouse. Mousewheel to zoom. Right mouse or hold Shift to pan. <b>O</b> to toggle options";
-    +canvas.dataset.hovered > 2 ? tip("") : tip(help);
+    +canvas.dataset.hovered > 2 ? tip("") : tip(controlsTip);
     canvas.dataset.hovered = (+canvas.dataset.hovered | 0) + 1;
   };
 

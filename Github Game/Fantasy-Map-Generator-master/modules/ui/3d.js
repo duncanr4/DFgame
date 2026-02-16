@@ -7,7 +7,7 @@ window.ThreeD = (function () {
     shadow: 0.5,
     sun: {x: 100, y: 800, z: 1000},
     rotateMesh: 0,
-    rotateGlobe: 0.5,
+    rotateGlobe: 0.2,
     skyColor: "#9ecef5",
     waterColor: "#466eab",
     sunColor: "#cccccc",
