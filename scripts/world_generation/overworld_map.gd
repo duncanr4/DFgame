@@ -20,7 +20,7 @@ extends Node2D
 @export var rainfall_frequency: float = 1.7
 @export var map_seed: int = 0
 @export var tile_size: int = 32
-@export var globe_rotation_speed: float = 0.0625
+@export var globe_rotation_speed: float = 0.02
 @export var globe_drag_sensitivity: float = 0.008
 @export var globe_zoom_step: float = 0.35
 @export var globe_min_camera_distance: float = 2.4
@@ -4136,7 +4136,12 @@ func _update_map_tooltip() -> void:
 	if tooltip_panel == null or map_layer == null:
 		return
 	if _is_globe_view:
-		_hide_map_tooltip()
+		if _is_dragging_globe or _hovered_tile.x < 0 or _hovered_tile.y < 0:
+			_hide_map_tooltip()
+			return
+		_refresh_map_tooltip(_hovered_tile)
+		tooltip_panel.visible = true
+		_position_map_tooltip()
 		return
 	var global_mouse := get_global_mouse_position()
 	var local_mouse := map_layer.to_local(global_mouse)
