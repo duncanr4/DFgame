@@ -2,7 +2,7 @@ extends Node2D
 
 @export var map_size: Vector2i = Vector2i(256, 256)
 @export var water_level: float = 0.45
-@export var falloff_strength: float = 0.0
+@export var falloff_strength: float = 0.08
 @export var falloff_power: float = 2.4
 @export var noise_frequency: float = 2.0
 @export var noise_octaves: int = 4
@@ -11,7 +11,7 @@ extends Node2D
 @export var landmass_center_count: int = 4
 @export var landmass_center_margin: float = 0.12
 @export var landmass_falloff_scale: float = 1.35
-@export var landmass_mask_strength: float = 0.0
+@export var landmass_mask_strength: float = 0.24
 @export var landmass_mask_power: float = 0.82
 @export_range(0.0, 0.5, 0.01) var edge_ocean_strength: float = 0.2
 @export_range(0.05, 1.0, 0.01) var edge_ocean_falloff: float = 0.32
@@ -4497,13 +4497,13 @@ func _get_layout_generation_preset(layout_label: String) -> Dictionary:
 		},
 		"major continent": {
 			"landmass_center_count": 2,
-			"landmass_mask_strength": 0.62,
-			"falloff_strength": 0.2,
+			"landmass_mask_strength": 0.68,
+			"falloff_strength": 0.24,
 			"edge_ocean_strength": 0.28
 		},
 		"twin continents": {
 			"landmass_center_count": 2,
-			"landmass_mask_strength": 0.5,
+			"landmass_mask_strength": 0.58,
 			"falloff_strength": 0.16,
 			"edge_ocean_strength": 0.24
 		},
@@ -4515,9 +4515,10 @@ func _get_layout_generation_preset(layout_label: String) -> Dictionary:
 		},
 		"archipelago": {
 			"landmass_center_count": 9,
-			"landmass_mask_strength": 0.08,
-			"falloff_strength": 0.04,
-			"edge_ocean_strength": 0.34
+			"landmass_mask_strength": 0.04,
+			"falloff_strength": 0.06,
+			"edge_ocean_strength": 0.4,
+			"water_level": 0.5
 		}
 	}
 	var key := layout_label.strip_edges().to_lower()
@@ -4564,6 +4565,8 @@ func _apply_cached_world_settings() -> void:
 			landmass_mask_strength = float(layout_preset["landmass_mask_strength"])
 			falloff_strength = float(layout_preset["falloff_strength"])
 			edge_ocean_strength = float(layout_preset["edge_ocean_strength"])
+			if layout_preset.has("water_level"):
+				water_level = float(layout_preset["water_level"])
 		if settings.has("terrain_ratios") and settings["terrain_ratios"] is Dictionary:
 			_apply_terrain_ratio_settings(settings["terrain_ratios"])
 	_configure_globe_viewport()
