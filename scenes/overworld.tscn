@@ -403,7 +403,8 @@ theme_override_constants/separation = 12
 layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = true
-fit_content = true
+scroll_active = true
+fit_content = false
 text = ""
 
 [node name="MainImageFrame" type="PanelContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs/Main/MainHeader"]
@@ -441,7 +442,8 @@ script = ExtResource("5_qcr4g")
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
-fit_content = true
+scroll_active = true
+fit_content = false
 text = ""
 
 [node name="Features" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
@@ -450,7 +452,8 @@ text = ""
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
-fit_content = true
+scroll_active = true
+fit_content = false
 text = ""
 
 [node name="Economy" type="VBoxContainer" parent="MapUi/StructureDetailsDialog/DetailsMargin/DetailsTabs"]
@@ -459,7 +462,8 @@ text = ""
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
-fit_content = true
+scroll_active = true
+fit_content = false
 text = ""
 
 [node name="Dimmer" type="ColorRect" parent="MapUi/LoadingScreen"]
