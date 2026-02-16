@@ -1298,6 +1298,7 @@ var _temperature_map: Dictionary = {}
 var _moisture_map: Dictionary = {}
 var _biome_map: Dictionary = {}
 var _world_settings: Dictionary = {}
+var _culture_pipeline := CULTURAL_INFLUENCE.new()
 var _landmass_centers: Array[Vector2] = []
 var _map_layer_original_parent: Node = null
 var _map_layer_original_index := -1
@@ -1318,6 +1319,13 @@ var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
 var _biome_overlay_enabled := false
 var _culture_overlay_enabled := false
+var _overlay_dirty := {
+	"elevation": true,
+	"temperature": true,
+	"moisture": true,
+	"biome": true,
+	"culture": true
+}
 var _hovered_tile := Vector2i(-999, -999)
 var _context_menu_tile := Vector2i(-1, -1)
 
@@ -1326,6 +1334,7 @@ const CONTEXT_MENU_MORE_INFORMATION_ID := 1
 const MORE_INFO_IMAGE_FOLDER := "res://resources/images/overworld/more_info"
 
 var _more_info_image_paths: Array[String] = []
+var _more_info_texture_cache: Dictionary = {}
 
 func _ready() -> void:
 	if map_layer == null:
@@ -1403,22 +1412,32 @@ func _on_globe_view_toggled(is_pressed: bool) -> void:
 
 func _on_temperature_map_toggled(is_pressed: bool) -> void:
 	_temperature_overlay_enabled = is_pressed
+	if is_pressed:
+		_ensure_overlay_texture("temperature")
 	_update_temperature_overlay_visibility()
 
 func _on_elevation_map_toggled(is_pressed: bool) -> void:
 	_elevation_overlay_enabled = is_pressed
+	if is_pressed:
+		_ensure_overlay_texture("elevation")
 	_update_elevation_overlay_visibility()
 
 func _on_moisture_map_toggled(is_pressed: bool) -> void:
 	_moisture_overlay_enabled = is_pressed
+	if is_pressed:
+		_ensure_overlay_texture("moisture")
 	_update_moisture_overlay_visibility()
 
 func _on_biome_map_toggled(is_pressed: bool) -> void:
 	_biome_overlay_enabled = is_pressed
+	if is_pressed:
+		_ensure_overlay_texture("biome")
 	_update_biome_overlay_visibility()
 
 func _on_culture_map_toggled(is_pressed: bool) -> void:
 	_culture_overlay_enabled = is_pressed
+	if is_pressed:
+		_ensure_overlay_texture("culture")
 	_update_culture_overlay_visibility()
 
 func _configure_structure_context_menu() -> void:
@@ -1598,6 +1617,7 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 
 func _cache_more_info_image_paths() -> void:
 	_more_info_image_paths.clear()
+	_more_info_texture_cache.clear()
 	var directory := DirAccess.open(MORE_INFO_IMAGE_FOLDER)
 	if directory == null:
 		return
@@ -1612,7 +1632,11 @@ func _cache_more_info_image_paths() -> void:
 
 		var lower_entry := entry.to_lower()
 		if lower_entry.ends_with(".png") or lower_entry.ends_with(".webp") or lower_entry.ends_with(".jpg") or lower_entry.ends_with(".jpeg"):
-			_more_info_image_paths.append("%s/%s" % [MORE_INFO_IMAGE_FOLDER, entry])
+			var path := "%s/%s" % [MORE_INFO_IMAGE_FOLDER, entry]
+			_more_info_image_paths.append(path)
+			var texture := load(path) as Texture2D
+			if texture != null:
+				_more_info_texture_cache[path] = texture
 	directory.list_dir_end()
 
 func _set_structure_details_random_image() -> void:
@@ -1625,7 +1649,11 @@ func _set_structure_details_random_image() -> void:
 
 	var random_index := randi_range(0, _more_info_image_paths.size() - 1)
 	var random_path := _more_info_image_paths[random_index]
-	var random_texture := load(random_path) as Texture2D
+	var random_texture := _more_info_texture_cache.get(random_path, null) as Texture2D
+	if random_texture == null:
+		random_texture = load(random_path) as Texture2D
+		if random_texture != null:
+			_more_info_texture_cache[random_path] = random_texture
 	structure_details_main_image.texture = random_texture
 
 func _set_details_tab_text(target: RichTextLabel, text: String) -> void:
@@ -1785,6 +1813,32 @@ func _regenerate_map() -> void:
 	await _generate_map()
 	_hide_loading_screen()
 
+func _log_generation_stage(stage_name: String, started_ms: int) -> void:
+	var elapsed_ms := Time.get_ticks_msec() - started_ms
+	print("[OverworldMap] %s took %d ms" % [stage_name, elapsed_ms])
+
+func _mark_all_overlays_dirty() -> void:
+	_overlay_dirty["elevation"] = true
+	_overlay_dirty["temperature"] = true
+	_overlay_dirty["moisture"] = true
+	_overlay_dirty["biome"] = true
+	_overlay_dirty["culture"] = true
+
+func _ensure_overlay_texture(overlay_key: String) -> void:
+	if not bool(_overlay_dirty.get(overlay_key, false)):
+		return
+	match overlay_key:
+		"elevation":
+			_update_elevation_overlay()
+		"temperature":
+			_update_temperature_overlay()
+		"moisture":
+			_update_moisture_overlay()
+		"biome":
+			_update_biome_overlay()
+		"culture":
+			_update_culture_overlay()
+
 func _generate_map() -> void:
 	if map_layer == null:
 		push_error("Overworld map is missing a TileMapLayer named MapLayer.")
@@ -1921,8 +1975,12 @@ func _generate_map() -> void:
 	for coord: Vector2i in highland_map.keys():
 		biome_map[coord] = highland_map[coord]
 
+	var generation_started_ms := Time.get_ticks_msec()
 	_apply_base_tiles(base_biome_map)
+	_log_generation_stage("base tiles", generation_started_ms)
 	await _yield_generation_wave()
+
+	generation_started_ms = Time.get_ticks_msec()
 	_apply_tree_tiles(tree_map, base_biome_map)
 	_apply_overlays_and_metadata(
 		base_biome_map,
@@ -1934,20 +1992,33 @@ func _generate_map() -> void:
 		moisture_map,
 		name_rng
 	)
+	_log_generation_stage("metadata and overlays", generation_started_ms)
 	await _yield_generation_wave()
+
+	generation_started_ms = Time.get_ticks_msec()
 	_place_icebergs(base_biome_map, temperature_map, height_map, rng)
+	_log_generation_stage("icebergs", generation_started_ms)
 	await _yield_generation_wave()
+
+	generation_started_ms = Time.get_ticks_msec()
 	_place_settlements(biome_map, rng)
 	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
+	_log_generation_stage("settlements and culture", generation_started_ms)
 	_height_map = height_map.duplicate()
 	_temperature_map = temperature_map.duplicate()
 	_moisture_map = moisture_map.duplicate()
 	_biome_map = biome_map.duplicate()
-	_update_elevation_overlay()
-	_update_temperature_overlay()
-	_update_moisture_overlay()
-	_update_biome_overlay()
-	_update_culture_overlay()
+	_mark_all_overlays_dirty()
+	if _elevation_overlay_enabled:
+		_ensure_overlay_texture("elevation")
+	if _temperature_overlay_enabled:
+		_ensure_overlay_texture("temperature")
+	if _moisture_overlay_enabled:
+		_ensure_overlay_texture("moisture")
+	if _biome_overlay_enabled:
+		_ensure_overlay_texture("biome")
+	if _culture_overlay_enabled:
+		_ensure_overlay_texture("culture")
 	_update_terrain_shading_overlay(base_biome_map)
 	_configure_globe_viewport()
 	_configure_overworld_camera_bounds()
@@ -4202,7 +4273,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		not resource_text.is_empty()
 	)
 
-	var culture_tooltip := CULTURAL_INFLUENCE.new().build_tooltip_data(data)
+	var culture_tooltip := _culture_pipeline.build_tooltip_data(data)
 	var major_population_groups := _variant_array_to_strings(data.get("major_population_groups", []))
 	if major_population_groups.is_empty() and not culture_tooltip.is_empty():
 		major_population_groups = _variant_array_to_strings(culture_tooltip.get("major_population_groups", []))
@@ -4643,6 +4714,7 @@ func _update_temperature_overlay() -> void:
 		return
 	if _temperature_map.is_empty():
 		temperature_overlay.texture = null
+		_overlay_dirty["temperature"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
@@ -4652,6 +4724,7 @@ func _update_temperature_overlay() -> void:
 			image.set_pixel(x, y, _temperature_to_color(temperature))
 	var texture := ImageTexture.create_from_image(image)
 	temperature_overlay.texture = texture
+	_overlay_dirty["temperature"] = false
 	temperature_overlay.centered = false
 	temperature_overlay.scale = Vector2(tile_size, tile_size)
 	temperature_overlay.position = Vector2.ZERO
@@ -4672,6 +4745,7 @@ func _update_elevation_overlay() -> void:
 		return
 	if _height_map.is_empty():
 		elevation_overlay.texture = null
+		_overlay_dirty["elevation"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
@@ -4681,6 +4755,7 @@ func _update_elevation_overlay() -> void:
 			image.set_pixel(x, y, _elevation_to_color(height))
 	var texture := ImageTexture.create_from_image(image)
 	elevation_overlay.texture = texture
+	_overlay_dirty["elevation"] = false
 	elevation_overlay.centered = false
 	elevation_overlay.scale = Vector2(tile_size, tile_size)
 	elevation_overlay.position = Vector2.ZERO
@@ -4720,6 +4795,7 @@ func _update_moisture_overlay() -> void:
 		return
 	if _moisture_map.is_empty():
 		moisture_overlay.texture = null
+		_overlay_dirty["moisture"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
@@ -4729,6 +4805,7 @@ func _update_moisture_overlay() -> void:
 			image.set_pixel(x, y, _moisture_to_color(moisture))
 	var texture := ImageTexture.create_from_image(image)
 	moisture_overlay.texture = texture
+	_overlay_dirty["moisture"] = false
 	moisture_overlay.centered = false
 	moisture_overlay.scale = Vector2(tile_size, tile_size)
 	moisture_overlay.position = Vector2.ZERO
@@ -4749,6 +4826,7 @@ func _update_biome_overlay() -> void:
 		return
 	if _biome_map.is_empty():
 		biome_overlay.texture = null
+		_overlay_dirty["biome"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
@@ -4758,6 +4836,7 @@ func _update_biome_overlay() -> void:
 			image.set_pixel(x, y, _biome_to_overlay_color(biome))
 	var texture := ImageTexture.create_from_image(image)
 	biome_overlay.texture = texture
+	_overlay_dirty["biome"] = false
 	biome_overlay.centered = false
 	biome_overlay.scale = Vector2(tile_size, tile_size)
 	biome_overlay.position = Vector2.ZERO
@@ -4769,11 +4848,12 @@ func _update_culture_overlay() -> void:
 		return
 	if _tile_data.is_empty():
 		culture_overlay.texture = null
+		_overlay_dirty["culture"] = false
 		return
-	var pipeline := CULTURAL_INFLUENCE.new()
-	var image := pipeline.build_culture_overlay_image(map_size.x, map_size.y, _tile_data, 0.08, 0.62)
+	var image := _culture_pipeline.build_culture_overlay_image(map_size.x, map_size.y, _tile_data, 0.08, 0.62)
 	var texture := ImageTexture.create_from_image(image)
 	culture_overlay.texture = texture
+	_overlay_dirty["culture"] = false
 	culture_overlay.centered = false
 	culture_overlay.scale = Vector2(tile_size, tile_size)
 	culture_overlay.position = Vector2.ZERO
