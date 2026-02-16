@@ -3806,29 +3806,36 @@ func _generate_population_timeline(
 	var resolved_population := maxi(0, population)
 	if resolved_population <= 0:
 		return []
+	var resolved_founded_years_ago := maxi(0, founded_years_ago)
 
 	var points: Array[Dictionary] = []
-	var steps := 5
-	var base_start := maxf(30.0, float(resolved_population) * (0.35 + rng.randf() * 0.25))
+	var total_points := resolved_founded_years_ago + 1
+	var base_start := maxf(20.0, float(resolved_population) * rng.randf_range(0.18, 0.48))
 	var current_value := base_start
-	var labels := ["Founding", "Expansion", "Conflict", "Recovery", "Current"]
-	var years_step := float(maxi(1, founded_years_ago)) / float(maxi(1, steps - 1))
 
-	for index in range(steps):
-		if index == steps - 1:
+	for year_since_founding in range(total_points):
+		if year_since_founding == total_points - 1:
 			current_value = float(resolved_population)
 		else:
-			var variance := rng.randf_range(-0.25, 0.25)
+			var timeline_ratio := 0.0
+			if total_points > 1:
+				timeline_ratio = float(year_since_founding) / float(total_points - 1)
+			var target_value := lerpf(base_start, float(resolved_population), timeline_ratio)
+			var drift := (target_value - current_value) * 0.16
+			var noise_strength := lerpf(0.075, 0.03, timeline_ratio)
+			var noise := rng.randf_range(-1.0, 1.0) * maxf(8.0, current_value * noise_strength)
 			current_value = clampf(
-				current_value * (1.0 + variance),
-				20.0,
-				float(resolved_population) * 1.5
+				current_value + drift + noise,
+				10.0,
+				float(resolved_population) * 1.75
 			)
-		var years_ago := int(round(float(founded_years_ago) - years_step * float(index)))
+
+		var years_ago := resolved_founded_years_ago - year_since_founding
 		points.append({
-			"label": labels[index],
+			"label": "Founding" if year_since_founding == 0 else ("Current" if years_ago == 0 else "Year %d" % year_since_founding),
+			"year": year_since_founding,
 			"population": int(round(current_value)),
-			"years_ago": max(0, years_ago)
+			"years_ago": years_ago
 		})
 
 	if points.size() > 1:
