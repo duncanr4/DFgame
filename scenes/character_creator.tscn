@@ -31,7 +31,7 @@ shader = ExtResource("2_0yffs")
 shader_parameter/images = Array[CompressedTexture2D]([ExtResource("2_6txqo"), ExtResource("3_ucp7b"), ExtResource("4_oy0w6")])
 shader_parameter/colors = Array[Vector3]([Vector3(0.07, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
 
-[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "beard_color", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_reminder_title", "attribute_reminder_text")]
+[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_reminder_title", "attribute_reminder_text")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -53,7 +53,6 @@ hair_dir = "res://resources/images/character_creator/hair"
 skin_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer/CenterContainer/HSlider")
 eye_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer2/CenterContainer/HSlider")
 hair_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer3/CenterContainer/HSlider")
-beard_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer4/CenterContainer/HSlider")
 beard_style = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer5/CenterContainer/HSlider")
 beardless_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/BeardlessEntry")
 dark_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderEntries/DarkDwarfEntry")
@@ -213,11 +212,6 @@ layout_mode = 2
 theme = ExtResource("3_0yffs")
 text = "Hair Color"
 
-[node name="Label3" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=855300622]
-layout_mode = 2
-theme = ExtResource("3_0yffs")
-text = "Beard Color"
-
 [node name="HBoxContainer3" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=617553849]
 layout_mode = 2
 
@@ -240,33 +234,13 @@ layout_mode = 2
 icon = ExtResource("12_mdm0h")
 flat = true
 
-[node name="HBoxContainer4" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=21635257]
-layout_mode = 2
-
-[node name="Button" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer4" unique_id=607736708]
-layout_mode = 2
-icon = ExtResource("11_pma8t")
-flat = true
-
-[node name="CenterContainer" type="CenterContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer4" unique_id=513534441]
-layout_mode = 2
-
-[node name="HSlider" type="HSlider" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer4/CenterContainer" unique_id=304019968]
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-
-[node name="Button2" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer4" unique_id=830455152]
-layout_mode = 2
-icon = ExtResource("12_mdm0h")
-flat = true
-
-
 [node name="Label4" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=113500451]
 layout_mode = 2
 theme = ExtResource("3_0yffs")
 text = "Beard Style"
+
+[node name="Control" type="Control" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=210987654]
+layout_mode = 2
 
 [node name="HBoxContainer5" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=150094809]
 layout_mode = 2
