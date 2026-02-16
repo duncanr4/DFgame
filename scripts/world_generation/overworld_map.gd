@@ -1645,7 +1645,7 @@ func _build_settlement_history_timeline(
 		current_year = 1000
 	var founding_year := current_year - maxi(1, founded_years_ago)
 	var history_kind := _resolve_history_kind(details)
-	var event_pool: Array[String] = (SETTLEMENT_HISTORY_EVENT_POOL.get(history_kind, SETTLEMENT_HISTORY_EVENT_POOL["generic"]) as Array[String]).duplicate()
+	var event_pool := _resolve_history_event_pool(history_kind)
 
 	var seed_basis := "%s|%s|%s|%s" % [
 		settlement_name,
@@ -1699,7 +1699,21 @@ func _build_settlement_history_timeline(
 		if description.is_empty():
 			continue
 		rows.append("• %s — %s" % [year_text, description])
+	if rows.is_empty():
+		return "No historical records are currently available."
 	return "\n".join(rows)
+
+func _resolve_history_event_pool(history_kind: String) -> Array[String]:
+	var fallback_events: Variant = SETTLEMENT_HISTORY_EVENT_POOL.get("generic", [])
+	var selected_events: Variant = SETTLEMENT_HISTORY_EVENT_POOL.get(history_kind, fallback_events)
+	var source: Variant = selected_events if selected_events is Array else fallback_events
+	var event_pool: Array[String] = []
+	if source is Array:
+		for entry: Variant in source:
+			var text := String(entry).strip_edges()
+			if not text.is_empty():
+				event_pool.append(text)
+	return event_pool
 
 func _resolve_history_kind(details: Dictionary) -> String:
 	var settlement_type := String(details.get("settlement_type", "")).strip_edges().to_lower()
