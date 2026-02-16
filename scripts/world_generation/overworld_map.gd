@@ -2035,7 +2035,7 @@ func _fade(t: float) -> float:
 
 
 func _to_normalized(noise_sample: float) -> float:
-	return TERRAIN_GENERATOR.to_normalized(noise_sample)
+	return clampf((noise_sample + 1.0) * 0.5, 0.0, 1.0)
 
 
 func _sample_temperature(x: int, y: int, elevation: float) -> float:
