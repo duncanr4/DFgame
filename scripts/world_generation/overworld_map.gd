@@ -43,7 +43,7 @@ extends Node2D
 @export_range(0.0, 1.0, 0.01) var warm_threshold: float = 0.55
 
 const TILE_ATLAS_DEFS := preload("res://scripts/world_generation/tile_atlas_defs.gd")
-const TERRAIN_GENERATOR_SCRIPT := preload("res://scripts/world_generation/terrain_generator.gd")
+const TERRAIN_GENERATOR_SCRIPT: Script = preload("res://scripts/world_generation/terrain_generator.gd")
 const BIOME_CLASSIFIER := preload("res://scripts/world_generation/biome_classifier.gd")
 const STRUCTURE_PLACER := preload("res://scripts/world_generation/structure_placer.gd")
 const WORLD_NAMING := preload("res://scripts/world_generation/world_naming.gd")
