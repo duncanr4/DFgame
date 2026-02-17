@@ -44,7 +44,7 @@ extends Node2D
 
 const TILE_ATLAS_DEFS := preload("res://scripts/world_generation/tile_atlas_defs.gd")
 const BIOME_CLASSIFIER := preload("res://scripts/world_generation/biome_classifier.gd")
-const TERRAIN_GENERATOR := TerrainGenerator
+const TERRAIN_GENERATOR := preload("res://scripts/world_generation/terrain_generator.gd")
 const STRUCTURE_PLACER := preload("res://scripts/world_generation/structure_placer.gd")
 const WORLD_NAMING := preload("res://scripts/world_generation/world_naming.gd")
 const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
