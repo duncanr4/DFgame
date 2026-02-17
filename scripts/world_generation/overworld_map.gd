@@ -958,6 +958,7 @@ const MORE_INFO_IMAGE_FOLDER := "res://resources/images/overworld/more_info"
 
 var _more_info_image_paths: Array[String] = []
 var _more_info_texture_cache: Dictionary = {}
+var _landmass_masks: Dictionary = {}
 
 func _ready() -> void:
 	if map_layer == null:
@@ -1556,6 +1557,7 @@ func _generate_map() -> void:
 			height_map[coord] = height
 
 	_smooth_height_map(height_map, 1, 0.35)
+	_ensure_landmass_presence(height_map)
 
 	var landmass_denom_x := maxf(1.0, float(map_size.x - 1))
 	var landmass_denom_y := maxf(1.0, float(map_size.y - 1))
@@ -1579,6 +1581,8 @@ func _generate_map() -> void:
 			var temperature: float = temperature_map[coord]
 			var moisture: float = moisture_map[coord]
 			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
+
+	_landmass_masks = TERRAIN_GENERATOR.generate_landmass_masks_from_biome_map(base_biome_map, map_size, BIOME_WATER)
 
 	_smooth_biomes(base_biome_map, 2)
 	if _count_biome(base_biome_map, BIOME_DESERT) == 0:
@@ -1882,6 +1886,17 @@ func _build_region_name_map(
 	return region_names
 
 func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
+	var lake_cells_variant: Variant = _landmass_masks.get("lake_cells", {})
+	if lake_cells_variant is Dictionary:
+		var lake_cells := lake_cells_variant as Dictionary
+		if lake_cells.has(start_coord):
+			return "lake"
+	var ocean_cells_variant: Variant = _landmass_masks.get("ocean_cells", {})
+	if ocean_cells_variant is Dictionary:
+		var ocean_cells := ocean_cells_variant as Dictionary
+		if ocean_cells.has(start_coord):
+			return "ocean"
+
 	var frontier: Array[Vector2i] = [start_coord]
 	var visited := {}
 	while not frontier.is_empty():
@@ -1902,6 +1917,25 @@ func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
 			if String(biome_map.get(neighbor, BIOME_GRASSLAND)) == BIOME_WATER:
 				frontier.append(neighbor)
 	return "lake"
+
+
+func _ensure_landmass_presence(height_map: Dictionary) -> void:
+	var desired_land_floor := 0.12
+	for _pass_index in range(3):
+		var provisional_biomes: Dictionary = {}
+		for coord: Vector2i in height_map.keys():
+			var height: float = height_map.get(coord, 0.0)
+			provisional_biomes[coord] = BIOME_WATER if height < water_level else BIOME_GRASSLAND
+
+		var masks := TERRAIN_GENERATOR.generate_landmass_masks_from_biome_map(provisional_biomes, map_size, BIOME_WATER)
+		var land_cells := masks.get("land_mask", {}) as Dictionary
+		var land_ratio := float(land_cells.size()) / maxf(1.0, float(map_size.x * map_size.y))
+		if land_ratio >= desired_land_floor:
+			return
+
+		var uplift := clampf((desired_land_floor - land_ratio) * 0.85, 0.04, 0.22)
+		for coord: Vector2i in height_map.keys():
+			height_map[coord] = clampf(float(height_map.get(coord, 0.0)) + uplift, 0.0, 1.0)
 
 func _highland_tile_for_biome(highland_biome: String, base_biome: String) -> Vector2i:
 	if highland_biome == BIOME_HILLS and base_biome == BIOME_TUNDRA:
