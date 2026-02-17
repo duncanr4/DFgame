@@ -147,3 +147,80 @@ static func hash_coords(x: int, y: int, seed_value: int) -> float:
 
 static func fade(t: float) -> float:
 	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+
+
+static func generate_landmass_masks_from_biome_map(biome_map: Dictionary, map_size: Vector2i, water_biome: String) -> Dictionary:
+	var land_mask: Dictionary[Vector2i, bool] = {}
+	var water_mask: Dictionary[Vector2i, bool] = {}
+	var visited: Dictionary[Vector2i, bool] = {}
+	var ocean_cells: Dictionary[Vector2i, bool] = {}
+	var lake_cells: Dictionary[Vector2i, bool] = {}
+
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			if String(biome_map.get(coord, "")) == water_biome:
+				water_mask[coord] = true
+			else:
+				land_mask[coord] = true
+
+	for coord: Vector2i in water_mask.keys():
+		if visited.has(coord):
+			continue
+		var queue: Array[Vector2i] = [coord]
+		var component: Array[Vector2i] = []
+		var touches_edge := false
+
+		while !queue.is_empty():
+			var current: Vector2i = queue.pop_back()
+			if visited.has(current):
+				continue
+			visited[current] = true
+			component.append(current)
+			if current.x == 0 or current.y == 0 or current.x == map_size.x - 1 or current.y == map_size.y - 1:
+				touches_edge = true
+			for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var neighbor: Vector2i = current + offset
+				if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
+					continue
+				if water_mask.has(neighbor) and !visited.has(neighbor):
+					queue.append(neighbor)
+
+		for cell in component:
+			if touches_edge:
+				ocean_cells[cell] = true
+			else:
+				lake_cells[cell] = true
+
+	var sea_island: Array[Vector2i] = []
+	var lake_island: Array[Vector2i] = []
+
+	for coord: Vector2i in land_mask.keys():
+		var adjacent_ocean := false
+		var adjacent_lake := false
+		for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var neighbor: Vector2i = coord + offset
+			if !water_mask.has(neighbor):
+				continue
+			if lake_cells.has(neighbor):
+				adjacent_lake = true
+			else:
+				adjacent_ocean = true
+		if adjacent_lake or adjacent_ocean:
+			if adjacent_lake and !adjacent_ocean:
+				lake_island.append(coord)
+			else:
+				sea_island.append(coord)
+
+	return {
+		"paths": [],
+		"land_mask": land_mask,
+		"water_mask": water_mask,
+		"ocean_cells": ocean_cells,
+		"lake_cells": lake_cells,
+		"coastline": {
+			"sea_island": sea_island,
+			"lake_island": lake_island
+		},
+		"lakes": {"freshwater": lake_cells.keys()}
+	}
