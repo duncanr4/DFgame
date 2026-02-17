@@ -1979,59 +1979,59 @@ func _sample_height(
 	x: int,
 	y: int
 ) -> float:
-	return float(TERRAIN_GENERATOR.call("sample_height", continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers))
+	return float(TERRAIN_GENERATOR.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers))
 
 
 func _sample_continent_bias(x: int, y: int) -> float:
-	return float(TERRAIN_GENERATOR.call("sample_continent_bias", x, y, _terrain_settings(), _landmass_centers))
+	return float(TERRAIN_GENERATOR.sample_continent_bias(x, y, _terrain_settings(), _landmass_centers))
 
 
 func _sample_edge_ocean_bias(x: int, y: int) -> float:
-	return float(TERRAIN_GENERATOR.call("sample_edge_ocean_bias", x, y, _terrain_settings()))
+	return float(TERRAIN_GENERATOR.sample_edge_ocean_bias(x, y, _terrain_settings()))
 
 
 func _sample_radial_falloff_bias(centered_nx: float, centered_ny: float) -> float:
-	return float(TERRAIN_GENERATOR.call("sample_radial_falloff_bias", centered_nx, centered_ny, falloff_strength, falloff_power))
+	return float(TERRAIN_GENERATOR.sample_radial_falloff_bias(centered_nx, centered_ny, falloff_strength, falloff_power))
 
 
 func _sample_landmass_center_bias(centered_nx: float, centered_ny: float) -> float:
-	return float(TERRAIN_GENERATOR.call("sample_landmass_center_bias", centered_nx, centered_ny, landmass_falloff_scale, falloff_power, _landmass_centers))
+	return float(TERRAIN_GENERATOR.sample_landmass_center_bias(centered_nx, centered_ny, landmass_falloff_scale, falloff_power, _landmass_centers))
 
 
 func _sample_landmass_mask_bias(nx: float, ny: float) -> float:
-	return float(TERRAIN_GENERATOR.call("sample_landmass_mask_bias", nx, ny, _terrain_settings()))
+	return float(TERRAIN_GENERATOR.sample_landmass_mask_bias(nx, ny, _terrain_settings()))
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
-	_landmass_centers = TERRAIN_GENERATOR.call("configure_landmass_centers", rng, landmass_center_count, landmass_center_margin) as Array[Vector2]
+	_landmass_centers = TERRAIN_GENERATOR.configure_landmass_centers(rng, landmass_center_count, landmass_center_margin) as Array[Vector2]
 
 
 func _distance_to_nearest_landmass_center(nx: float, ny: float) -> float:
-	return float(TERRAIN_GENERATOR.call("distance_to_nearest_landmass_center", nx, ny, _landmass_centers))
+	return float(TERRAIN_GENERATOR.distance_to_nearest_landmass_center(nx, ny, _landmass_centers))
 
 
 func _smooth_height_map(height_map: Dictionary, passes: int, strength: float) -> void:
-	TERRAIN_GENERATOR.call("smooth_height_map", height_map, passes, strength, water_level)
+	TERRAIN_GENERATOR.smooth_height_map(height_map, passes, strength, water_level)
 
 
 func _sample_landmass_mask(nx: float, ny: float) -> float:
-	return float(TERRAIN_GENERATOR.call("sample_landmass_mask", nx, ny, _terrain_settings()))
+	return float(TERRAIN_GENERATOR.sample_landmass_mask(nx, ny, _terrain_settings()))
 
 
 func _ellipse_distance(nx: float, ny: float, center: Vector2, radius: Vector2) -> float:
-	return float(TERRAIN_GENERATOR.call("ellipse_distance", nx, ny, center, radius))
+	return float(TERRAIN_GENERATOR.ellipse_distance(nx, ny, center, radius))
 
 
 func _value_noise(x: float, y: float, seed_value: int) -> float:
-	return float(TERRAIN_GENERATOR.call("value_noise", x, y, seed_value))
+	return float(TERRAIN_GENERATOR.value_noise(x, y, seed_value))
 
 
 func _hash_coords(x: int, y: int, seed_value: int) -> float:
-	return float(TERRAIN_GENERATOR.call("hash_coords", x, y, seed_value))
+	return float(TERRAIN_GENERATOR.hash_coords(x, y, seed_value))
 
 
 func _fade(t: float) -> float:
-	return float(TERRAIN_GENERATOR.call("fade", t))
+	return float(TERRAIN_GENERATOR.fade(t))
 
 
 func _to_normalized(noise_sample: float) -> float:
