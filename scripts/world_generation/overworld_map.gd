@@ -43,7 +43,6 @@ extends Node2D
 @export_range(0.0, 1.0, 0.01) var warm_threshold: float = 0.55
 
 const TILE_ATLAS_DEFS := preload("res://scripts/world_generation/tile_atlas_defs.gd")
-const TERRAIN_GENERATOR_SCRIPT: Script = preload("res://scripts/world_generation/terrain_generator.gd")
 const BIOME_CLASSIFIER := preload("res://scripts/world_generation/biome_classifier.gd")
 const STRUCTURE_PLACER := preload("res://scripts/world_generation/structure_placer.gd")
 const WORLD_NAMING := preload("res://scripts/world_generation/world_naming.gd")
@@ -1979,59 +1978,59 @@ func _sample_height(
 	x: int,
 	y: int
 ) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers)
+	return TerrainGenerator.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers)
 
 
 func _sample_continent_bias(x: int, y: int) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.sample_continent_bias(x, y, _terrain_settings(), _landmass_centers)
+	return TerrainGenerator.sample_continent_bias(x, y, _terrain_settings(), _landmass_centers)
 
 
 func _sample_edge_ocean_bias(x: int, y: int) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.sample_edge_ocean_bias(x, y, _terrain_settings())
+	return TerrainGenerator.sample_edge_ocean_bias(x, y, _terrain_settings())
 
 
 func _sample_radial_falloff_bias(centered_nx: float, centered_ny: float) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.sample_radial_falloff_bias(centered_nx, centered_ny, falloff_strength, falloff_power)
+	return TerrainGenerator.sample_radial_falloff_bias(centered_nx, centered_ny, falloff_strength, falloff_power)
 
 
 func _sample_landmass_center_bias(centered_nx: float, centered_ny: float) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.sample_landmass_center_bias(centered_nx, centered_ny, landmass_falloff_scale, falloff_power, _landmass_centers)
+	return TerrainGenerator.sample_landmass_center_bias(centered_nx, centered_ny, landmass_falloff_scale, falloff_power, _landmass_centers)
 
 
 func _sample_landmass_mask_bias(nx: float, ny: float) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.sample_landmass_mask_bias(nx, ny, _terrain_settings())
+	return TerrainGenerator.sample_landmass_mask_bias(nx, ny, _terrain_settings())
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
-	_landmass_centers = TERRAIN_GENERATOR_SCRIPT.configure_landmass_centers(rng, landmass_center_count, landmass_center_margin)
+	_landmass_centers = TerrainGenerator.configure_landmass_centers(rng, landmass_center_count, landmass_center_margin)
 
 
 func _distance_to_nearest_landmass_center(nx: float, ny: float) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.distance_to_nearest_landmass_center(nx, ny, _landmass_centers)
+	return TerrainGenerator.distance_to_nearest_landmass_center(nx, ny, _landmass_centers)
 
 
 func _smooth_height_map(height_map: Dictionary, passes: int, strength: float) -> void:
-	TERRAIN_GENERATOR_SCRIPT.smooth_height_map(height_map, passes, strength, water_level)
+	TerrainGenerator.smooth_height_map(height_map, passes, strength, water_level)
 
 
 func _sample_landmass_mask(nx: float, ny: float) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.sample_landmass_mask(nx, ny, _terrain_settings())
+	return TerrainGenerator.sample_landmass_mask(nx, ny, _terrain_settings())
 
 
 func _ellipse_distance(nx: float, ny: float, center: Vector2, radius: Vector2) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.ellipse_distance(nx, ny, center, radius)
+	return TerrainGenerator.ellipse_distance(nx, ny, center, radius)
 
 
 func _value_noise(x: float, y: float, seed_value: int) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.value_noise(x, y, seed_value)
+	return TerrainGenerator.value_noise(x, y, seed_value)
 
 
 func _hash_coords(x: int, y: int, seed_value: int) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.hash_coords(x, y, seed_value)
+	return TerrainGenerator.hash_coords(x, y, seed_value)
 
 
 func _fade(t: float) -> float:
-	return TERRAIN_GENERATOR_SCRIPT.fade(t)
+	return TerrainGenerator.fade(t)
 
 
 func _to_normalized(noise_sample: float) -> float:

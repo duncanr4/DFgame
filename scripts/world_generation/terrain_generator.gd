@@ -1,4 +1,5 @@
 extends RefCounted
+class_name TerrainGenerator
 
 const MASK_TWIN_LEFT_CENTER := Vector2(0.32, 0.48)
 const MASK_TWIN_RIGHT_CENTER := Vector2(0.68, 0.52)
