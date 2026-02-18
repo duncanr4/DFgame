@@ -1582,6 +1582,7 @@ func _generate_map() -> void:
 			var moisture: float = moisture_map[coord]
 			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
 
+	_guarantee_minimum_landmass(height_map, temperature_map, moisture_map, base_biome_map)
 	_landmass_masks = _generate_landmass_masks_from_biome_map(base_biome_map)
 
 	_smooth_biomes(base_biome_map, 2)
@@ -1920,8 +1921,9 @@ func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
 
 
 func _generate_landmass_masks_from_biome_map(biome_map: Dictionary) -> Dictionary:
-	if TERRAIN_GENERATOR.has_method("generate_landmass_masks_from_biome_map"):
-		return TERRAIN_GENERATOR.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
+	var terrain_generator := TERRAIN_GENERATOR.new()
+	if terrain_generator.has_method("generate_landmass_masks_from_biome_map"):
+		return terrain_generator.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
 
 	var land_mask := {}
 	var water_mask := {}
@@ -2016,6 +2018,32 @@ func _ensure_landmass_presence(height_map: Dictionary) -> void:
 		var uplift := clampf((desired_land_floor - land_ratio) * 0.85, 0.04, 0.22)
 		for coord: Vector2i in height_map.keys():
 			height_map[coord] = clampf(float(height_map.get(coord, 0.0)) + uplift, 0.0, 1.0)
+
+func _guarantee_minimum_landmass(
+	height_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary,
+	base_biome_map: Dictionary
+) -> void:
+	var desired_land_floor := 0.12
+	for _pass_index in range(4):
+		var water_tiles := _count_biome(base_biome_map, BIOME_WATER)
+		var total_tiles := max(1, map_size.x * map_size.y)
+		var land_ratio := 1.0 - (float(water_tiles) / float(total_tiles))
+		if land_ratio >= desired_land_floor:
+			return
+
+		var uplift := clampf((desired_land_floor - land_ratio) * 0.95, 0.03, 0.2)
+		for y in range(map_size.y):
+			for x in range(map_size.x):
+				var coord := Vector2i(x, y)
+				var new_height := clampf(float(height_map.get(coord, 0.0)) + uplift, 0.0, 1.0)
+				height_map[coord] = new_height
+				var temperature := _sample_temperature(x, y, new_height)
+				var moisture := _sample_moisture(x, y, new_height)
+				temperature_map[coord] = temperature
+				moisture_map[coord] = moisture
+				base_biome_map[coord] = _assign_base_biome(coord, new_height, temperature, moisture, height_map)
 
 func _highland_tile_for_biome(highland_biome: String, base_biome: String) -> Vector2i:
 	if highland_biome == BIOME_HILLS and base_biome == BIOME_TUNDRA:
@@ -4255,22 +4283,6 @@ func _rotate_globe(delta: float) -> void:
 func _configure_tileset() -> void:
 	var tile_set := TileSet.new()
 	var overworld_atlas := TileSetAtlasSource.new()
-	var atlas_texture := load(ATLAS_TEXTURE) as Texture2D
-	if atlas_texture == null:
-		push_error("Overworld atlas texture could not be loaded: %s" % ATLAS_TEXTURE)
-		_atlas_source_id = -1
-		if map_layer != null:
-			map_layer.tile_set = tile_set
-		if tree_layer != null:
-			tree_layer.tile_set = tile_set
-		if highland_layer != null:
-			highland_layer.tile_set = tile_set
-		if iceberg_layer != null:
-			iceberg_layer.tile_set = tile_set
-		if settlement_layer != null:
-			settlement_layer.tile_set = tile_set
-		return
-	var texture_size := atlas_texture.get_size()
 	var tile_coords_list: Array[Vector2i] = [
 		SAND_TILE,
 		GRASS_TILE,
@@ -4342,6 +4354,25 @@ func _configure_tileset() -> void:
 	]
 	for iceberg_tile_coord: Vector2i in iceberg_tile_options:
 		tile_coords_list.append(iceberg_tile_coord)
+	var loaded_overworld_texture: Texture2D = load(ATLAS_TEXTURE) as Texture2D
+	if loaded_overworld_texture == null:
+		push_warning("Overworld atlas texture could not be loaded: %s. Using generated fallback atlas." % ATLAS_TEXTURE)
+		loaded_overworld_texture = _build_fallback_overworld_atlas(tile_coords_list)
+	if loaded_overworld_texture == null:
+		push_error("Overworld atlas fallback texture could not be generated.")
+		_atlas_source_id = -1
+		if map_layer != null:
+			map_layer.tile_set = tile_set
+		if tree_layer != null:
+			tree_layer.tile_set = tile_set
+		if highland_layer != null:
+			highland_layer.tile_set = tile_set
+		if iceberg_layer != null:
+			iceberg_layer.tile_set = tile_set
+		if settlement_layer != null:
+			settlement_layer.tile_set = tile_set
+		return
+	var loaded_texture_size: Vector2i = loaded_overworld_texture.get_size()
 	var max_tile := Vector2i(0, 0)
 	for tile_coords: Vector2i in tile_coords_list:
 		max_tile.x = max(max_tile.x, tile_coords.x)
@@ -4350,9 +4381,9 @@ func _configure_tileset() -> void:
 	var required_rows := max_tile.y + 1
 	var atlas_tile_size := tile_size
 	if required_columns > 0 and required_rows > 0:
-		if int(texture_size.x) % required_columns == 0 and int(texture_size.y) % required_rows == 0:
-			var derived_tile_size_x := int(texture_size.x / required_columns)
-			var derived_tile_size_y := int(texture_size.y / required_rows)
+		if int(loaded_texture_size.x) % required_columns == 0 and int(loaded_texture_size.y) % required_rows == 0:
+			var derived_tile_size_x := int(loaded_texture_size.x / required_columns)
+			var derived_tile_size_y := int(loaded_texture_size.y / required_rows)
 			if derived_tile_size_x == derived_tile_size_y and derived_tile_size_x > 0:
 				if derived_tile_size_x != tile_size:
 					push_warning(
@@ -4364,10 +4395,10 @@ func _configure_tileset() -> void:
 			else:
 				push_warning(
 					"Overworld atlas texture size (%s) does not map cleanly to a square tile grid (%s x %s)." %
-					[texture_size, required_columns, required_rows]
+					[loaded_texture_size, required_columns, required_rows]
 				)
-	var max_columns := int(texture_size.x / atlas_tile_size)
-	var max_rows := int(texture_size.y / atlas_tile_size)
+	var max_columns := int(loaded_texture_size.x / atlas_tile_size)
+	var max_rows := int(loaded_texture_size.y / atlas_tile_size)
 	if max_columns <= 0 or max_rows <= 0:
 		push_error("Overworld atlas texture has no valid tile regions: %s" % ATLAS_TEXTURE)
 		_atlas_source_id = -1
@@ -4386,7 +4417,7 @@ func _configure_tileset() -> void:
 			[required_columns, required_rows, max_columns, max_rows]
 		)
 	tile_set.tile_size = Vector2i(atlas_tile_size, atlas_tile_size)
-	overworld_atlas.texture = atlas_texture
+	overworld_atlas.texture = loaded_overworld_texture
 	overworld_atlas.texture_region_size = Vector2i(atlas_tile_size, atlas_tile_size)
 	var seen_tiles: Dictionary = {}
 	for tile_coords: Vector2i in tile_coords_list:
@@ -4415,6 +4446,40 @@ func _configure_tileset() -> void:
 	if settlement_layer != null:
 		settlement_layer.tile_set = tile_set
 		settlement_layer.position = Vector2.ZERO
+
+func _build_fallback_overworld_atlas(tile_coords_list: Array[Vector2i]) -> Texture2D:
+	if tile_coords_list.is_empty():
+		return null
+	var max_coord := Vector2i.ZERO
+	for coords: Vector2i in tile_coords_list:
+		max_coord.x = max(max_coord.x, coords.x)
+		max_coord.y = max(max_coord.y, coords.y)
+	var image_width := (max_coord.x + 1) * tile_size
+	var image_height := (max_coord.y + 1) * tile_size
+	if image_width <= 0 or image_height <= 0:
+		return null
+	var atlas_image := Image.create(image_width, image_height, false, Image.FORMAT_RGBA8)
+	atlas_image.fill(Color(0.12, 0.12, 0.12, 1.0))
+	var palette: Array[Color] = [
+		Color(0.86, 0.68, 0.36, 1.0),
+		Color(0.28, 0.67, 0.36, 1.0),
+		Color(0.61, 0.44, 0.33, 1.0),
+		Color(0.41, 0.44, 0.48, 1.0),
+		Color(0.31, 0.58, 0.51, 1.0),
+		Color(0.88, 0.92, 0.95, 1.0),
+		Color(0.18, 0.38, 0.78, 1.0),
+		Color(0.72, 0.28, 0.64, 1.0)
+	]
+	for i in range(tile_coords_list.size()):
+		var coords: Vector2i = tile_coords_list[i]
+		var tile_rect := Rect2i(coords * tile_size, Vector2i(tile_size, tile_size))
+		var tile_color: Color = palette[i % palette.size()]
+		atlas_image.fill_rect(tile_rect, tile_color)
+		atlas_image.fill_rect(Rect2i(tile_rect.position, Vector2i(tile_size, 1)), Color.BLACK)
+		atlas_image.fill_rect(Rect2i(tile_rect.position + Vector2i(0, tile_size - 1), Vector2i(tile_size, 1)), Color.BLACK)
+		atlas_image.fill_rect(Rect2i(tile_rect.position, Vector2i(1, tile_size)), Color.BLACK)
+		atlas_image.fill_rect(Rect2i(tile_rect.position + Vector2i(tile_size - 1, 0), Vector2i(1, tile_size)), Color.BLACK)
+	return ImageTexture.create_from_image(atlas_image)
 
 func _update_temperature_overlay() -> void:
 	if temperature_overlay == null:
