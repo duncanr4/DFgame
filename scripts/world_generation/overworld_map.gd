@@ -4324,6 +4324,25 @@ func _configure_tileset() -> void:
 		DUNGEON_TILE,
 		CENTAUR_ENCAMPMENT_TILE
 	]
+	var atlas_texture := load(ATLAS_TEXTURE) as Texture2D
+	if atlas_texture == null:
+		push_warning("Overworld atlas texture could not be loaded: %s. Using generated fallback atlas." % ATLAS_TEXTURE)
+		atlas_texture = _build_fallback_overworld_atlas(tile_coords_list)
+	if atlas_texture == null:
+		push_error("Overworld atlas fallback texture could not be generated.")
+		_atlas_source_id = -1
+		if map_layer != null:
+			map_layer.tile_set = tile_set
+		if tree_layer != null:
+			tree_layer.tile_set = tile_set
+		if highland_layer != null:
+			highland_layer.tile_set = tile_set
+		if iceberg_layer != null:
+			iceberg_layer.tile_set = tile_set
+		if settlement_layer != null:
+			settlement_layer.tile_set = tile_set
+		return
+	var texture_size := atlas_texture.get_size()
 	for iceberg_tile_coord: Vector2i in iceberg_tile_options:
 		tile_coords_list.append(iceberg_tile_coord)
 	var resolved_atlas_texture: Texture2D = load(ATLAS_TEXTURE) as Texture2D
