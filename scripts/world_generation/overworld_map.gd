@@ -1582,6 +1582,7 @@ func _generate_map() -> void:
 			var moisture: float = moisture_map[coord]
 			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
 
+	_guarantee_minimum_landmass(height_map, temperature_map, moisture_map, base_biome_map)
 	_landmass_masks = _generate_landmass_masks_from_biome_map(base_biome_map)
 
 	_smooth_biomes(base_biome_map, 2)
@@ -2017,6 +2018,32 @@ func _ensure_landmass_presence(height_map: Dictionary) -> void:
 		var uplift := clampf((desired_land_floor - land_ratio) * 0.85, 0.04, 0.22)
 		for coord: Vector2i in height_map.keys():
 			height_map[coord] = clampf(float(height_map.get(coord, 0.0)) + uplift, 0.0, 1.0)
+
+func _guarantee_minimum_landmass(
+	height_map: Dictionary,
+	temperature_map: Dictionary,
+	moisture_map: Dictionary,
+	base_biome_map: Dictionary
+) -> void:
+	var desired_land_floor := 0.12
+	for _pass_index in range(4):
+		var water_tiles := _count_biome(base_biome_map, BIOME_WATER)
+		var total_tiles := max(1, map_size.x * map_size.y)
+		var land_ratio := 1.0 - (float(water_tiles) / float(total_tiles))
+		if land_ratio >= desired_land_floor:
+			return
+
+		var uplift := clampf((desired_land_floor - land_ratio) * 0.95, 0.03, 0.2)
+		for y in range(map_size.y):
+			for x in range(map_size.x):
+				var coord := Vector2i(x, y)
+				var new_height := clampf(float(height_map.get(coord, 0.0)) + uplift, 0.0, 1.0)
+				height_map[coord] = new_height
+				var temperature := _sample_temperature(x, y, new_height)
+				var moisture := _sample_moisture(x, y, new_height)
+				temperature_map[coord] = temperature
+				moisture_map[coord] = moisture
+				base_biome_map[coord] = _assign_base_biome(coord, new_height, temperature, moisture, height_map)
 
 func _highland_tile_for_biome(highland_biome: String, base_biome: String) -> Vector2i:
 	if highland_biome == BIOME_HILLS and base_biome == BIOME_TUNDRA:
