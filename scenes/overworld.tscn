@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://scripts/world_generation/overworld_map.gd" id="1_1r0ns"]
 [ext_resource type="Script" path="res://scripts/world_generation/overworld_camera.gd" id="2_o0pfi"]
-[ext_resource type="Texture2D" path="res://resources/images/overworld/atlas/stars-1.png" id="3_d6f56"]
 [ext_resource type="Script" path="res://scripts/ui/population_pie_chart.gd" id="4_5b2fg"]
 [ext_resource type="Script" path="res://scripts/ui/population_history_chart.gd" id="5_qcr4g"]
 
@@ -12,15 +11,9 @@ height = 3.2
 radial_segments = 64
 rings = 32
 
-[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_t31gj"]
-panorama = ExtResource("3_d6f56")
-
-[sub_resource type="Sky" id="Sky_vav31"]
-sky_material = SubResource("PanoramaSkyMaterial_t31gj")
-
 [sub_resource type="Environment" id="Environment_tr2ve"]
-background_mode = 2
-sky = SubResource("Sky_vav31")
+background_mode = 1
+background_color = Color(0.02, 0.02, 0.04, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6v0i6"]
 bg_color = Color(0.09, 0.1, 0.13, 0.9)
