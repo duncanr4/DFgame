@@ -1920,8 +1920,9 @@ func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
 
 
 func _generate_landmass_masks_from_biome_map(biome_map: Dictionary) -> Dictionary:
-	if TERRAIN_GENERATOR.has_method("generate_landmass_masks_from_biome_map"):
-		return TERRAIN_GENERATOR.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
+	var terrain_generator := TERRAIN_GENERATOR.new()
+	if terrain_generator.has_method("generate_landmass_masks_from_biome_map"):
+		return terrain_generator.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
 
 	var land_mask := {}
 	var water_mask := {}
@@ -4451,7 +4452,7 @@ func _build_fallback_overworld_atlas(tile_coords_list: Array[Vector2i]) -> Textu
 		return null
 	var atlas_image := Image.create(image_width, image_height, false, Image.FORMAT_RGBA8)
 	atlas_image.fill(Color(0.12, 0.12, 0.12, 1.0))
-	var palette = [
+	var palette: Array[Color] = [
 		Color(0.86, 0.68, 0.36, 1.0),
 		Color(0.28, 0.67, 0.36, 1.0),
 		Color(0.61, 0.44, 0.33, 1.0),
@@ -4462,9 +4463,9 @@ func _build_fallback_overworld_atlas(tile_coords_list: Array[Vector2i]) -> Textu
 		Color(0.72, 0.28, 0.64, 1.0)
 	]
 	for i in range(tile_coords_list.size()):
-		var coords := tile_coords_list[i]
+		var coords: Vector2i = tile_coords_list[i]
 		var tile_rect := Rect2i(coords * tile_size, Vector2i(tile_size, tile_size))
-		var tile_color := palette[i % palette.size()]
+		var tile_color: Color = palette[i % palette.size()]
 		atlas_image.fill_rect(tile_rect, tile_color)
 		atlas_image.fill_rect(Rect2i(tile_rect.position, Vector2i(tile_size, 1)), Color.BLACK)
 		atlas_image.fill_rect(Rect2i(tile_rect.position + Vector2i(0, tile_size - 1), Vector2i(tile_size, 1)), Color.BLACK)
