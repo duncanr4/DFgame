@@ -4443,15 +4443,15 @@ func _build_fallback_overworld_atlas(tile_coords_list: Array[Vector2i]) -> Textu
 		return null
 	var max_coord := Vector2i.ZERO
 	for coords: Vector2i in tile_coords_list:
-		max_coord.x = maxi(max_coord.x, coords.x)
-		max_coord.y = maxi(max_coord.y, coords.y)
+		max_coord.x = max(max_coord.x, coords.x)
+		max_coord.y = max(max_coord.y, coords.y)
 	var image_width := (max_coord.x + 1) * tile_size
 	var image_height := (max_coord.y + 1) * tile_size
 	if image_width <= 0 or image_height <= 0:
 		return null
 	var atlas_image := Image.create(image_width, image_height, false, Image.FORMAT_RGBA8)
 	atlas_image.fill(Color(0.12, 0.12, 0.12, 1.0))
-	var palette: Array[Color] = [
+	var palette = [
 		Color(0.86, 0.68, 0.36, 1.0),
 		Color(0.28, 0.67, 0.36, 1.0),
 		Color(0.61, 0.44, 0.33, 1.0),
