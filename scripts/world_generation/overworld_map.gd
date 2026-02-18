@@ -4345,11 +4345,11 @@ func _configure_tileset() -> void:
 	var texture_size := atlas_texture.get_size()
 	for iceberg_tile_coord: Vector2i in iceberg_tile_options:
 		tile_coords_list.append(iceberg_tile_coord)
-	var resolved_atlas_texture: Texture2D = load(ATLAS_TEXTURE) as Texture2D
-	if resolved_atlas_texture == null:
+	var loaded_overworld_texture: Texture2D = load(ATLAS_TEXTURE) as Texture2D
+	if loaded_overworld_texture == null:
 		push_warning("Overworld atlas texture could not be loaded: %s. Using generated fallback atlas." % ATLAS_TEXTURE)
-		resolved_atlas_texture = _build_fallback_overworld_atlas(tile_coords_list)
-	if resolved_atlas_texture == null:
+		loaded_overworld_texture = _build_fallback_overworld_atlas(tile_coords_list)
+	if loaded_overworld_texture == null:
 		push_error("Overworld atlas fallback texture could not be generated.")
 		_atlas_source_id = -1
 		if map_layer != null:
@@ -4363,7 +4363,7 @@ func _configure_tileset() -> void:
 		if settlement_layer != null:
 			settlement_layer.tile_set = tile_set
 		return
-	var atlas_texture_size: Vector2i = resolved_atlas_texture.get_size()
+	var loaded_texture_size: Vector2i = loaded_overworld_texture.get_size()
 	var max_tile := Vector2i(0, 0)
 	for tile_coords: Vector2i in tile_coords_list:
 		max_tile.x = max(max_tile.x, tile_coords.x)
@@ -4372,9 +4372,9 @@ func _configure_tileset() -> void:
 	var required_rows := max_tile.y + 1
 	var atlas_tile_size := tile_size
 	if required_columns > 0 and required_rows > 0:
-		if int(atlas_texture_size.x) % required_columns == 0 and int(atlas_texture_size.y) % required_rows == 0:
-			var derived_tile_size_x := int(atlas_texture_size.x / required_columns)
-			var derived_tile_size_y := int(atlas_texture_size.y / required_rows)
+		if int(loaded_texture_size.x) % required_columns == 0 and int(loaded_texture_size.y) % required_rows == 0:
+			var derived_tile_size_x := int(loaded_texture_size.x / required_columns)
+			var derived_tile_size_y := int(loaded_texture_size.y / required_rows)
 			if derived_tile_size_x == derived_tile_size_y and derived_tile_size_x > 0:
 				if derived_tile_size_x != tile_size:
 					push_warning(
@@ -4386,10 +4386,10 @@ func _configure_tileset() -> void:
 			else:
 				push_warning(
 					"Overworld atlas texture size (%s) does not map cleanly to a square tile grid (%s x %s)." %
-					[atlas_texture_size, required_columns, required_rows]
+					[loaded_texture_size, required_columns, required_rows]
 				)
-	var max_columns := int(atlas_texture_size.x / atlas_tile_size)
-	var max_rows := int(atlas_texture_size.y / atlas_tile_size)
+	var max_columns := int(loaded_texture_size.x / atlas_tile_size)
+	var max_rows := int(loaded_texture_size.y / atlas_tile_size)
 	if max_columns <= 0 or max_rows <= 0:
 		push_error("Overworld atlas texture has no valid tile regions: %s" % ATLAS_TEXTURE)
 		_atlas_source_id = -1
@@ -4408,7 +4408,7 @@ func _configure_tileset() -> void:
 			[required_columns, required_rows, max_columns, max_rows]
 		)
 	tile_set.tile_size = Vector2i(atlas_tile_size, atlas_tile_size)
-	overworld_atlas.texture = resolved_atlas_texture
+	overworld_atlas.texture = loaded_overworld_texture
 	overworld_atlas.texture_region_size = Vector2i(atlas_tile_size, atlas_tile_size)
 	var seen_tiles: Dictionary = {}
 	for tile_coords: Vector2i in tile_coords_list:
