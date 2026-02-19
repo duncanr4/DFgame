@@ -1638,8 +1638,7 @@ func _generate_map() -> void:
 	_moisture_map = moisture_map.duplicate()
 	_biome_map = biome_map.duplicate()
 	_mark_all_overlays_dirty()
-	if _elevation_overlay_enabled:
-		_ensure_overlay_texture("elevation")
+	_ensure_overlay_texture("elevation")
 	if _temperature_overlay_enabled:
 		_ensure_overlay_texture("temperature")
 	if _moisture_overlay_enabled:
@@ -4536,7 +4535,6 @@ func _update_elevation_overlay() -> void:
 		return
 	if _height_map.is_empty():
 		elevation_overlay.texture = null
-		_overlay_dirty["elevation"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
