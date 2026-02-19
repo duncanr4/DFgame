@@ -2164,15 +2164,31 @@ func _ellipse_distance(nx: float, ny: float, center: Vector2, radius: Vector2) -
 
 
 func _value_noise(x: float, y: float, seed_value: int) -> float:
-	return float(TERRAIN_GENERATOR.value_noise(x, y, seed_value))
+	var xi := int(floor(x))
+	var yi := int(floor(y))
+	var tx := x - float(xi)
+	var ty := y - float(yi)
+	var a := _hash_coords(xi, yi, seed_value)
+	var b := _hash_coords(xi + 1, yi, seed_value)
+	var c := _hash_coords(xi, yi + 1, seed_value)
+	var d := _hash_coords(xi + 1, yi + 1, seed_value)
+	var u := _fade(tx)
+	var v := _fade(ty)
+	var ab := lerpf(a, b, u)
+	var cd := lerpf(c, d, u)
+	return lerpf(ab, cd, v)
 
 
 func _hash_coords(x: int, y: int, seed_value: int) -> float:
-	return float(TERRAIN_GENERATOR.hash_coords(x, y, seed_value))
+	var h := uint64(x) * 374761393 + uint64(y) * 668265263 + uint64(seed_value) * 2654435761
+	h = (h ^ (h >> 13)) * 1274126177
+	h = h ^ (h >> 16)
+	var unsigned := h & 0xffffffff
+	return float(unsigned) / 4294967295.0
 
 
 func _fade(t: float) -> float:
-	return float(TERRAIN_GENERATOR.fade(t))
+	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 
 
 func _to_normalized(noise_sample: float) -> float:
