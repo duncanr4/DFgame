@@ -2028,7 +2028,7 @@ func _guarantee_minimum_landmass(
 	var desired_land_floor := 0.12
 	for _pass_index in range(4):
 		var water_tiles := _count_biome(base_biome_map, BIOME_WATER)
-		var total_tiles := max(1, map_size.x * map_size.y)
+		var total_tiles: int = maxi(1, map_size.x * map_size.y)
 		var land_ratio := 1.0 - (float(water_tiles) / float(total_tiles))
 		if land_ratio >= desired_land_floor:
 			return
