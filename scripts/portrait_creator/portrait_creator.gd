@@ -511,6 +511,7 @@ const FEMALE_NAME_POOL := [
 @export var dark_dwarf_reminder: Control
 @export var grey_dwarf_reminder: Control
 @export var banker_reminder: Control
+@export var attribute_tooltip_panel: Control
 @export var attribute_reminder_title: Label
 @export var attribute_reminder_text: Label
 
@@ -610,6 +611,10 @@ func _ready() -> void:
 	_configure_attribute_reminder_entries()
 	_refresh_random_name()
 	_update_attribute_reminders()
+	_clear_attribute_description()
+
+func _process(_delta: float) -> void:
+	_position_attribute_tooltip()
 
 func _configure_attribute_reminder_entries() -> void:
 	_configure_attribute_reminder_entry(beardless_reminder)
@@ -645,11 +650,14 @@ func _on_attribute_icon_hovered(icon: Control) -> void:
 	_hovered_attribute_icon = icon
 	var title := String(icon.get_meta("attribute_title", "")).strip_edges()
 	var description := String(icon.get_meta("attribute_description", "")).strip_edges()
+	if attribute_tooltip_panel:
+		attribute_tooltip_panel.visible = true
 	if attribute_reminder_title:
 		attribute_reminder_title.text = title
 	if attribute_reminder_text:
 		attribute_reminder_text.text = description
 		attribute_reminder_text.visible = not description.is_empty()
+	_position_attribute_tooltip()
 
 func _on_attribute_icon_unhovered(icon: Control) -> void:
 	if icon == _hovered_attribute_icon:
@@ -657,11 +665,33 @@ func _on_attribute_icon_unhovered(icon: Control) -> void:
 		_clear_attribute_description()
 
 func _clear_attribute_description() -> void:
+	if attribute_tooltip_panel:
+		attribute_tooltip_panel.visible = false
 	if attribute_reminder_title:
 		attribute_reminder_title.text = ""
 	if attribute_reminder_text:
 		attribute_reminder_text.text = ""
 		attribute_reminder_text.visible = false
+
+func _position_attribute_tooltip() -> void:
+	if attribute_tooltip_panel == null or not attribute_tooltip_panel.visible:
+		return
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+	var cursor_pos := viewport.get_mouse_position()
+	var tooltip_size := attribute_tooltip_panel.get_combined_minimum_size()
+	attribute_tooltip_panel.size = tooltip_size
+	var offset := Vector2(16.0, 16.0)
+	var viewport_size := viewport.get_visible_rect().size
+	var max_pos := Vector2(
+		maxf(0.0, viewport_size.x - tooltip_size.x),
+		maxf(0.0, viewport_size.y - tooltip_size.y)
+	)
+	var target_pos := cursor_pos + offset
+	target_pos.x = clampf(target_pos.x, 0.0, max_pos.x)
+	target_pos.y = clampf(target_pos.y, 0.0, max_pos.y)
+	attribute_tooltip_panel.position = target_pos
 
 func _setup_gender_button(button: Button) -> void:
 	if !_gender_button_normal_shadow:

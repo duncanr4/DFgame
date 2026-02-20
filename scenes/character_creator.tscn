@@ -46,7 +46,7 @@ shadow_color = Color(0, 0, 0, 0.35)
 shadow_size = 10
 shadow_offset = Vector2(0, 4)
 
-[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "hair_style", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_reminder_title", "attribute_reminder_text")]
+[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "hair_style", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_tooltip_panel", "attribute_reminder_title", "attribute_reminder_text")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -70,12 +70,13 @@ eye_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer
 hair_color = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer3/CenterContainer/HSlider")
 hair_style = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer4/CenterContainer/HSlider")
 beard_style = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/HBoxContainer5/CenterContainer/HSlider")
-beardless_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BeardlessEntry")
-dark_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/DarkDwarfEntry")
-grey_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/GreyDwarfEntry")
-banker_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BankerEntry")
-attribute_reminder_title = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderTitle")
-attribute_reminder_text = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/AttributeReminderBody")
+beardless_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/BeardlessEntry")
+dark_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/DarkDwarfEntry")
+grey_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry")
+banker_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/BankerEntry")
+attribute_tooltip_panel = NodePath("AttributeTooltipPanel")
+attribute_reminder_title = NodePath("AttributeTooltipPanel/TooltipMargin/TooltipVBox/AttributeReminderTitle")
+attribute_reminder_text = NodePath("AttributeTooltipPanel/TooltipMargin/TooltipVBox/AttributeReminderBody")
 portrait = ExtResource("2_6txqo")
 beard = ExtResource("3_ucp7b")
 hair = ExtResource("4_oy0w6")
@@ -90,17 +91,17 @@ grow_vertical = 2
 texture = ExtResource("6_s8202")
 
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=2025169358]
-custom_minimum_size = Vector2(843.399, 600)
+custom_minimum_size = Vector2(980, 700)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -352.0
-offset_top = -234.5
-offset_right = 352.0
-offset_bottom = 234.5
+offset_left = -490.0
+offset_top = -330.0
+offset_right = 490.0
+offset_bottom = 330.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -302,17 +303,51 @@ layout_mode = 2
 icon = ExtResource("12_mdm0h")
 flat = true
 
-[node name="AttributeReminderEntries" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=147900310]
+[node name="AttributeReminderEntries" type="Control" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid" unique_id=147900310]
 custom_minimum_size = Vector2(250, 170)
 layout_mode = 2
-size_flags_vertical = 3
 
-[node name="BeardlessEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900311]
+[node name="Base" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900330]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("17_s8202")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Frame" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900331]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("6_22p58")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Entries" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900332]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="BeardlessEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries" unique_id=147900311]
 visible = false
 layout_mode = 2
 
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BeardlessEntry" unique_id=147900312]
-custom_minimum_size = Vector2(20, 20)
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/BeardlessEntry" unique_id=147900312]
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 0
 texture = ExtResource("18_u8m4a")
@@ -320,19 +355,19 @@ stretch_mode = 5
 metadata/attribute_title = "Beardless"
 metadata/attribute_description = "You are the shame of your clan and the disgrace of your holdfast. Without a beard a dwarf is nothing, consider this path to be one that will lead to scorn and ridicule among your peers."
 
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BeardlessEntry" unique_id=147900313]
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/BeardlessEntry" unique_id=147900313]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Beardless: You are the shame of your clan and the disgrace of your holdfast. Without a beard a dwarf is nothing, consider this path to be one that will lead to scorn and ridicule among your peers."
 autowrap_mode = 3
 
-[node name="DarkDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900314]
+[node name="DarkDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries" unique_id=147900314]
 visible = false
 layout_mode = 2
 
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/DarkDwarfEntry" unique_id=147900315]
-custom_minimum_size = Vector2(20, 20)
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/DarkDwarfEntry" unique_id=147900315]
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 0
 texture = ExtResource("19_jk7te")
@@ -340,18 +375,18 @@ stretch_mode = 5
 metadata/attribute_title = "Dark Dwarf Heritage"
 metadata/attribute_description = "Your soot colored skin indicates you hail from the ash covered lands of Dun Mortis. Your kind are known by your paler skinned cousins as the Dark Dwarves, a race cast away from the light of the All-father into the refuge bin of Stonebeard's furnace. You are hated by your kin as an oathbreaker by virtue of your birthright and if you attempt to enter into their holds will likely be killed on sight."
 
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/DarkDwarfEntry" unique_id=147900316]
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/DarkDwarfEntry" unique_id=147900316]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Dark Dwarf Heritage: Your soot colored skin indicates you hail from the ash covered lands of Dun Mortis. Your kind are known by your paler skinned cousins as the Dark Dwarves, a race cast away from the light of the All-father into the refuge bin of Stonebeard's furnace. You are hated by your kin as an oathbreaker by virtue of your birthright and if you attempt to enter into their holds will likely be killed on sight."
 autowrap_mode = 3
 
-[node name="GreyDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900317]
+[node name="GreyDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries" unique_id=147900317]
 layout_mode = 2
 
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/GreyDwarfEntry" unique_id=147900318]
-custom_minimum_size = Vector2(20, 20)
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=147900318]
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 0
 texture = ExtResource("20_g4yx5")
@@ -359,19 +394,19 @@ stretch_mode = 5
 metadata/attribute_title = "Grey Dwarf Heritage"
 metadata/attribute_description = "Your skin is the colour of ash and your heart is that of steel. Known as a Dwagar you may not be as despised as the Dark Dwarves are, yet the kinship you have with the rest of Dwarfdom is strained. Your ancestors were followers of the Lawgiver and Forgebearers of the Forgotten Era who preached a strain of total dwarven separatism and supremacy that led your people to form holds far away from your homeland. You may be welcomed into any dwarf hold but not well liked and the races you hunt as slaves will attack you on sight."
 
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/GreyDwarfEntry" unique_id=147900319]
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=147900319]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Grey Dwarf Heritage: Your skin is the colour of ash and your heart is that of steel. Known as a Dwagar you may not be as despised as the Dark Dwarves are, yet the kinship you have with the rest of Dwarfdom is strained. Your ancestors were followers of the Lawgiver and Forgebearers of the Forgotten Era who preached a strain of total dwarven separatism and supremacy that led your people to form holds far away from your homeland. You may be welcomed into any dwarf hold but not well liked and the races you hunt as slaves will attack you on sight."
 autowrap_mode = 3
 
-[node name="BankerEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900320]
+[node name="BankerEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries" unique_id=147900320]
 visible = false
 layout_mode = 2
 
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BankerEntry" unique_id=147900321]
-custom_minimum_size = Vector2(20, 20)
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/BankerEntry" unique_id=147900321]
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 0
 texture = ExtResource("21_6p2l2")
@@ -379,7 +414,7 @@ stretch_mode = 5
 metadata/attribute_title = "Banker"
 metadata/attribute_description = "Among men you would be in a respected profession, among dwarves you are the opposite, expect your increased income to be met with glaring judgments and disdain from your peers who think your livelihood to be undwarfsmen like."
 
-[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/BankerEntry" unique_id=147900322]
+[node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/BankerEntry" unique_id=147900322]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
@@ -997,6 +1032,33 @@ flat = true
 layout_mode = 2
 icon = ExtResource("17_8ugf3")
 flat = true
+
+
+[node name="AttributeTooltipPanel" type="PanelContainer" parent="." unique_id=2001887123]
+visible = false
+layout_mode = 0
+z_index = 50
+mouse_filter = 2
+
+[node name="TooltipMargin" type="MarginContainer" parent="AttributeTooltipPanel" unique_id=2001887124]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="TooltipVBox" type="VBoxContainer" parent="AttributeTooltipPanel/TooltipMargin" unique_id=2001887125]
+layout_mode = 2
+custom_minimum_size = Vector2(280, 0)
+
+[node name="AttributeReminderTitle" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887126]
+layout_mode = 2
+theme = ExtResource("3_0yffs")
+
+[node name="AttributeReminderBody" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887127]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
 
 [connection signal="pressed" from="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer/Button" to="." method="_on_return_button_pressed"]
 [connection signal="pressed" from="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer/Button2" to="." method="_on_randomize_button_pressed"]
