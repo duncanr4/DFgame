@@ -634,13 +634,6 @@ func _cache_attribute_reminder_frame() -> void:
 	if reminder_root == null:
 		return
 	_attribute_reminder_frame = reminder_root.get_node_or_null("Frame") as Control
-	if _attribute_reminder_frame:
-		_attribute_reminder_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_attribute_reminder_frame.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		_attribute_reminder_frame.offset_left = 0
-		_attribute_reminder_frame.offset_top = 0
-		_attribute_reminder_frame.offset_right = 0
-		_attribute_reminder_frame.offset_bottom = 0
 
 func _configure_attribute_reminder_entry(entry: Control) -> void:
 	if entry == null:
