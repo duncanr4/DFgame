@@ -560,6 +560,7 @@ const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
 
 var _hovered_attribute_icon: Control
+var _attribute_reminder_frame: Control
 
 func _enter_tree() -> void:
 	instance = self
@@ -609,6 +610,7 @@ func _ready() -> void:
 	_setup_beard_style_slider()
 	_setup_hair_style_slider()
 	_configure_attribute_reminder_entries()
+	_cache_attribute_reminder_frame()
 	_refresh_random_name()
 	_update_attribute_reminders()
 	_clear_attribute_description()
@@ -621,6 +623,17 @@ func _configure_attribute_reminder_entries() -> void:
 	_configure_attribute_reminder_entry(dark_dwarf_reminder)
 	_configure_attribute_reminder_entry(grey_dwarf_reminder)
 	_configure_attribute_reminder_entry(banker_reminder)
+
+func _cache_attribute_reminder_frame() -> void:
+	if beardless_reminder == null:
+		return
+	var entries := beardless_reminder.get_parent()
+	if entries == null:
+		return
+	var reminder_root := entries.get_parent()
+	if reminder_root == null:
+		return
+	_attribute_reminder_frame = reminder_root.get_node_or_null("Frame") as Control
 
 func _configure_attribute_reminder_entry(entry: Control) -> void:
 	if entry == null:
@@ -860,10 +873,36 @@ func _update_attribute_reminders() -> void:
 		grey_dwarf_reminder.visible = _is_grey_dwarf_selected()
 	if beardless_reminder:
 		beardless_reminder.visible = _is_beardless_selected()
+	_update_attribute_reminder_frame()
 
 	if _hovered_attribute_icon and not _hovered_attribute_icon.is_visible_in_tree():
 		_hovered_attribute_icon = null
 		_clear_attribute_description()
+
+func _update_attribute_reminder_frame() -> void:
+	if _attribute_reminder_frame == null:
+		return
+	var visible_icon := _get_first_visible_attribute_icon()
+	if visible_icon == null:
+		_attribute_reminder_frame.visible = false
+		return
+	var frame_parent := _attribute_reminder_frame.get_parent() as Control
+	if frame_parent == null:
+		return
+	var icon_rect := visible_icon.get_global_rect()
+	_attribute_reminder_frame.position = frame_parent.to_local(icon_rect.position)
+	_attribute_reminder_frame.size = icon_rect.size
+	_attribute_reminder_frame.visible = true
+
+func _get_first_visible_attribute_icon() -> Control:
+	var entries: Array[Control] = [beardless_reminder, dark_dwarf_reminder, grey_dwarf_reminder, banker_reminder]
+	for entry in entries:
+		if entry == null or not entry.visible:
+			continue
+		var icon := entry.get_node_or_null("Icon") as Control
+		if icon and icon.is_visible_in_tree():
+			return icon
+	return null
 
 func _is_banker_selected() -> bool:
 	if profession_choice == null or profession_choice.item_count == 0:
