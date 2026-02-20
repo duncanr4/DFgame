@@ -5,6 +5,16 @@ const CONTINENT_WARP_SCALE := 3.8
 const CONTINENT_MACRO_SCALE := 2.4
 const CONTINENT_RIDGE_SCALE := 6.4
 const CONTINENT_MICRO_SCALE := 13.0
+const SMOOTHING_OFFSETS: Array[Vector2i] = [
+	Vector2i.LEFT,
+	Vector2i.RIGHT,
+	Vector2i.UP,
+	Vector2i.DOWN,
+	Vector2i(-1, -1),
+	Vector2i(1, -1),
+	Vector2i(-1, 1),
+	Vector2i(1, 1)
+]
 
 static func sample_height(continent_noise: FastNoiseLite, detail_noise: FastNoiseLite, ridge_noise: FastNoiseLite, x: int, y: int, settings: Dictionary, landmass_centers: Array[Vector2]) -> float:
 	var continent := to_normalized(continent_noise.get_noise_2d(float(x), float(y)))
@@ -29,13 +39,13 @@ static func configure_landmass_centers(rng: RandomNumberGenerator, count: int, m
 
 static func smooth_height_map(height_map: Dictionary, passes: int, strength: float, water_level: float) -> void:
 	for _pass_index in range(passes):
-		var next_map := height_map.duplicate()
+		var next_map: Dictionary = {}
 		for coord: Vector2i in height_map.keys():
 			var current: float = height_map.get(coord, 0.0)
 			var is_land := current >= water_level
 			var accum := current
 			var count := 1
-			for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN, Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
+			for offset: Vector2i in SMOOTHING_OFFSETS:
 				var neighbor := coord + offset
 				var neighbor_height: float = height_map.get(neighbor, current)
 				if is_land and neighbor_height < water_level: continue
@@ -43,9 +53,7 @@ static func smooth_height_map(height_map: Dictionary, passes: int, strength: flo
 				accum += neighbor_height
 				count += 1
 			next_map[coord] = lerpf(current, accum / float(count), strength)
-		height_map.clear()
-		for coord: Vector2i in next_map.keys():
-			height_map[coord] = next_map[coord]
+		height_map.assign(next_map)
 
 static func to_normalized(noise_sample: float) -> float:
 	return clampf((noise_sample + 1.0) * 0.5, 0.0, 1.0)
