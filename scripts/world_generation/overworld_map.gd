@@ -2180,10 +2180,10 @@ func _value_noise(x: float, y: float, seed_value: int) -> float:
 
 
 func _hash_coords(x: int, y: int, seed_value: int) -> float:
-	var h := uint64(x) * 374761393 + uint64(y) * 668265263 + uint64(seed_value) * 2654435761
-	h = (h ^ (h >> 13)) * 1274126177
+	var h: int = x * 374761393 + y * 668265263 + seed_value * 2654435761
+	h = int((h ^ (h >> 13)) * 1274126177)
 	h = h ^ (h >> 16)
-	var unsigned := h & 0xffffffff
+	var unsigned: int = h & 0xffffffff
 	return float(unsigned) / 4294967295.0
 
 
