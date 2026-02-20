@@ -308,6 +308,7 @@ custom_minimum_size = Vector2(250, 170)
 layout_mode = 2
 
 [node name="Base" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900330]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -1054,10 +1055,12 @@ custom_minimum_size = Vector2(280, 0)
 [node name="AttributeReminderTitle" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887126]
 layout_mode = 2
 theme = ExtResource("3_0yffs")
+theme_override_font_sizes/font_size = 16
 
 [node name="AttributeReminderBody" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887127]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
 autowrap_mode = 3
 
 [connection signal="pressed" from="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer/Button" to="." method="_on_return_button_pressed"]
