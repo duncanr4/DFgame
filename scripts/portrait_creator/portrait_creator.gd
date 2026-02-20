@@ -502,6 +502,7 @@ const FEMALE_NAME_POOL := [
 @export var skin_color: HSlider
 @export var eye_color: HSlider
 @export var hair_color: HSlider
+@export var hair_style: HSlider
 @export var beard_color: HSlider
 @export var beard_style: HSlider
 
@@ -547,6 +548,7 @@ var _is_female := false
 var _rng := RandomNumberGenerator.new()
 
 var _available_beards: Array[CompressedTexture2D]
+var _available_hairs: Array[CompressedTexture2D]
 var _gender_button_hover_shadow: StyleBoxFlat
 var _gender_button_pressed_shadow: StyleBoxFlat
 var _gender_button_normal_shadow: StyleBoxFlat
@@ -564,14 +566,18 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	instance = null
 	_images.clear()
+	_available_hairs.clear()
 	_available_beards.clear()
 
 func _ready() -> void:
 	_rng.randomize()
+	_load_available_hairs()
 	_load_available_beards()
 
 	skin_color.value_changed.connect(_on_color_changed.bind(Images.PORTRAIT))
 	hair_color.value_changed.connect(_on_color_changed.bind(Images.HAIR))
+	if hair_style:
+		hair_style.value_changed.connect(_on_hair_style_changed)
 	if beard_color:
 		beard_color.value_changed.connect(_on_color_changed.bind(Images.BEARD))
 	if beard_style:
@@ -600,6 +606,7 @@ func _ready() -> void:
 	_images.resize(3)
 	_colors.resize(3)
 	_setup_beard_style_slider()
+	_setup_hair_style_slider()
 	_configure_attribute_reminder_entries()
 	_refresh_random_name()
 	_update_attribute_reminders()
@@ -764,6 +771,34 @@ func _load_available_beards() -> void:
 	for curr_file in beard_files:
 		_available_beards.append(load(beard_dir.path_join(curr_file)))
 
+func _load_available_hairs() -> void:
+	_available_hairs.clear()
+	var dir := DirAccess.open(hair_dir)
+	if dir == null:
+		return
+	var hair_files := PackedStringArray()
+	for curr_file in dir.get_files():
+		if curr_file.ends_with(".png"):
+			hair_files.append(curr_file)
+	hair_files.sort()
+	for curr_file in hair_files:
+		_available_hairs.append(load(hair_dir.path_join(curr_file)))
+
+func _setup_hair_style_slider() -> void:
+	if hair_style == null:
+		return
+	hair_style.min_value = 0
+	hair_style.step = 1
+	hair_style.max_value = maxi(_available_hairs.size() - 1, 0)
+	hair_style.value = 0
+	_on_hair_style_changed(hair_style.value)
+
+func _on_hair_style_changed(value: float) -> void:
+	if _available_hairs.is_empty():
+		return
+	var style_index := clampi(int(round(value)), 0, _available_hairs.size() - 1)
+	hair = _available_hairs[style_index]
+
 func _setup_beard_style_slider() -> void:
 	if beard_style == null:
 		return
@@ -865,6 +900,8 @@ func _on_randomize_button_pressed() -> void:
 		eye_color.value = _rng.randf_range(eye_color.min_value, eye_color.max_value)
 	if beard_style:
 		beard_style.value = _rng.randi_range(int(beard_style.min_value), int(beard_style.max_value))
+	if hair_style:
+		hair_style.value = _rng.randi_range(int(hair_style.min_value), int(hair_style.max_value))
 
 	character_name.text = _generate_full_name()
 	_update_attribute_reminders()
