@@ -1559,13 +1559,9 @@ func _generate_map() -> void:
 	_smooth_height_map(height_map, 1, 0.35)
 	_ensure_landmass_presence(height_map)
 
-	var landmass_denom_x := maxf(1.0, float(map_size.x - 1))
-	var landmass_denom_y := maxf(1.0, float(map_size.y - 1))
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
-			var nx := float(x) / landmass_denom_x
-			var ny := float(y) / landmass_denom_y
 			var height: float = height_map[coord]
 			var temperature := _sample_temperature(x, y, height)
 			var moisture := _sample_moisture(x, y, height)
@@ -1573,13 +1569,6 @@ func _generate_map() -> void:
 			temperature_map[coord] = temperature
 			moisture_map[coord] = moisture
 			vegetation_map[coord] = vegetation
-
-	for y in range(map_size.y):
-		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			var height: float = height_map[coord]
-			var temperature: float = temperature_map[coord]
-			var moisture: float = moisture_map[coord]
 			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
 
 	_guarantee_minimum_landmass(height_map, temperature_map, moisture_map, base_biome_map)
