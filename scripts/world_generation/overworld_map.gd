@@ -1599,6 +1599,7 @@ func _generate_map() -> void:
 		rng
 	)
 	highland_map = _build_highland_overlays(base_biome_map, height_map)
+	var volcano_map := _place_volcano_overlays(highland_map, height_map, rng)
 	var biome_map: Dictionary = tree_biome_map.duplicate()
 	for coord: Vector2i in highland_map.keys():
 		biome_map[coord] = highland_map[coord]
@@ -1615,6 +1616,7 @@ func _generate_map() -> void:
 		biome_map,
 		tree_map,
 		highland_map,
+		volcano_map,
 		height_map,
 		temperature_map,
 		moisture_map,
@@ -1667,6 +1669,7 @@ func _apply_overlays_and_metadata(
 	biome_map: Dictionary,
 	tree_map: Dictionary,
 	highland_map: Dictionary,
+	volcano_map: Dictionary,
 	height_map: Dictionary,
 	temperature_map: Dictionary,
 	moisture_map: Dictionary,
@@ -1686,7 +1689,10 @@ func _apply_overlays_and_metadata(
 			if highland_layer != null:
 				if highland_map.has(coord):
 					var highland_biome := highland_map[coord] as String
-					var highland_tile := _highland_tile_for_biome(highland_biome, base_biome)
+					var highland_tile := volcano_map.get(
+						coord,
+						_highland_tile_for_biome(highland_biome, base_biome)
+					) as Vector2i
 					highland_layer.set_cell(coord, _atlas_source_id, highland_tile)
 				else:
 					highland_layer.erase_cell(coord)
@@ -1699,6 +1705,9 @@ func _apply_overlays_and_metadata(
 					overlay_label = "tree"
 				elif tree_tile == JUNGLE_TREE_TILE:
 					overlay_label = "forest"
+			if volcano_map.has(coord):
+				var volcano_tile := volcano_map[coord] as Vector2i
+				overlay_label = "active_volcano" if volcano_tile == ACTIVE_VOLCANO_TILE else "volcano"
 			_tile_data[coord] = {
 				"base": base_biome,
 				"biome_type": biome,
