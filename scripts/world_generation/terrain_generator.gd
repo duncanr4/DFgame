@@ -1,10 +1,10 @@
 extends RefCounted
 class_name TerrainGenerator
 
-const MASK_TWIN_LEFT_CENTER := Vector2(0.32, 0.48)
-const MASK_TWIN_RIGHT_CENTER := Vector2(0.68, 0.52)
-const MASK_TWIN_RADIUS := Vector2(0.55, 0.33)
-const MASK_SADDLE_SCALE := 2.2
+const CONTINENT_WARP_SCALE := 3.8
+const CONTINENT_MACRO_SCALE := 2.4
+const CONTINENT_RIDGE_SCALE := 6.4
+const CONTINENT_MICRO_SCALE := 13.0
 
 static func sample_height(continent_noise: FastNoiseLite, detail_noise: FastNoiseLite, ridge_noise: FastNoiseLite, x: int, y: int, settings: Dictionary, landmass_centers: Array[Vector2]) -> float:
 	var continent := to_normalized(continent_noise.get_noise_2d(float(x), float(y)))
@@ -107,16 +107,44 @@ static func distance_to_nearest_landmass_center(nx: float, ny: float, landmass_c
 	return min_distance
 
 static func sample_landmass_mask(nx: float, ny: float, settings: Dictionary) -> float:
-	var left := ellipse_distance(nx, ny, MASK_TWIN_LEFT_CENTER, MASK_TWIN_RADIUS)
-	var right := ellipse_distance(nx, ny, MASK_TWIN_RIGHT_CENTER, MASK_TWIN_RADIUS)
-	var value := 1.0 - minf(left, right)
-	value = pow(clampf(value, 0.0, 1.0), float(settings.get("landmass_mask_power", 0.82)))
-	value += cos((ny - 0.5) * PI * MASK_SADDLE_SCALE) * 0.05
 	var map_seed := int(settings.get("map_seed", 0))
 	var base_seed := map_seed + 0x9e3779b
+	var warp_x := (value_noise(nx * CONTINENT_WARP_SCALE + 2.7, ny * CONTINENT_WARP_SCALE + 9.1, base_seed) - 0.5) * 0.18
+	var warp_y := (value_noise(nx * CONTINENT_WARP_SCALE + 13.2, ny * CONTINENT_WARP_SCALE + 4.8, base_seed + 0x85ebca6) - 0.5) * 0.18
+	var sx := nx + warp_x
+	var sy := ny + warp_y
+
+	var macro := sample_fbm(sx * CONTINENT_MACRO_SCALE, sy * CONTINENT_MACRO_SCALE, base_seed + 0xc2b2ae35, 4, 2.05, 0.52)
+	var ridge_source := sample_fbm(sx * CONTINENT_RIDGE_SCALE, sy * CONTINENT_RIDGE_SCALE, base_seed + 0x27d4eb2f, 3, 2.0, 0.58)
+	var ridges := 1.0 - absf(ridge_source * 2.0 - 1.0)
+	var micro := sample_fbm(sx * CONTINENT_MICRO_SCALE, sy * CONTINENT_MICRO_SCALE, base_seed + 0x165667b1, 2, 2.35, 0.5)
+
+	var raw := macro * 0.82 + ridges * 0.24 + (micro - 0.5) * 0.14
+	var thresholded := clampf((raw - 0.47) / 0.45, 0.0, 1.0)
+	var value := pow(thresholded, float(settings.get("landmass_mask_power", 0.82)))
+
+	var edge_distance := minf(minf(nx, 1.0 - nx), minf(ny, 1.0 - ny))
+	var edge_falloff := clampf(edge_distance / 0.26, 0.0, 1.0)
+	value *= edge_falloff
+
 	value += (value_noise(nx * 12.5 + 3.1, ny * 12.5 + 7.9, base_seed) - 0.5) * 0.12
 	value += (value_noise(nx * 34.2 + 11.3, ny * 34.2 + 4.6, base_seed + 0x85ebca6) - 0.5) * 0.06
 	return clampf(value, 0.0, 1.0)
+
+static func sample_fbm(x: float, y: float, seed_value: int, octaves: int, lacunarity: float, gain: float) -> float:
+	var value := 0.0
+	var amplitude := 1.0
+	var frequency := 1.0
+	var total_amplitude := 0.0
+	for octave in range(maxi(1, octaves)):
+		var octave_seed := seed_value + octave * 0x45d9f3b
+		value += value_noise(x * frequency, y * frequency, octave_seed) * amplitude
+		total_amplitude += amplitude
+		frequency *= lacunarity
+		amplitude *= gain
+	if total_amplitude <= 0.0:
+		return 0.5
+	return value / total_amplitude
 
 static func ellipse_distance(nx: float, ny: float, center: Vector2, radius: Vector2) -> float:
 	var dx := (nx - center.x) / maxf(radius.x, 0.001)
