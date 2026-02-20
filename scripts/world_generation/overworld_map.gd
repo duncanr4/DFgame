@@ -1599,7 +1599,6 @@ func _generate_map() -> void:
 		rng
 	)
 	highland_map = _build_highland_overlays(base_biome_map, height_map)
-	var volcano_map := _place_volcano_overlays(highland_map, height_map, rng)
 	var biome_map: Dictionary = tree_biome_map.duplicate()
 	for coord: Vector2i in highland_map.keys():
 		biome_map[coord] = highland_map[coord]
@@ -1616,12 +1615,12 @@ func _generate_map() -> void:
 		biome_map,
 		tree_map,
 		highland_map,
-		volcano_map,
 		height_map,
 		temperature_map,
 		moisture_map,
 		name_rng
 	)
+	_place_volcano_tiles(highland_map, height_map, rng)
 	_log_generation_stage("metadata and overlays", generation_started_ms)
 	await _yield_generation_wave()
 
@@ -1668,7 +1667,6 @@ func _apply_overlays_and_metadata(
 	biome_map: Dictionary,
 	tree_map: Dictionary,
 	highland_map: Dictionary,
-	volcano_map: Dictionary,
 	height_map: Dictionary,
 	temperature_map: Dictionary,
 	moisture_map: Dictionary,
@@ -1688,10 +1686,7 @@ func _apply_overlays_and_metadata(
 			if highland_layer != null:
 				if highland_map.has(coord):
 					var highland_biome := highland_map[coord] as String
-					var highland_tile := volcano_map.get(
-						coord,
-						_highland_tile_for_biome(highland_biome, base_biome)
-					) as Vector2i
+					var highland_tile := _highland_tile_for_biome(highland_biome, base_biome)
 					highland_layer.set_cell(coord, _atlas_source_id, highland_tile)
 				else:
 					highland_layer.erase_cell(coord)
@@ -1704,9 +1699,6 @@ func _apply_overlays_and_metadata(
 					overlay_label = "tree"
 				elif tree_tile == JUNGLE_TREE_TILE:
 					overlay_label = "forest"
-			if volcano_map.has(coord):
-				var volcano_tile := volcano_map[coord] as Vector2i
-				overlay_label = "active_volcano" if volcano_tile == ACTIVE_VOLCANO_TILE else "volcano"
 			_tile_data[coord] = {
 				"base": base_biome,
 				"biome_type": biome,
@@ -1732,110 +1724,84 @@ func _apply_overlays_and_metadata(
 			}
 
 
-func _place_volcano_overlays(
-	highland_map: Dictionary,
-	height_map: Dictionary,
-	rng: RandomNumberGenerator
-) -> Dictionary:
-	var volcano_map: Dictionary = {}
-	var candidates: Array[Dictionary] = []
-	for coord_variant in highland_map.keys():
-		var coord := coord_variant as Vector2i
-		if String(highland_map.get(coord, "")) != BIOME_MOUNTAIN:
-			continue
-		var height := float(height_map.get(coord, 0.0))
-		candidates.append({
-			"coord": coord,
-			"height": height,
-			"score": rng.randf()
-		})
-
-	if candidates.is_empty():
-		return volcano_map
-
-	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var a_height := float(a.get("height", 0.0))
-		var b_height := float(b.get("height", 0.0))
-		if not is_equal_approx(a_height, b_height):
-			return a_height > b_height
-		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
-	)
-
-	var base_volcano_count := int(round(float(candidates.size()) / 600.0))
-	var rarity_adjusted_target := maxi(1, int(round(float(maxi(1, base_volcano_count)) * 0.15)))
-	var desired_volcano_count := clampi(rarity_adjusted_target, 1, mini(candidates.size(), 6))
-	if desired_volcano_count <= 0:
-		return volcano_map
-
-	var selection_pool_size := mini(candidates.size(), maxi(desired_volcano_count * 5, desired_volcano_count + 3))
-	var selection_pool := candidates.slice(0, selection_pool_size)
-	var placed_volcanoes: Array[Vector2i] = []
-	var volcano_min_distance := 6
-	var volcano_min_distance_sq := volcano_min_distance * volcano_min_distance
-	var attempts := 0
-	var max_attempts := selection_pool.size() * 3
-
-	while (
-		not selection_pool.is_empty()
-		and placed_volcanoes.size() < desired_volcano_count
-		and attempts < max_attempts
-	):
-		attempts += 1
-		var pick_index := rng.randi_range(0, selection_pool.size() - 1)
-		var candidate := selection_pool[pick_index] as Dictionary
-		selection_pool.remove_at(pick_index)
-		var candidate_coord := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
-		if candidate_coord.x < 0 or candidate_coord.y < 0:
-			continue
-
-		var too_close := false
-		for placed in placed_volcanoes:
-			var dx := candidate_coord.x - placed.x
-			var dy := candidate_coord.y - placed.y
-			if dx * dx + dy * dy < volcano_min_distance_sq:
-				too_close = true
-				break
-		if too_close:
-			continue
-
-		var is_active := placed_volcanoes.is_empty()
-		volcano_map[candidate_coord] = ACTIVE_VOLCANO_TILE if is_active else VOLCANO_TILE
-		placed_volcanoes.append(candidate_coord)
-
-	_apply_mountain_overlay_variants(highland_map, height_map, volcano_map)
-	_apply_oases_and_lava(volcano_map, rng)
-	return volcano_map
-
-
-func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dictionary, volcano_map: Dictionary) -> void:
+func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dictionary) -> void:
+	if highland_layer == null:
+		return
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
-			if not highland_map.has(coord):
-				continue
 			if String(highland_map.get(coord, "")) != BIOME_MOUNTAIN:
-				continue
-			if volcano_map.has(coord):
 				continue
 			var has_mountain_above := y > 0 and String(highland_map.get(Vector2i(x, y - 1), "")) == BIOME_MOUNTAIN
 			var has_mountain_below := y < map_size.y - 1 and String(highland_map.get(Vector2i(x, y + 1), "")) == BIOME_MOUNTAIN
 			var hash_value := abs((x + 1) * 73856093 ^ (y + 1) * 19349663)
 			if not has_mountain_above and has_mountain_below:
-				volcano_map[coord] = MOUNTAIN_TOP_A_TILE if hash_value % 2 == 0 else MOUNTAIN_TOP_B_TILE
+				highland_layer.set_cell(coord, _atlas_source_id, MOUNTAIN_TOP_A_TILE if hash_value % 2 == 0 else MOUNTAIN_TOP_B_TILE)
 			elif not has_mountain_below and has_mountain_above:
-				volcano_map[coord] = MOUNTAIN_BOTTOM_A_TILE if hash_value % 2 == 0 else MOUNTAIN_BOTTOM_B_TILE
+				highland_layer.set_cell(coord, _atlas_source_id, MOUNTAIN_BOTTOM_A_TILE if hash_value % 2 == 0 else MOUNTAIN_BOTTOM_B_TILE)
 			elif float(height_map.get(coord, 0.0)) >= 0.97:
-				volcano_map[coord] = MOUNTAIN_PEAK_TILE
+				highland_layer.set_cell(coord, _atlas_source_id, MOUNTAIN_PEAK_TILE)
 
 
-func _apply_oases_and_lava(volcano_map: Dictionary, rng: RandomNumberGenerator) -> void:
-	var volcanoes: Array[Vector2i] = []
-	for coord_variant in volcano_map.keys():
+func _place_volcano_tiles(highland_map: Dictionary, height_map: Dictionary, rng: RandomNumberGenerator) -> void:
+	_apply_mountain_overlay_variants(highland_map, height_map)
+	var candidates: Array[Dictionary] = []
+	for coord_variant in highland_map.keys():
 		var coord := coord_variant as Vector2i
-		var tile := volcano_map[coord] as Vector2i
-		if tile == ACTIVE_VOLCANO_TILE or tile == VOLCANO_TILE:
-			volcanoes.append(coord)
+		if String(highland_map.get(coord, "")) != BIOME_MOUNTAIN:
+			continue
+		candidates.append({
+			"coord": coord,
+			"height": float(height_map.get(coord, 0.0)),
+			"score": rng.randf()
+		})
+	if candidates.is_empty():
+		_apply_oases_and_lava([], rng)
+		return
 
+	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var ah := float(a.get("height", 0.0))
+		var bh := float(b.get("height", 0.0))
+		if not is_equal_approx(ah, bh):
+			return ah > bh
+		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
+	)
+	var base_volcano_count := int(round(float(candidates.size()) / 600.0))
+	var rarity_adjusted_target := maxi(1, int(round(float(maxi(1, base_volcano_count)) * 0.15)))
+	var desired_count := clampi(rarity_adjusted_target, 1, mini(candidates.size(), 6))
+	var selection_pool := candidates.slice(0, mini(candidates.size(), maxi(desired_count * 5, desired_count + 3)))
+	var volcanoes: Array[Vector2i] = []
+	var min_distance_sq := 36
+	var attempts := 0
+	var max_attempts := selection_pool.size() * 3
+	while not selection_pool.is_empty() and volcanoes.size() < desired_count and attempts < max_attempts:
+		attempts += 1
+		var pick_index := rng.randi_range(0, selection_pool.size() - 1)
+		var candidate := selection_pool[pick_index] as Dictionary
+		selection_pool.remove_at(pick_index)
+		var coord := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
+		var too_close := false
+		for placed in volcanoes:
+			var dx := coord.x - placed.x
+			var dy := coord.y - placed.y
+			if dx * dx + dy * dy < min_distance_sq:
+				too_close = true
+				break
+		if too_close:
+			continue
+		if highland_layer != null:
+			highland_layer.set_cell(coord, _atlas_source_id, ACTIVE_VOLCANO_TILE if volcanoes.is_empty() else VOLCANO_TILE)
+		if _tile_data.has(coord):
+			var tile_info := _tile_data.get(coord, {}) as Dictionary
+			if not tile_info.is_empty():
+				tile_info["overlay"] = "active_volcano" if volcanoes.is_empty() else "volcano"
+				_tile_data[coord] = tile_info
+		volcanoes.append(coord)
+
+	_apply_oases_and_lava(volcanoes, rng)
+
+
+func _apply_oases_and_lava(volcanoes: Array[Vector2i], rng: RandomNumberGenerator) -> void:
 	for coord_variant in _tile_data.keys():
 		var coord := coord_variant as Vector2i
 		var tile_info := _tile_data.get(coord, {}) as Dictionary
@@ -1870,8 +1836,7 @@ func _apply_oases_and_lava(volcano_map: Dictionary, rng: RandomNumberGenerator) 
 				var neighbor := volcano_coord + Vector2i(ox, oy)
 				if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
 					continue
-				var neighbor_tile := map_layer.get_cell_atlas_coords(neighbor)
-				if neighbor_tile != WATER_TILE:
+				if map_layer.get_cell_atlas_coords(neighbor) != WATER_TILE:
 					continue
 				if rng.randf() < 0.35:
 					map_layer.set_cell(neighbor, _atlas_source_id, LAVA_TILE)
