@@ -1755,7 +1755,7 @@ func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dict
 func _place_volcano_tiles(highland_map: Dictionary, height_map: Dictionary, rng: RandomNumberGenerator) -> void:
 	_apply_mountain_overlay_variants(highland_map, height_map)
 	var candidates: Array[Dictionary] = []
-	for coord_variant in highland_map.keys():
+	for coord_variant: Variant in highland_map.keys():
 		var coord := coord_variant as Vector2i
 		if String(highland_map.get(coord, "")) != BIOME_MOUNTAIN:
 			continue
@@ -1811,7 +1811,7 @@ func _place_volcano_tiles(highland_map: Dictionary, height_map: Dictionary, rng:
 
 
 func _apply_oases_and_lava(volcanoes: Array[Vector2i], rng: RandomNumberGenerator) -> void:
-	for coord_variant in _tile_data.keys():
+	for coord_variant: Variant in _tile_data.keys():
 		var coord := coord_variant as Vector2i
 		var tile_info := _tile_data.get(coord, {}) as Dictionary
 		if tile_info.is_empty():
@@ -2979,7 +2979,7 @@ func _place_mines_hillholds_and_dams(
 ) -> void:
 	var mountain_candidates: Array[Dictionary] = []
 	var hill_candidates: Array[Dictionary] = []
-	for coord_variant in _tile_data.keys():
+	for coord_variant: Variant in _tile_data.keys():
 		var coord := coord_variant as Vector2i
 		if _is_coord_occupied(coord, occupied):
 			continue
@@ -3058,7 +3058,7 @@ func _place_clergy_and_taverns(
 	var monastery_candidates: Array[Dictionary] = []
 	var shrine_candidates: Array[Dictionary] = []
 	var tavern_candidates: Array[Dictionary] = []
-	for coord_variant in _tile_data.keys():
+	for coord_variant: Variant in _tile_data.keys():
 		var coord := coord_variant as Vector2i
 		if _is_coord_occupied(coord, occupied):
 			continue
