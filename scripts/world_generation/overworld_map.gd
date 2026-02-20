@@ -1734,7 +1734,7 @@ func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dict
 				continue
 			var has_mountain_above := y > 0 and String(highland_map.get(Vector2i(x, y - 1), "")) == BIOME_MOUNTAIN
 			var has_mountain_below := y < map_size.y - 1 and String(highland_map.get(Vector2i(x, y + 1), "")) == BIOME_MOUNTAIN
-			var hash_value := abs((x + 1) * 73856093 ^ (y + 1) * 19349663)
+			var hash_value: int = absi(((x + 1) * 73856093) ^ ((y + 1) * 19349663))
 			if not has_mountain_above and has_mountain_below:
 				highland_layer.set_cell(coord, _atlas_source_id, MOUNTAIN_TOP_A_TILE if hash_value % 2 == 0 else MOUNTAIN_TOP_B_TILE)
 			elif not has_mountain_below and has_mountain_above:
