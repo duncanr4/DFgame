@@ -626,9 +626,9 @@ func _configure_attribute_reminder_entries() -> void:
 func _configure_attribute_reminder_entry(entry: Control) -> void:
 	if entry == null:
 		return
-	var icon := entry.get_node_or_null("Icon") as Control
+	var icon := entry.find_child("Icon", true, false) as Control
 	var text := entry.get_node_or_null("Text") as Label
-	if icon:
+	if icon and icon.get_parent() == entry:
 		entry.move_child(icon, 0)
 	if text:
 		text.visible = false
