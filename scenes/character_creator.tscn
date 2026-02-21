@@ -28,7 +28,7 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ja2xc"]
 shader = ExtResource("2_0yffs")
-shader_parameter/images = Array[CompressedTexture2D]([])
+shader_parameter/images = Array[CompressedTexture2D]([ExtResource("2_6txqo"), ExtResource("3_ucp7b"), ExtResource("4_oy0w6")])
 shader_parameter/colors = Array[Vector3]([Vector3(0.07, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x7ufa"]
@@ -415,10 +415,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -22.0
-offset_top = -22.0
-offset_right = 22.0
-offset_bottom = 22.0
+offset_left = -27.5
+offset_top = -52.5
+offset_right = 48.5
+offset_bottom = 22.5
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
