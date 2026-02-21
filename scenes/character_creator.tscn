@@ -1051,6 +1051,7 @@ flat = true
 
 [node name="Button2" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer" unique_id=289871190]
 layout_mode = 2
+scale = Vector2(0.5, 0.5)
 icon = ExtResource("17_s8202")
 flat = true
 
