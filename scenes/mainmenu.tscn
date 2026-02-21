@@ -101,6 +101,8 @@ script = ExtResource("1_m4ki5")
 [node name="TileMap" type="TileMap" parent="." unique_id=228384824]
 tile_set = SubResource("TileSet_85riq")
 format = 2
+layer_0/name = "BackgroundAnimation"
+layer_0/tile_data = PackedInt32Array(0, 0, 0)
 
 [node name="Background" type="TextureRect" parent="." unique_id=666901434]
 layout_mode = 1
