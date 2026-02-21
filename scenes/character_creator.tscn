@@ -28,7 +28,7 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ja2xc"]
 shader = ExtResource("2_0yffs")
-shader_parameter/images = Array[CompressedTexture2D]([])
+shader_parameter/images = Array[CompressedTexture2D]([ExtResource("2_6txqo"), ExtResource("3_ucp7b"), ExtResource("4_oy0w6")])
 shader_parameter/colors = Array[Vector3]([Vector3(0.07, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x7ufa"]
