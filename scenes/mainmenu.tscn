@@ -6,6 +6,13 @@
 [ext_resource type="Texture2D" uid="uid://b1ddrq1sqlcv" path="res://resources/images/main_menu/Start.png" id="4_64s5s"]
 [ext_resource type="Texture2D" uid="uid://cprefmjsn5w40" path="res://resources/images/main_menu/Options.png" id="5_h52vu"]
 [ext_resource type="Texture2D" uid="uid://dqmw5tdux8dyt" path="res://resources/images/main_menu/return.png" id="6_jnu17"]
+[ext_resource type="Shader" path="res://shaders/ui/frame_strip_overlay.gdshader" id="7_b4h8h"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hhyvb"]
+shader = ExtResource("7_b4h8h")
+shader_parameter/frame_count = 12
+shader_parameter/fps = 12.0
+shader_parameter/alpha_strength = 0.9
 
 [node name="MainMenu" type="Control" unique_id=338512690]
 layout_mode = 3
