@@ -20,6 +20,7 @@
 [ext_resource type="Texture2D" uid="uid://cbutrqks1x08q" path="res://resources/images/character_creator/ui/return.png" id="16_dk5wx"]
 [ext_resource type="Texture2D" uid="uid://dgj1gpoublgwt" path="res://resources/images/character_creator/ui/create.png" id="17_8ugf3"]
 [ext_resource type="Texture2D" uid="uid://cma2myns1va2j" path="res://resources/images/character_creator/ui/randombase.png" id="17_s8202"]
+[ext_resource type="Texture2D" uid="uid://du0b24rnhv4ow" path="res://Github Game/tilesheet/dice.png" id="18_tqk83"]
 [ext_resource type="Texture2D" uid="uid://bbn2ka6xktu2n" path="res://resources/images/character_creator/ui/beardless.png" id="18_u8m4a"]
 [ext_resource type="Texture2D" uid="uid://csssca5c4yby4" path="res://resources/images/character_creator/ui/darkdwarf.png" id="19_jk7te"]
 [ext_resource type="Texture2D" uid="uid://ct5n6wuqt60dy" path="res://resources/images/character_creator/ui/greydwarf.png" id="20_g4yx5"]
@@ -1052,6 +1053,21 @@ flat = true
 layout_mode = 2
 icon = ExtResource("17_s8202")
 flat = true
+
+[node name="DiceIcon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer/Button2" unique_id=2043411221]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -15.0
+offset_top = -15.0
+offset_right = 15.0
+offset_bottom = 15.0
+mouse_filter = 2
+texture = ExtResource("18_tqk83")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="Button3" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer" unique_id=1042695860]
 layout_mode = 2
