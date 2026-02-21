@@ -2,11 +2,92 @@
 
 [ext_resource type="Script" uid="uid://ceg7uogn7q53o" path="res://scripts/main_menu.gd" id="1_m4ki5"]
 [ext_resource type="Texture2D" uid="uid://ceseidlrku7my" path="res://resources/images/main_menu/Title-Background.png" id="2_srphr"]
-[ext_resource type="Texture2D" path="res://resources/images/main_menu/smith.png" id="7_smith"]
 [ext_resource type="Texture2D" uid="uid://cnkihol71load" path="res://resources/images/main_menu/logo.png" id="3_lpb7j"]
 [ext_resource type="Texture2D" uid="uid://b1ddrq1sqlcv" path="res://resources/images/main_menu/Start.png" id="4_64s5s"]
 [ext_resource type="Texture2D" uid="uid://cprefmjsn5w40" path="res://resources/images/main_menu/Options.png" id="5_h52vu"]
 [ext_resource type="Texture2D" uid="uid://dqmw5tdux8dyt" path="res://resources/images/main_menu/return.png" id="6_jnu17"]
+[ext_resource type="Texture2D" uid="uid://baodsmqugvlte" path="res://resources/images/main_menu/smith.png" id="7_smith"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_dfy5j"]
+texture = ExtResource("7_smith")
+texture_region_size = Vector2i(640, 480)
+0:0/animation_columns = 66
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+3:0/0 = 0
+4:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+3:1/0 = 0
+4:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+3:2/0 = 0
+4:2/0 = 0
+0:3/0 = 0
+1:3/0 = 0
+2:3/0 = 0
+3:3/0 = 0
+4:3/0 = 0
+0:4/0 = 0
+0:5/0 = 0
+0:6/0 = 0
+0:7/0 = 0
+0:8/0 = 0
+0:9/0 = 0
+0:10/0 = 0
+0:11/0 = 0
+0:12/0 = 0
+0:13/0 = 0
+1:4/0 = 0
+1:5/0 = 0
+1:6/0 = 0
+1:7/0 = 0
+1:8/animation_columns = 14
+1:8/0 = 0
+1:9/0 = 0
+1:10/0 = 0
+1:11/0 = 0
+1:12/0 = 0
+1:13/0 = 0
+2:4/0 = 0
+2:5/0 = 0
+2:6/0 = 0
+2:7/0 = 0
+2:8/0 = 0
+2:9/0 = 0
+2:10/0 = 0
+2:11/0 = 0
+2:12/0 = 0
+2:13/0 = 0
+3:4/0 = 0
+3:5/0 = 0
+3:6/0 = 0
+3:7/0 = 0
+3:8/0 = 0
+3:9/0 = 0
+3:10/0 = 0
+3:11/0 = 0
+3:12/0 = 0
+3:13/0 = 0
+4:4/0 = 0
+4:5/0 = 0
+4:6/0 = 0
+4:7/0 = 0
+4:8/0 = 0
+4:9/0 = 0
+4:10/0 = 0
+4:11/0 = 0
+4:12/0 = 0
+4:13/0 = 0
+0:14/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_85riq"]
+tile_size = Vector2i(640, 480)
+sources/0 = SubResource("TileSetAtlasSource_dfy5j")
 
 [node name="MainMenu" type="Control" unique_id=338512690]
 layout_mode = 3
@@ -17,20 +98,9 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_m4ki5")
 
-[node name="SmithBackground" type="TextureRect" parent="." unique_id=211337455]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 371.0
-offset_top = 36.0
-offset_right = -368.0
-offset_bottom = -26.0
-grow_horizontal = 2
-grow_vertical = 2
-texture = ExtResource("7_smith")
-expand_mode = 1
-stretch_mode = 6
+[node name="TileMap" type="TileMap" parent="." unique_id=228384824]
+tile_set = SubResource("TileSet_85riq")
+format = 2
 
 [node name="Background" type="TextureRect" parent="." unique_id=666901434]
 layout_mode = 1
@@ -94,7 +164,7 @@ texture_normal = ExtResource("5_h52vu")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="DwarfHoldGeneratorButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="DwarfHoldGeneratorButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1524398407]
 custom_minimum_size = Vector2(344, 56)
 layout_mode = 2
 text = "Dwarf Hold Generator"
