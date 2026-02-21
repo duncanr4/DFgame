@@ -401,7 +401,7 @@ autowrap_mode = 3
 layout_mode = 2
 
 [node name="FrameforIcon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=1517478304]
-custom_minimum_size = Vector2(30, 30)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 mouse_filter = 2
 texture = ExtResource("17_s8202")
@@ -415,10 +415,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -11.0
-offset_top = -11.0
-offset_right = 11.0
-offset_bottom = 11.0
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
