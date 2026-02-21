@@ -511,6 +511,7 @@ const FEMALE_NAME_POOL := [
 @export var dark_dwarf_reminder: Control
 @export var grey_dwarf_reminder: Control
 @export var banker_reminder: Control
+@export var attribute_tooltip_backdrop: ColorRect
 @export var attribute_tooltip_panel: Control
 @export var attribute_reminder_title: Label
 @export var attribute_reminder_text: Label
@@ -652,6 +653,8 @@ func _on_attribute_icon_hovered(icon: Control) -> void:
 	var description := String(icon.get_meta("attribute_description", "")).strip_edges()
 	if attribute_tooltip_panel:
 		attribute_tooltip_panel.visible = true
+	if attribute_tooltip_backdrop:
+		attribute_tooltip_backdrop.visible = true
 	if attribute_reminder_title:
 		attribute_reminder_title.text = title
 	if attribute_reminder_text:
@@ -667,6 +670,8 @@ func _on_attribute_icon_unhovered(icon: Control) -> void:
 func _clear_attribute_description() -> void:
 	if attribute_tooltip_panel:
 		attribute_tooltip_panel.visible = false
+	if attribute_tooltip_backdrop:
+		attribute_tooltip_backdrop.visible = false
 	if attribute_reminder_title:
 		attribute_reminder_title.text = ""
 	if attribute_reminder_text:
@@ -679,18 +684,12 @@ func _position_attribute_tooltip() -> void:
 	var viewport := get_viewport()
 	if viewport == null:
 		return
-	var cursor_pos := viewport.get_mouse_position()
 	var tooltip_size := attribute_tooltip_panel.get_combined_minimum_size()
 	attribute_tooltip_panel.size = tooltip_size
-	var offset := Vector2(16.0, 16.0)
 	var viewport_size := viewport.get_visible_rect().size
-	var max_pos := Vector2(
-		maxf(0.0, viewport_size.x - tooltip_size.x),
-		maxf(0.0, viewport_size.y - tooltip_size.y)
-	)
-	var target_pos := cursor_pos + offset
-	target_pos.x = clampf(target_pos.x, 0.0, max_pos.x)
-	target_pos.y = clampf(target_pos.y, 0.0, max_pos.y)
+	var target_pos := (viewport_size - tooltip_size) * 0.5
+	target_pos.x = maxf(0.0, target_pos.x)
+	target_pos.y = maxf(0.0, target_pos.y)
 	attribute_tooltip_panel.position = target_pos
 
 func _setup_gender_button(button: Button) -> void:
