@@ -400,20 +400,33 @@ autowrap_mode = 3
 [node name="GreyDwarfEntry" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries" unique_id=147900317]
 layout_mode = 2
 
-[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=147900318]
-custom_minimum_size = Vector2(40, 40)
+[node name="FrameforIcon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=1517478304]
+custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("17_s8202")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Icon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry/FrameforIcon" unique_id=147900318]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 0
 texture = ExtResource("20_g4yx5")
+expand_mode = 1
 stretch_mode = 5
 metadata/attribute_title = "Grey Dwarf Heritage"
 metadata/attribute_description = "Your skin is the colour of ash and your heart is that of steel. Known as a Dwagar you may not be as despised as the Dark Dwarves are, yet the kinship you have with the rest of Dwarfdom is strained. Your ancestors were followers of the Lawgiver and Forgebearers of the Forgotten Era who preached a strain of total dwarven separatism and supremacy that led your people to form holds far away from your homeland. You may be welcomed into any dwarf hold but not well liked and the races you hunt as slaves will attack you on sight."
-
-[node name="FrameforIcon" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=1517478304]
-layout_mode = 2
-button_mask = 0
-icon = ExtResource("17_s8202")
-flat = true
 
 [node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=147900319]
 visible = false
