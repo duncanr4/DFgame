@@ -16,8 +16,8 @@ static func assign_base_biome(coord: Vector2i, height: float, temperature: float
 	return String(biomes.get("grassland", "grassland"))
 
 static func tree_overlay_biome(temperature: float, moisture: float, jungle_threshold: float, hot_threshold: float, tundra_threshold: float, biomes: Dictionary) -> String:
-	var jungle_moisture_cutoff := maxf(0.0, jungle_threshold - 0.08)
-	var jungle_temperature_cutoff := maxf(0.0, hot_threshold - 0.06)
+	var jungle_moisture_cutoff := maxf(0.0, jungle_threshold - 0.15)
+	var jungle_temperature_cutoff := maxf(0.0, hot_threshold - 0.12)
 	if moisture >= jungle_moisture_cutoff and temperature >= jungle_temperature_cutoff:
 		return String(biomes.get("jungle", "jungle"))
 	if temperature < tundra_threshold:
