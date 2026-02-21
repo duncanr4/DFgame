@@ -291,7 +291,8 @@ func _apply_cached_world_settings() -> void:
 
 	var map_size_key := str(settings.get("map_size_key", "normal"))
 	for i in MAP_SIZES.size():
-		if String(MAP_SIZES[i].get("key", "")) == map_size_key:
+		var map_size_option: Dictionary = MAP_SIZES[i]
+		if String(map_size_option.get("key", "")) == map_size_key:
 			map_size_select.select(i)
 			break
 

@@ -47,7 +47,9 @@ func get_world_settings_with_defaults(settings: Dictionary) -> Dictionary:
 	var merged := DEFAULT_WORLD_SETTINGS.duplicate(true)
 	for key: Variant in settings.keys():
 		if merged.has(key) and merged[key] is Dictionary and settings[key] is Dictionary:
-			merged[key].merge(settings[key], true)
+			var merged_subdict: Dictionary = merged[key]
+			merged_subdict.merge(settings[key], true)
+			merged[key] = merged_subdict
 		else:
 			merged[key] = settings[key]
 	return merged
