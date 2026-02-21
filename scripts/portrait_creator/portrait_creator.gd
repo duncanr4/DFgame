@@ -24,6 +24,8 @@ static var instance: PortraitCreator
 @export var clan_name: OptionButton
 @export var female_button: Button
 @export var male_button: Button
+@export var return_button: Button
+@export var create_button: Button
 
 const CLAN_OPTIONS := [
 	"Stonebeard",
@@ -592,6 +594,10 @@ func _ready() -> void:
 	if male_button:
 		male_button.pressed.connect(_set_gender.bind(false))
 		_setup_gender_button(male_button)
+	if return_button:
+		_setup_gender_button(return_button)
+	if create_button:
+		_setup_gender_button(create_button)
 
 	clan_name.clear()
 	for clan: String in CLAN_OPTIONS:
@@ -705,6 +711,7 @@ func _setup_gender_button(button: Button) -> void:
 	button.add_theme_stylebox_override("hover_pressed", _gender_button_pressed_shadow)
 
 	button.self_modulate = Color(GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, 1.0)
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 	button.mouse_entered.connect(_on_gender_button_hover.bind(button))
 	button.mouse_exited.connect(_on_gender_button_unhover.bind(button))
