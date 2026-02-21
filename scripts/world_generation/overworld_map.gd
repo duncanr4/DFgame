@@ -190,6 +190,7 @@ const SETTLEMENT_HISTORY_EVENT_POOL := {
 	]
 }
 const DWARFHOLD_NEARBY_TOWN_RADIUS := 12.0
+const WORLD_FEATURE_REFERENCE_WIDTH := 455.0
 const DWARFHOLD_POPULATION_RACE_OPTIONS := [
 	{"key": "dwarves", "label": "Dwarves", "color": Color("#f4c069")},
 	{"key": "humans", "label": "Humans", "color": Color("#9bb6d8")},
@@ -1501,10 +1502,11 @@ func _generate_map() -> void:
 		rng.seed = map_seed
 	name_rng.seed = map_seed + 911
 	_configure_landmass_centers(rng)
+	var frequency_divisor := _feature_frequency_divisor()
 
 	var continent_noise := FastNoiseLite.new()
 	continent_noise.seed = map_seed
-	continent_noise.frequency = (noise_frequency * 0.35) / float(map_size.x)
+	continent_noise.frequency = (noise_frequency * 0.35) / frequency_divisor
 	continent_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	continent_noise.fractal_octaves = maxi(4, noise_octaves)
 	continent_noise.fractal_lacunarity = 2.1
@@ -1513,7 +1515,7 @@ func _generate_map() -> void:
 
 	var detail_noise := FastNoiseLite.new()
 	detail_noise.seed = map_seed + 37
-	detail_noise.frequency = (noise_frequency * 2.2) / float(map_size.x)
+	detail_noise.frequency = (noise_frequency * 2.2) / frequency_divisor
 	detail_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	detail_noise.fractal_octaves = 4
 	detail_noise.fractal_lacunarity = 2.3
@@ -1522,7 +1524,7 @@ func _generate_map() -> void:
 
 	var ridge_noise := FastNoiseLite.new()
 	ridge_noise.seed = map_seed + 83
-	ridge_noise.frequency = (noise_frequency * 1.1) / float(map_size.x)
+	ridge_noise.frequency = (noise_frequency * 1.1) / frequency_divisor
 	ridge_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	ridge_noise.fractal_octaves = 3
 	ridge_noise.fractal_lacunarity = 2.0
@@ -1532,21 +1534,21 @@ func _generate_map() -> void:
 	_temperature_noise = FastNoiseLite.new()
 	_temperature_noise.seed = map_seed + 101
 	_temperature_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	_temperature_noise.frequency = temperature_frequency / float(map_size.x)
+	_temperature_noise.frequency = temperature_frequency / frequency_divisor
 	_temperature_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_temperature_noise.fractal_octaves = 3
 
 	_rainfall_noise = FastNoiseLite.new()
 	_rainfall_noise.seed = map_seed + 211
 	_rainfall_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	_rainfall_noise.frequency = rainfall_frequency / float(map_size.x)
+	_rainfall_noise.frequency = rainfall_frequency / frequency_divisor
 	_rainfall_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_rainfall_noise.fractal_octaves = 4
 
 	_vegetation_noise = FastNoiseLite.new()
 	_vegetation_noise.seed = map_seed + 317
 	_vegetation_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	_vegetation_noise.frequency = (noise_frequency * 2.8) / float(map_size.x)
+	_vegetation_noise.frequency = (noise_frequency * 2.8) / frequency_divisor
 	_vegetation_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_vegetation_noise.fractal_octaves = 3
 
@@ -2234,6 +2236,9 @@ func _sample_height(
 	y: int
 ) -> float:
 	return float(TERRAIN_GENERATOR.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers))
+
+func _feature_frequency_divisor() -> float:
+	return maxf(1.0, minf(float(map_size.x), WORLD_FEATURE_REFERENCE_WIDTH))
 
 
 func _sample_continent_bias(x: int, y: int) -> float:
