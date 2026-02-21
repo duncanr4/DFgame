@@ -28,20 +28,20 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ja2xc"]
 shader = ExtResource("2_0yffs")
-shader_parameter/images = Array[CompressedTexture2D]([ExtResource("2_6txqo"), ExtResource("3_ucp7b"), ExtResource("4_oy0w6")])
+shader_parameter/images = Array[CompressedTexture2D]([])
 shader_parameter/colors = Array[Vector3]([Vector3(0.07, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rqrh5"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x7ufa"]
 bg_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x7ufa"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ix263"]
 bg_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0.45)
 shadow_size = 14
 shadow_offset = Vector2(0, 6)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ix263"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n1i1y"]
 bg_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0.35)
 shadow_size = 10
@@ -63,12 +63,12 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.72, 0.56, 0.29, 0.75)
-shadow_color = Color(0.03, 0.16, 0.35, 0.4)
-shadow_size = 10
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+shadow_color = Color(0.03, 0.16, 0.35, 0.4)
+shadow_size = 10
 
 [node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "hair_style", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_tooltip_backdrop", "attribute_tooltip_panel", "attribute_reminder_title", "attribute_reminder_text")]
 layout_mode = 3
@@ -344,17 +344,6 @@ texture = ExtResource("17_s8202")
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Frame" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900331]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-texture = ExtResource("6_22p58")
-expand_mode = 1
-stretch_mode = 6
-
 [node name="Entries" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries" unique_id=147900332]
 layout_mode = 1
 anchors_preset = 15
@@ -420,6 +409,12 @@ stretch_mode = 5
 metadata/attribute_title = "Grey Dwarf Heritage"
 metadata/attribute_description = "Your skin is the colour of ash and your heart is that of steel. Known as a Dwagar you may not be as despised as the Dark Dwarves are, yet the kinship you have with the rest of Dwarfdom is strained. Your ancestors were followers of the Lawgiver and Forgebearers of the Forgotten Era who preached a strain of total dwarven separatism and supremacy that led your people to form holds far away from your homeland. You may be welcomed into any dwarf hold but not well liked and the races you hunt as slaves will attack you on sight."
 
+[node name="FrameforIcon" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=1517478304]
+layout_mode = 2
+button_mask = 0
+icon = ExtResource("17_s8202")
+flat = true
+
 [node name="Text" type="Label" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry" unique_id=147900319]
 visible = false
 layout_mode = 2
@@ -481,22 +476,22 @@ layout_mode = 2
 [node name="TextureRect2" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer2/VBoxContainer/HBoxContainer" unique_id=1311269939]
 self_modulate = Color(0.85, 0.85, 0.85, 1)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_rqrh5")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_x7ufa")
-theme_override_styles/hover = SubResource("StyleBoxFlat_ix263")
-theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_x7ufa")
-theme_override_styles/focus = SubResource("StyleBoxFlat_ix263")
+theme_override_styles/normal = SubResource("StyleBoxFlat_x7ufa")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ix263")
+theme_override_styles/hover = SubResource("StyleBoxFlat_n1i1y")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_ix263")
+theme_override_styles/focus = SubResource("StyleBoxFlat_n1i1y")
 icon = ExtResource("13_ptvhl")
 flat = true
 
 [node name="TextureRect3" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer2/VBoxContainer/HBoxContainer" unique_id=1433334343]
 self_modulate = Color(0.85, 0.85, 0.85, 1)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_rqrh5")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_x7ufa")
-theme_override_styles/hover = SubResource("StyleBoxFlat_ix263")
-theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_x7ufa")
-theme_override_styles/focus = SubResource("StyleBoxFlat_ix263")
+theme_override_styles/normal = SubResource("StyleBoxFlat_x7ufa")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ix263")
+theme_override_styles/hover = SubResource("StyleBoxFlat_n1i1y")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_ix263")
+theme_override_styles/focus = SubResource("StyleBoxFlat_n1i1y")
 icon = ExtResource("14_yns5i")
 flat = true
 
@@ -1042,6 +1037,7 @@ autowrap_mode = 3
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=236006476]
 layout_mode = 2
+size_flags_horizontal = 0
 size_flags_vertical = 8
 
 [node name="Button" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer" unique_id=5505332]
@@ -1051,20 +1047,22 @@ flat = true
 
 [node name="Button2" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer" unique_id=289871190]
 layout_mode = 2
-scale = Vector2(0.5, 0.5)
 icon = ExtResource("17_s8202")
 flat = true
 
 [node name="DiceIcon" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer/Button2" unique_id=2043411221]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
 anchor_left = 0.5
-anchor_top = 0.5
+anchor_top = 0.46300003
 anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -15.0
-offset_top = -15.0
-offset_right = 15.0
-offset_bottom = 15.0
+anchor_bottom = 0.46300003
+offset_left = -28.5
+offset_top = -26.172005
+offset_right = 28.0
+offset_bottom = 31.327995
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 texture = ExtResource("18_tqk83")
 expand_mode = 1
@@ -1077,21 +1075,20 @@ flat = true
 
 [node name="AttributeTooltipBackdrop" type="ColorRect" parent="." unique_id=2001887122]
 visible = false
+z_index = 49
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-z_index = 49
 mouse_filter = 2
 color = Color(0.02, 0.03, 0.08, 0.6)
 
-
 [node name="AttributeTooltipPanel" type="PanelContainer" parent="." unique_id=2001887123]
 visible = false
+z_index = 50
 layout_mode = 0
-anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
@@ -1102,7 +1099,6 @@ offset_right = 180.0
 offset_bottom = 130.0
 grow_horizontal = 2
 grow_vertical = 2
-z_index = 50
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_fantasy_border")
 
@@ -1114,18 +1110,13 @@ theme_override_constants/margin_right = 24
 theme_override_constants/margin_bottom = 22
 
 [node name="TooltipFill" type="Panel" parent="AttributeTooltipPanel/TooltipMargin" unique_id=2001887128]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_fantasy_fill")
 
 [node name="TooltipVBox" type="VBoxContainer" parent="AttributeTooltipPanel/TooltipMargin" unique_id=2001887125]
-layout_mode = 2
 custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="AttributeReminderTitle" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887126]
@@ -1136,6 +1127,7 @@ theme_override_font_sizes/font_size = 15
 horizontal_alignment = 1
 
 [node name="AttributeReminderBody" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887127]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.94, 0.91, 0.83, 1)
