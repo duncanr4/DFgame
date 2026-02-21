@@ -2,29 +2,34 @@ extends Control
 
 const MAP_SIZES := [
 	{
+		"key": "mini",
 		"name": "Mini",
-		"dimensions": "213 × 120",
-		"size": Vector2i(213, 120)
+		"dimensions": "228 × 128",
+		"size": Vector2i(228, 128)
 	},
 	{
+		"key": "small",
 		"name": "Small",
-		"dimensions": "347 × 195",
-		"size": Vector2i(347, 195)
+		"dimensions": "341 × 192",
+		"size": Vector2i(341, 192)
 	},
 	{
+		"key": "normal",
 		"name": "Normal",
-		"dimensions": "480 × 270",
-		"size": Vector2i(480, 270)
+		"dimensions": "455 × 256",
+		"size": Vector2i(455, 256)
 	},
 	{
+		"key": "large",
 		"name": "Large",
-		"dimensions": "613 × 345",
-		"size": Vector2i(613, 345)
+		"dimensions": "683 × 384",
+		"size": Vector2i(683, 384)
 	},
 	{
+		"key": "extra-large",
 		"name": "Extra Large",
-		"dimensions": "747 × 420",
-		"size": Vector2i(747, 420)
+		"dimensions": "910 × 512",
+		"size": Vector2i(910, 512)
 	}
 ]
 
@@ -173,10 +178,15 @@ const WORLD_NAMES := [
 func _ready() -> void:
 	randomize()
 	_populate_options()
-	seed_input.text = _generate_seed()
-	year_input.value = 1485
-	age_input.value = 18
-	world_name_input.text = _generate_world_name()
+	_apply_cached_world_settings()
+	if seed_input.text.strip_edges().is_empty():
+		seed_input.text = _generate_seed()
+	if world_name_input.text.strip_edges().is_empty():
+		world_name_input.text = _generate_world_name()
+	if year_input.value <= 0:
+		year_input.value = 1485
+	if age_input.value <= 0:
+		age_input.value = 18
 	_refresh_summary()
 
 	map_size_select.item_selected.connect(func(_index: int) -> void: _refresh_summary())
@@ -247,12 +257,54 @@ func _on_back_pressed() -> void:
 
 func _store_world_settings() -> void:
 	var map_size: Dictionary = MAP_SIZES[map_size_select.selected]
+	var world_seed := seed_input.text.strip_edges()
+	if world_seed.is_empty():
+		world_seed = _generate_seed()
+		seed_input.text = world_seed
 	var settings := {
 		"map_size": map_size["name"],
+		"map_size_key": map_size["key"],
 		"map_dimensions": map_size["size"],
 		"world_layout": world_layout_select.get_item_text(world_layout_select.selected),
-		"world_seed": seed_input.text.strip_edges()
+		"world_seed": world_seed,
+		"world_name": world_name_input.text.strip_edges(),
+		"chronology": {
+			"year": int(year_input.value),
+			"age": "Age %d" % int(age_input.value)
+		},
+		"terrain": {"forest": 50, "mountain": 50, "river": 50},
+		"terrain_ratios": {"forest": 0.5, "mountain": 0.5, "river": 0.5},
+		"settlements": {"humans": 50, "dwarves": 50, "wood_elves": 50, "lizardmen": 50},
+		"settlement_ratios": {"humans": 0.5, "dwarves": 0.5, "wood_elves": 0.5, "lizardmen": 0.5}
 	}
 	var game_session := get_node_or_null("/root/GameSession")
 	if game_session && game_session.has_method("set_world_settings"):
 		game_session.call("set_world_settings", settings)
+
+func _apply_cached_world_settings() -> void:
+	var game_session := get_node_or_null("/root/GameSession")
+	if game_session == null or not game_session.has_method("get_world_settings"):
+		return
+	var settings: Dictionary = game_session.call("get_world_settings")
+	if settings.is_empty():
+		return
+
+	var map_size_key := str(settings.get("map_size_key", "normal"))
+	for i in MAP_SIZES.size():
+		if String(MAP_SIZES[i].get("key", "")) == map_size_key:
+			map_size_select.select(i)
+			break
+
+	var layout := str(settings.get("world_layout", WORLD_LAYOUTS[0]))
+	var layout_index := WORLD_LAYOUTS.find(layout)
+	if layout_index >= 0:
+		world_layout_select.select(layout_index)
+
+	seed_input.text = str(settings.get("world_seed", "")).strip_edges()
+	world_name_input.text = str(settings.get("world_name", "")).strip_edges()
+	var chronology := settings.get("chronology", {}) as Dictionary
+	if chronology.has("year"):
+		year_input.value = int(chronology.get("year", 1485))
+	var age_text := str(chronology.get("age", ""))
+	if age_text.begins_with("Age "):
+		age_input.value = max(1, int(age_text.trim_prefix("Age ")))

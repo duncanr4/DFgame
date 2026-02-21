@@ -102,7 +102,7 @@ func apply_world_settings(settings: Dictionary) -> void:
 	if settings.is_empty():
 		return
 
-	if settings.has("map_dimensions"):
+	if settings.has("map_dimensions") and settings["map_dimensions"] is Vector2i:
 		var dims: Vector2i = settings["map_dimensions"]
 		tile_map_size = dims
 		size = dims * 2
@@ -117,8 +117,12 @@ func apply_world_settings(settings: Dictionary) -> void:
 
 func _apply_cached_world_settings() -> void:
 	var game_session := get_node_or_null("/root/GameSession") as GameSession
-	if game_session:
-		apply_world_settings(game_session.get_world_settings())
+	if game_session == null:
+		return
+	if game_session.has_method("get_world_settings_with_defaults"):
+		apply_world_settings(game_session.call("get_world_settings_with_defaults", game_session.get_world_settings()))
+		return
+	apply_world_settings(game_session.get_world_settings())
 
 func _ready() -> void:
 	_apply_cached_world_settings()
