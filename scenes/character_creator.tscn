@@ -46,7 +46,30 @@ shadow_color = Color(0, 0, 0, 0.35)
 shadow_size = 10
 shadow_offset = Vector2(0, 4)
 
-[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "hair_style", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_tooltip_panel", "attribute_reminder_title", "attribute_reminder_text")]
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_fantasy_border"]
+texture = ExtResource("6_22p58")
+texture_margin_left = 24.0
+texture_margin_top = 24.0
+texture_margin_right = 24.0
+texture_margin_bottom = 24.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fantasy_fill"]
+bg_color = Color(0.055, 0.09, 0.2, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.72, 0.56, 0.29, 0.75)
+shadow_color = Color(0.03, 0.16, 0.35, 0.4)
+shadow_size = 10
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="CharacterCreator" type="Control" unique_id=416902352 node_paths=PackedStringArray("target_render", "character_name", "profession_choice", "clan_name", "female_button", "male_button", "skin_color", "eye_color", "hair_color", "hair_style", "beard_style", "beardless_reminder", "dark_dwarf_reminder", "grey_dwarf_reminder", "banker_reminder", "attribute_tooltip_backdrop", "attribute_tooltip_panel", "attribute_reminder_title", "attribute_reminder_text")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -74,6 +97,7 @@ beardless_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBox
 dark_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/DarkDwarfEntry")
 grey_dwarf_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/GreyDwarfEntry")
 banker_reminder = NodePath("PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer/Grid/AttributeReminderEntries/Entries/BankerEntry")
+attribute_tooltip_backdrop = NodePath("AttributeTooltipBackdrop")
 attribute_tooltip_panel = NodePath("AttributeTooltipPanel")
 attribute_reminder_title = NodePath("AttributeTooltipPanel/TooltipMargin/TooltipVBox/AttributeReminderTitle")
 attribute_reminder_text = NodePath("AttributeTooltipPanel/TooltipMargin/TooltipVBox/AttributeReminderBody")
@@ -1034,33 +1058,71 @@ layout_mode = 2
 icon = ExtResource("17_8ugf3")
 flat = true
 
+[node name="AttributeTooltipBackdrop" type="ColorRect" parent="." unique_id=2001887122]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+z_index = 49
+mouse_filter = 2
+color = Color(0.02, 0.03, 0.08, 0.6)
+
 
 [node name="AttributeTooltipPanel" type="PanelContainer" parent="." unique_id=2001887123]
 visible = false
 layout_mode = 0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -130.0
+offset_right = 180.0
+offset_bottom = 130.0
+grow_horizontal = 2
+grow_vertical = 2
 z_index = 50
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_fantasy_border")
 
 [node name="TooltipMargin" type="MarginContainer" parent="AttributeTooltipPanel" unique_id=2001887124]
 layout_mode = 2
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 22
+
+[node name="TooltipFill" type="Panel" parent="AttributeTooltipPanel/TooltipMargin" unique_id=2001887128]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_fantasy_fill")
 
 [node name="TooltipVBox" type="VBoxContainer" parent="AttributeTooltipPanel/TooltipMargin" unique_id=2001887125]
 layout_mode = 2
-custom_minimum_size = Vector2(280, 0)
+custom_minimum_size = Vector2(320, 0)
+theme_override_constants/separation = 10
 
 [node name="AttributeReminderTitle" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887126]
 layout_mode = 2
 theme = ExtResource("3_0yffs")
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
 
 [node name="AttributeReminderBody" type="Label" parent="AttributeTooltipPanel/TooltipMargin/TooltipVBox" unique_id=2001887127]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.94, 0.91, 0.83, 1)
+theme_override_font_sizes/font_size = 13
 autowrap_mode = 3
 
 [connection signal="pressed" from="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer/Button" to="." method="_on_return_button_pressed"]
