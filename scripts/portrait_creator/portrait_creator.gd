@@ -561,8 +561,10 @@ const GENDER_BUTTON_BRIGHTNESS_NORMAL := 0.85
 const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
 const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
+const ROLLING_DICE_SOUND := preload("res://Github Game/sound/sounds/rolling-dice.mp3")
 
 var _hovered_attribute_icon: Control
+var _randomize_sound_player: AudioStreamPlayer
 
 func _enter_tree() -> void:
 	instance = self
@@ -926,6 +928,8 @@ func _on_create_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/world_generation_display.tscn")
 
 func _on_randomize_button_pressed() -> void:
+	_play_randomize_sound()
+
 	if profession_choice and profession_choice.item_count > 0:
 		profession_choice.select(_rng.randi_range(0, profession_choice.item_count - 1))
 	if clan_name and clan_name.item_count > 0:
@@ -941,3 +945,13 @@ func _on_randomize_button_pressed() -> void:
 
 	character_name.text = _generate_full_name()
 	_update_attribute_reminders()
+
+func _play_randomize_sound() -> void:
+	if ROLLING_DICE_SOUND == null:
+		return
+	if _randomize_sound_player == null:
+		_randomize_sound_player = AudioStreamPlayer.new()
+		_randomize_sound_player.name = "RandomizeSoundPlayer"
+		add_child(_randomize_sound_player)
+	_randomize_sound_player.stream = ROLLING_DICE_SOUND
+	_randomize_sound_player.play()
