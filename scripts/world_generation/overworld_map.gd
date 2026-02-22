@@ -2756,7 +2756,7 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 				continue
 			occupied.append(chosen)
 			var biome_label := _settlement_biome_label(biome_map.get(chosen, BIOME_GRASSLAND))
-			var tile := _select_settlement_tile(settlement_type, biome_label, rng)
+			var tile := _select_settlement_tile(settlement_type, biome_label, rng, chosen)
 			if settlement_layer != null:
 				settlement_layer.set_cell(chosen, _atlas_source_id, tile)
 			else:
@@ -3589,7 +3589,12 @@ func _settlement_biome_label(biome: String) -> String:
 		_:
 			return "grass"
 
-func _select_settlement_tile(settlement_type: String, biome_label: String, rng: RandomNumberGenerator) -> Vector2i:
+func _select_settlement_tile(
+	settlement_type: String,
+	biome_label: String,
+	rng: RandomNumberGenerator,
+	coord: Vector2i
+) -> Vector2i:
 	match settlement_type:
 		"town":
 			if biome_label == "snow":
@@ -3597,8 +3602,7 @@ func _select_settlement_tile(settlement_type: String, biome_label: String, rng: 
 			var options: Array = SETTLEMENT_TILES.get("town", [TOWN_TILE]) as Array
 			return options[rng.randi_range(0, options.size() - 1)]
 		"dwarfhold":
-			var dwarf_tiles: Array = SETTLEMENT_TILES.get("dwarfhold", [DWARFHOLD_TILE]) as Array
-			return dwarf_tiles[rng.randi_range(0, dwarf_tiles.size() - 1)]
+			return DARK_DWARFHOLD_TILE if _is_within_tiles_of_volcano(coord, 8) else DWARFHOLD_TILE
 		"woodElfGrove":
 			var elf_tiles: Array = SETTLEMENT_TILES.get("woodElfGrove", [WOOD_ELF_GROVES_TILE]) as Array
 			return elf_tiles[rng.randi_range(0, elf_tiles.size() - 1)]
@@ -3606,6 +3610,20 @@ func _select_settlement_tile(settlement_type: String, biome_label: String, rng: 
 			return LIZARDMEN_CITY_TILE
 		_:
 			return TOWN_TILE
+
+func _is_within_tiles_of_volcano(coord: Vector2i, radius: int) -> bool:
+	if highland_layer == null:
+		return false
+	for oy in range(-radius, radius + 1):
+		for ox in range(-radius, radius + 1):
+			var offset := Vector2i(ox, oy)
+			if coord.distance_to(coord + offset) > float(radius):
+				continue
+			var neighbor := coord + offset
+			var highland_tile := highland_layer.get_cell_atlas_coords(neighbor)
+			if highland_tile == ACTIVE_VOLCANO_TILE or highland_tile == VOLCANO_TILE:
+				return true
+	return false
 
 func _resources_for_biome(biome: String) -> Array[String]:
 	match biome:
