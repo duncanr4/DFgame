@@ -3678,14 +3678,14 @@ func _generate_biome_region_name(
 func _generate_lizardmen_city_name(rng: RandomNumberGenerator) -> String:
 	var prefix := _pick_random_entry(LIZARDMEN_CITY_NAME_PREFIXES, rng, "Ix")
 	var suffix := _pick_random_entry(LIZARDMEN_CITY_NAME_SUFFIXES, rng, "atl")
-	var name := "%s%s" % [prefix, suffix]
+	var city_name := "%s%s" % [prefix, suffix]
 	if rng.randf() < 0.5:
 		var separator := _pick_random_entry(LIZARDMEN_CITY_NAME_SEPARATORS, rng, "")
-		name = "%s%s%s" % [prefix, separator, suffix]
+		city_name = "%s%s%s" % [prefix, separator, suffix]
 	if rng.randf() < LIZARDMEN_CITY_EXTRA_SUFFIX_CHANCE:
 		var extra_suffix := _pick_random_entry(LIZARDMEN_CITY_NAME_SUFFIXES, rng, "pan")
-		name += extra_suffix
-	return name
+		city_name += extra_suffix
+	return city_name
 
 func _pick_random_entry(options: Array[String], rng: RandomNumberGenerator, fallback: String = "") -> String:
 	if options.is_empty():
