@@ -99,7 +99,10 @@ static func sample_landmass_center_bias(centered_nx: float, centered_ny: float, 
 	var clamped_scale := maxf(0.001, landmass_falloff_scale)
 	var center_distance := distance_to_nearest_landmass_center(centered_nx, centered_ny, landmass_centers)
 	var center_support := 1.0 - pow(clampf(center_distance / clamped_scale, 0.0, 1.0), maxf(falloff_power, 0.05))
-	return (center_support - 0.5) * 2.0 * (landmass_falloff_scale * 0.08)
+	var continental_shell := clampf((center_distance - (clamped_scale * 0.46)) / (clamped_scale * 0.62), 0.0, 1.0)
+	var ocean_separation := pow(continental_shell, 1.35) * (0.16 + clamped_scale * 0.04)
+	var center_variation := sample_center_voronoi_variation(centered_nx, centered_ny, landmass_centers, clamped_scale)
+	return (center_support - 0.5) * 2.0 * (landmass_falloff_scale * 0.08) + center_variation - ocean_separation
 
 static func sample_landmass_mask_bias(nx: float, ny: float, settings: Dictionary) -> float:
 	var strength := float(settings.get("landmass_mask_strength", 0.0))
@@ -113,6 +116,28 @@ static func distance_to_nearest_landmass_center(nx: float, ny: float, landmass_c
 	for center: Vector2 in landmass_centers:
 		min_distance = minf(min_distance, sample_pos.distance_to(center))
 	return min_distance
+
+static func sample_center_voronoi_variation(nx: float, ny: float, landmass_centers: Array[Vector2], falloff_scale: float) -> float:
+	if landmass_centers.size() < 2:
+		return 0.0
+	var sample_pos := Vector2(nx, ny)
+	var nearest := INF
+	var second_nearest := INF
+	for center: Vector2 in landmass_centers:
+		var dist := sample_pos.distance_to(center)
+		if dist < nearest:
+			second_nearest = nearest
+			nearest = dist
+		elif dist < second_nearest:
+			second_nearest = dist
+	if !is_finite(second_nearest):
+		return 0.0
+	var scale := maxf(falloff_scale * 0.68, 0.001)
+	var separation := clampf((second_nearest - nearest) / scale, 0.0, 1.0)
+	var near_center := clampf(1.0 - nearest / maxf(falloff_scale, 0.001), 0.0, 1.0)
+	var boundary_carve := (1.0 - separation) * 0.08
+	var lobe_bonus := pow(near_center, 1.35) * 0.09
+	return lobe_bonus - boundary_carve
 
 static func sample_landmass_mask(nx: float, ny: float, settings: Dictionary) -> float:
 	var map_seed := int(settings.get("map_seed", 0))
