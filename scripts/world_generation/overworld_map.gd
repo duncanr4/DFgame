@@ -142,6 +142,10 @@ const SETTLEMENT_NAMES := {
 	"wood_elves": "Grove",
 	"lizardmen": "Lizard City"
 }
+const LIZARDMEN_CITY_NAME_PREFIXES: Array[String] = ["Ix", "Zan", "Tla", "Chal", "Maz", "Quet", "Ssz", "Olo", "Yax", "Huac"]
+const LIZARDMEN_CITY_NAME_SUFFIXES: Array[String] = ["atl", "tlan", "co", "maz", "naka", "zotl", "chan", "poc", "quil", "pan"]
+const LIZARDMEN_CITY_NAME_SEPARATORS: Array[String] = ["'", "-"]
+const LIZARDMEN_CITY_EXTRA_SUFFIX_CHANCE := 0.25
 const SETTLEMENT_HISTORY_EVENT_POOL := {
 	"human": [
 		"the entire town militia was conscripted by the Crown to fight in the Goblin Wars.",
@@ -2763,6 +2767,8 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			var settlement_name: String = String(SETTLEMENT_NAMES.get(civilization, "Settlement"))
 			if civilization == "dwarves" and not DWARFHOLD_NAMES.is_empty():
 				settlement_name = DWARFHOLD_NAMES[rng.randi_range(0, DWARFHOLD_NAMES.size() - 1)]
+			elif civilization == "lizardmen":
+				settlement_name = _generate_lizardmen_city_name(rng)
 			tile_info["region_name"] = settlement_name
 			var civilization_label := String(CIVILIZATION_LABELS.get(civilization, civilization.capitalize()))
 			tile_info["major_population_groups"] = [civilization_label]
@@ -3668,6 +3674,18 @@ func _generate_biome_region_name(
 	context_size: int
 ) -> String:
 	return WORLD_NAMING.generate_biome_region_name(biome, water_body_type, rng, context_size)
+
+func _generate_lizardmen_city_name(rng: RandomNumberGenerator) -> String:
+	var prefix := _pick_random_entry(LIZARDMEN_CITY_NAME_PREFIXES, rng, "Ix")
+	var suffix := _pick_random_entry(LIZARDMEN_CITY_NAME_SUFFIXES, rng, "atl")
+	var name := "%s%s" % [prefix, suffix]
+	if rng.randf() < 0.5:
+		var separator := _pick_random_entry(LIZARDMEN_CITY_NAME_SEPARATORS, rng, "")
+		name = "%s%s%s" % [prefix, separator, suffix]
+	if rng.randf() < LIZARDMEN_CITY_EXTRA_SUFFIX_CHANCE:
+		var extra_suffix := _pick_random_entry(LIZARDMEN_CITY_NAME_SUFFIXES, rng, "pan")
+		name += extra_suffix
+	return name
 
 func _pick_random_entry(options: Array[String], rng: RandomNumberGenerator, fallback: String = "") -> String:
 	if options.is_empty():
