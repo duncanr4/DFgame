@@ -91,6 +91,7 @@ const EXPECTED_TILE_COORDS := {
 @onready var city_summary: Label = %CitySummary
 @onready var city_panel: PanelContainer = %CityPanel
 @onready var city_layer: TileMapLayer = %CityTileLayer
+@onready var decor_layer: TileMapLayer = %DecorTileLayer
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
 @onready var tile_hover_label: Label = %TileHoverLabel
 
@@ -134,6 +135,7 @@ func _configure_tile_layer() -> void:
 	tile_set.tile_size = tile_size
 	tile_set.add_source(atlas, 0)
 	city_layer.tile_set = tile_set
+	decor_layer.tile_set = tile_set
 
 func _validate_tile_mapping() -> bool:
 	for tile_key: String in EXPECTED_TILE_COORDS.keys():
@@ -280,6 +282,7 @@ func _render_city(grid: Dictionary) -> void:
 	if city_layer.tile_set == null:
 		return
 	city_layer.clear()
+	decor_layer.clear()
 	var bounds := _find_bounds(grid)
 	var house_decor_overrides := _build_house_decor_layouts(grid)
 	for y in range(bounds.position.y, bounds.end.y):
@@ -288,10 +291,10 @@ func _render_city(grid: Dictionary) -> void:
 			if cell == CELL_ROCK:
 				continue
 			var base_tile := _pick_base_tile(grid, x, y, cell)
-			_place_tile(Vector2i(x, y), base_tile)
+			_place_tile(city_layer, Vector2i(x, y), base_tile)
 			var decor_tile := _pick_decor_tile(grid, x, y, cell, house_decor_overrides)
 			if not decor_tile.is_empty():
-				_place_tile(Vector2i(x, y), decor_tile)
+				_place_tile(decor_layer, Vector2i(x, y), decor_tile)
 	_reset_view(bounds)
 
 func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
@@ -403,14 +406,16 @@ func _reset_view(bounds: Rect2i) -> void:
 func _update_city_layer_transform() -> void:
 	city_layer.scale = Vector2.ONE * _zoom_level
 	city_layer.position = _pan_offset + (_map_origin_offset * _zoom_level)
+	decor_layer.scale = city_layer.scale
+	decor_layer.position = city_layer.position
 	if tile_hover_tooltip.visible:
 		tile_hover_tooltip.position = _clamp_tooltip_position(tile_hover_tooltip.position)
 
-func _place_tile(cell: Vector2i, tile_key: String) -> void:
+func _place_tile(target_layer: TileMapLayer, cell: Vector2i, tile_key: String) -> void:
 	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))
 	if atlas_coords.x < 0:
 		return
-	city_layer.set_cell(cell, 0, atlas_coords, 0)
+	target_layer.set_cell(cell, 0, atlas_coords, 0)
 
 func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 	if _is_structural_cell(cell):
@@ -438,17 +443,17 @@ func _wall_or_floor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 	var bottom_same := bottom_cell == cell
 
 	if left_open:
-		return "door" if _rng.randf() < 0.25 else "wall_left"
+		return "door" if _rng.randf() < 0.25 else "stone"
 	if right_open:
-		return "door" if _rng.randf() < 0.25 else "wall_right"
+		return "door" if _rng.randf() < 0.25 else "stone"
 	if top_open or not top_same:
-		return "wall_top"
+		return "stone"
 	if bottom_open or not bottom_same:
-		return "wall_bottom"
+		return "stone"
 	if not left_same:
-		return "wall_left"
+		return "stone"
 	if not right_same:
-		return "wall_right"
+		return "stone"
 
 	return "floor"
 
@@ -502,11 +507,14 @@ func _update_hover_tooltip(mouse_position: Vector2) -> void:
 
 	var local_position := (mouse_position - city_layer.position) / _zoom_level
 	var hovered_cell := city_layer.local_to_map(local_position)
-	if city_layer.get_cell_source_id(hovered_cell) < 0:
+	var hovered_layer := decor_layer
+	if decor_layer.get_cell_source_id(hovered_cell) < 0:
+		hovered_layer = city_layer
+	if hovered_layer.get_cell_source_id(hovered_cell) < 0:
 		_hide_hover_tooltip()
 		return
 
-	var atlas_coords := city_layer.get_cell_atlas_coords(hovered_cell)
+	var atlas_coords := hovered_layer.get_cell_atlas_coords(hovered_cell)
 	var tile_name := _tile_name_from_atlas(atlas_coords)
 	tile_hover_label.text = "Tile: %s" % tile_name
 	tile_hover_tooltip.visible = true
