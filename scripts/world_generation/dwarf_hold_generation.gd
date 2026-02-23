@@ -5,9 +5,9 @@ const CELL_HALL := 1
 const CELL_HOUSE := 2
 const CELL_BUILDING := 3
 
-@export var hall_count := 18
-@export var housing_count := 180
-@export var civic_building_count := 70
+@export var hall_zone_count_range := Vector2i(14, 22)
+@export var housing_zone_count_range := Vector2i(80, 140)
+@export var civic_building_zone_count_range := Vector2i(45, 95)
 @export var tile_size := Vector2i(32, 32)
 @export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
 
@@ -104,6 +104,11 @@ var _latest_zone_counts := {
 	"houses": 0,
 	"buildings": 0
 }
+var _latest_requested_zone_counts := {
+	"halls": 0,
+	"houses": 0,
+	"buildings": 0
+}
 
 const ZONE_OVERLAY_COLORS := {
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
@@ -191,6 +196,15 @@ func _generate_city() -> void:
 		seed_input.text = seed_text
 	_rng.seed = hash(seed_text)
 
+	var requested_hall_count := _pick_seeded_zone_target(hall_zone_count_range)
+	var requested_house_count := _pick_seeded_zone_target(housing_zone_count_range)
+	var requested_building_count := _pick_seeded_zone_target(civic_building_zone_count_range)
+	_latest_requested_zone_counts = {
+		"halls": requested_hall_count,
+		"houses": requested_house_count,
+		"buildings": requested_building_count
+	}
+
 	var grid: Dictionary = {}
 	var seed_hall_center := Vector2i.ZERO
 	var seed_hall_size := Vector2i(18, 14)
@@ -198,7 +212,7 @@ func _generate_city() -> void:
 
 	var hubs: Array[Vector2i] = [seed_hall_center]
 
-	for i in hall_count:
+	for i in requested_hall_count:
 		var anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
 		var center := anchor + Vector2i(_rng.randi_range(-30, 30), _rng.randi_range(-20, 20))
 		var hall_size := Vector2i(_rng.randi_range(4, 10), _rng.randi_range(3, 7))
@@ -206,7 +220,7 @@ func _generate_city() -> void:
 		_connect_points(grid, center, _nearest_point(center, hubs), CELL_HALL)
 		hubs.append(center)
 
-	for i in housing_count:
+	for i in requested_house_count:
 		_place_structure_zone(
 			grid,
 			hubs,
@@ -221,7 +235,7 @@ func _generate_city() -> void:
 				return Vector2i(home_size_x, home_size_y)
 		)
 
-	for i in civic_building_count:
+	for i in requested_building_count:
 		_place_structure_zone(
 			grid,
 			hubs,
@@ -239,6 +253,12 @@ func _generate_city() -> void:
 	_render_city(grid)
 	_update_summary(grid, seed_text)
 	_update_zone_overlay()
+
+
+func _pick_seeded_zone_target(count_range: Vector2i) -> int:
+	var minimum := mini(count_range.x, count_range.y)
+	var maximum := maxi(count_range.x, count_range.y)
+	return _rng.randi_range(minimum, maximum)
 
 func _place_structure_zone(
 	grid: Dictionary,
@@ -737,20 +757,25 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var bounds := _find_bounds(grid)
+	var hall_zones := int(_latest_zone_counts.get("halls", 0))
 	var house_zones := int(_latest_zone_counts.get("houses", 0))
 	var building_zones := int(_latest_zone_counts.get("buildings", 0))
+	var requested_halls := int(_latest_requested_zone_counts.get("halls", 0))
+	var requested_houses := int(_latest_requested_zone_counts.get("houses", 0))
+	var requested_buildings := int(_latest_requested_zone_counts.get("buildings", 0))
 
-	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nHalls: %d | Houses: %d/%d | Buildings: %d/%d" % [
+	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d" % [
 		seed_text,
 		bounds.size.x,
 		bounds.size.y,
 		bounds.position.x,
 		bounds.position.y,
-		hall_count,
+		hall_zones,
+		requested_halls,
 		house_zones,
-		housing_count,
+		requested_houses,
 		building_zones,
-		civic_building_count
+		requested_buildings
 	]
 
 func _update_hover_tooltip(mouse_position: Vector2) -> void:
