@@ -91,6 +91,8 @@ const EXPECTED_TILE_COORDS := {
 @onready var city_summary: Label = %CitySummary
 @onready var city_panel: PanelContainer = %CityPanel
 @onready var city_layer: TileMapLayer = %CityTileLayer
+@onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
+@onready var tile_hover_label: Label = %TileHoverLabel
 
 var _rng := RandomNumberGenerator.new()
 var _is_panning := false
@@ -305,6 +307,8 @@ func _on_city_panel_gui_input(event: InputEvent) -> void:
 		var motion := event as InputEventMouseMotion
 		_pan_offset += motion.relative
 		_update_city_layer_transform()
+	if event is InputEventMouse:
+		_update_hover_tooltip((event as InputEventMouse).position)
 
 func _apply_zoom(zoom_delta: float, focus_position: Vector2) -> void:
 	var previous_zoom := _zoom_level
@@ -333,6 +337,8 @@ func _reset_view(bounds: Rect2i) -> void:
 func _update_city_layer_transform() -> void:
 	city_layer.scale = Vector2.ONE * _zoom_level
 	city_layer.position = _pan_offset + (_map_origin_offset * _zoom_level)
+	if tile_hover_tooltip.visible:
+		tile_hover_tooltip.position = _clamp_tooltip_position(tile_hover_tooltip.position)
 
 func _place_tile(cell: Vector2i, tile_key: String) -> void:
 	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))
@@ -409,3 +415,38 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 		housing_count,
 		civic_building_count
 	]
+
+func _update_hover_tooltip(mouse_position: Vector2) -> void:
+	if city_layer.tile_set == null:
+		_hide_hover_tooltip()
+		return
+
+	var local_position := (mouse_position - city_layer.position) / _zoom_level
+	var hovered_cell := city_layer.local_to_map(local_position)
+	if city_layer.get_cell_source_id(hovered_cell) < 0:
+		_hide_hover_tooltip()
+		return
+
+	var atlas_coords := city_layer.get_cell_atlas_coords(hovered_cell)
+	var tile_name := _tile_name_from_atlas(atlas_coords)
+	tile_hover_label.text = "Tile: %s" % tile_name
+	tile_hover_tooltip.visible = true
+	tile_hover_tooltip.reset_size()
+	tile_hover_tooltip.position = _clamp_tooltip_position(mouse_position + Vector2(14, 14))
+
+func _hide_hover_tooltip() -> void:
+	tile_hover_tooltip.visible = false
+
+func _tile_name_from_atlas(atlas_coords: Vector2i) -> String:
+	for tile_key: String in TILE_ATLAS.keys():
+		if TILE_ATLAS[tile_key] == atlas_coords:
+			return tile_key.replace("_", " ").capitalize()
+	return "Unknown"
+
+func _clamp_tooltip_position(desired_position: Vector2) -> Vector2:
+	var tooltip_size := tile_hover_tooltip.size
+	var panel_size := city_panel.size
+	return Vector2(
+		clampf(desired_position.x, 0.0, maxf(panel_size.x - tooltip_size.x, 0.0)),
+		clampf(desired_position.y, 0.0, maxf(panel_size.y - tooltip_size.y, 0.0))
+	)
