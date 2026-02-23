@@ -122,7 +122,7 @@ const ZONE_LEGEND_ORDER := [
 	{"tile": CELL_BUILDING, "name": "Building"}
 ]
 
-const MIN_ZOOM := 0.25
+const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
 
