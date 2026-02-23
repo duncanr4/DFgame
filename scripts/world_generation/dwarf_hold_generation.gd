@@ -308,10 +308,10 @@ func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
 		var component: Array[Vector2i] = []
 		visited[start_cell] = true
 		while not queue.is_empty():
-			var current := queue.pop_front()
+			var current: Vector2i = queue.pop_front()
 			component.append(current)
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-				var neighbor := current + direction
+				var neighbor: Vector2i = current + direction
 				if visited.has(neighbor):
 					continue
 				if _cell_at(grid, neighbor.x, neighbor.y) != CELL_HOUSE:
