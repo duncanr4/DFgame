@@ -395,41 +395,9 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 	return ""
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
-	var tile_counts := {
-		"Districts": 0,
-		"Main Halls": 0,
-		"Rooms": 0,
-		"Houses": 0,
-		"Buildings": 0,
-		"Tunnels": 0,
-		"Citadel": 0,
-		"Gates": 0
-	}
-	for tile: Variant in grid.values():
-		match int(tile):
-			CELL_DISTRICT:
-				tile_counts["Districts"] += 1
-			CELL_HALL:
-				tile_counts["Main Halls"] += 1
-			CELL_ROOM:
-				tile_counts["Rooms"] += 1
-			CELL_HOUSE:
-				tile_counts["Houses"] += 1
-			CELL_BUILDING:
-				tile_counts["Buildings"] += 1
-			CELL_TUNNEL:
-				tile_counts["Tunnels"] += 1
-			CELL_KEEP:
-				tile_counts["Citadel"] += 1
-			CELL_GATE:
-				tile_counts["Gates"] += 1
-
 	var bounds := _find_bounds(grid)
-	var summary_lines: Array[String] = []
-	for tile_label: String in tile_counts.keys():
-		summary_lines.append("%s: %d" % [tile_label, tile_counts[tile_label]])
 
-	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nDistrict count: %d | Hall count: %d | Rooms: %d | Houses: %d | Buildings: %d\n%s" % [
+	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nDistrict count: %d | Hall count: %d | Rooms: %d | Houses: %d | Buildings: %d" % [
 		seed_text,
 		bounds.size.x,
 		bounds.size.y,
@@ -439,6 +407,5 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 		hall_count,
 		room_count,
 		housing_count,
-		civic_building_count,
-		"\n".join(summary_lines)
+		civic_building_count
 	]
