@@ -5,9 +5,9 @@ const CELL_HALL := 1
 const CELL_HOUSE := 2
 const CELL_BUILDING := 3
 
-@export var hall_count := 18
-@export var housing_count := 180
-@export var civic_building_count := 70
+@export var hall_zone_count_range := Vector2i(14, 22)
+@export var housing_zone_count_range := Vector2i(80, 140)
+@export var civic_building_zone_count_range := Vector2i(45, 95)
 @export var tile_size := Vector2i(32, 32)
 @export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
 
@@ -99,6 +99,16 @@ var _map_origin_offset := Vector2.ZERO
 var _door_cells: Dictionary = {}
 var _latest_grid: Dictionary = {}
 var _show_zone_overlay := false
+var _latest_zone_counts := {
+	"halls": 0,
+	"houses": 0,
+	"buildings": 0
+}
+var _latest_requested_zone_counts := {
+	"halls": 0,
+	"houses": 0,
+	"buildings": 0
+}
 
 const ZONE_OVERLAY_COLORS := {
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
@@ -186,6 +196,15 @@ func _generate_city() -> void:
 		seed_input.text = seed_text
 	_rng.seed = hash(seed_text)
 
+	var requested_hall_count := _pick_seeded_zone_target(hall_zone_count_range)
+	var requested_house_count := _pick_seeded_zone_target(housing_zone_count_range)
+	var requested_building_count := _pick_seeded_zone_target(civic_building_zone_count_range)
+	_latest_requested_zone_counts = {
+		"halls": requested_hall_count,
+		"houses": requested_house_count,
+		"buildings": requested_building_count
+	}
+
 	var grid: Dictionary = {}
 	var seed_hall_center := Vector2i.ZERO
 	var seed_hall_size := Vector2i(18, 14)
@@ -193,7 +212,7 @@ func _generate_city() -> void:
 
 	var hubs: Array[Vector2i] = [seed_hall_center]
 
-	for i in hall_count:
+	for i in requested_hall_count:
 		var anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
 		var center := anchor + Vector2i(_rng.randi_range(-30, 30), _rng.randi_range(-20, 20))
 		var hall_size := Vector2i(_rng.randi_range(4, 10), _rng.randi_range(3, 7))
@@ -201,40 +220,121 @@ func _generate_city() -> void:
 		_connect_points(grid, center, _nearest_point(center, hubs), CELL_HALL)
 		hubs.append(center)
 
-	for i in housing_count:
-		var placed_home := false
-		for _attempt in 32:
-			var home_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
-			var home_center := home_anchor + Vector2i(_rng.randi_range(-14, 14), _rng.randi_range(-9, 9))
-			var home_size_min := Vector2i(2, 2)
-			var home_size_max := Vector2i(6, 5)
-			var home_size_x := maxi(_rng.randi_range(home_size_min.x, home_size_max.x), _rng.randi_range(home_size_min.x, home_size_max.x))
-			var home_size_y := maxi(_rng.randi_range(home_size_min.y, home_size_max.y), _rng.randi_range(home_size_min.y, home_size_max.y))
-			var home_size := Vector2i(home_size_x, home_size_y)
-			if _try_place_structure_with_single_door(grid, home_center, home_size, CELL_HOUSE, home_anchor):
-				placed_home = true
-				break
-		if not placed_home:
-			continue
+	for i in requested_house_count:
+		_place_structure_zone(
+			grid,
+			hubs,
+			CELL_HOUSE,
+			func() -> Vector2i:
+				return Vector2i(_rng.randi_range(-14, 14), _rng.randi_range(-9, 9)),
+			func() -> Vector2i:
+				var home_size_min := Vector2i(2, 2)
+				var home_size_max := Vector2i(6, 5)
+				var home_size_x := maxi(_rng.randi_range(home_size_min.x, home_size_max.x), _rng.randi_range(home_size_min.x, home_size_max.x))
+				var home_size_y := maxi(_rng.randi_range(home_size_min.y, home_size_max.y), _rng.randi_range(home_size_min.y, home_size_max.y))
+				return Vector2i(home_size_x, home_size_y)
+		)
 
-	for i in civic_building_count:
-		var placed_building := false
-		for _attempt in 24:
-			var civic_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
-			var civic_center := civic_anchor + Vector2i(_rng.randi_range(-15, 15), _rng.randi_range(-10, 10))
-			var civic_size := Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
-			if _try_place_structure_with_single_door(grid, civic_center, civic_size, CELL_BUILDING, civic_anchor):
-				placed_building = true
-				break
-		if not placed_building:
-			continue
+	for i in requested_building_count:
+		_place_structure_zone(
+			grid,
+			hubs,
+			CELL_BUILDING,
+			func() -> Vector2i:
+				return Vector2i(_rng.randi_range(-15, 15), _rng.randi_range(-10, 10)),
+			func() -> Vector2i:
+				return Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
+		)
 
 	_door_cells = _compute_single_doors(grid)
 	_latest_grid = grid
+	_latest_zone_counts = _count_zone_components(grid)
 
 	_render_city(grid)
 	_update_summary(grid, seed_text)
 	_update_zone_overlay()
+
+
+func _pick_seeded_zone_target(count_range: Vector2i) -> int:
+	var minimum := mini(count_range.x, count_range.y)
+	var maximum := maxi(count_range.x, count_range.y)
+	return _rng.randi_range(minimum, maximum)
+
+func _place_structure_zone(
+	grid: Dictionary,
+	hubs: Array[Vector2i],
+	structure_tile: int,
+	offset_generator: Callable,
+	size_generator: Callable
+) -> void:
+	var max_search_rings := 16
+	for ring in range(max_search_rings):
+		var expansion := ring * 4
+		var attempts := 48
+		for _attempt in attempts:
+			var anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+			var offset := offset_generator.call() as Vector2i
+			var center := anchor + offset
+			if ring > 0:
+				center += Vector2i(_rng.randi_range(-expansion, expansion), _rng.randi_range(-expansion, expansion))
+			var footprint := size_generator.call() as Vector2i
+			if _try_place_structure_with_single_door(grid, center, footprint, structure_tile, anchor):
+				return
+
+	var fallback_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+	var fallback_footprint := size_generator.call() as Vector2i
+	_place_structure_in_open_space(grid, structure_tile, fallback_anchor, fallback_footprint)
+
+func _place_structure_in_open_space(grid: Dictionary, structure_tile: int, anchor: Vector2i, footprint: Vector2i) -> void:
+	var bounds := _find_bounds(grid)
+	var start_radius := maxi(bounds.size.x, bounds.size.y) + 24
+	for radius in range(start_radius, start_radius + 2000, 8):
+		var candidate_centers := [
+			Vector2i(anchor.x + radius, anchor.y),
+			Vector2i(anchor.x - radius, anchor.y),
+			Vector2i(anchor.x, anchor.y + radius),
+			Vector2i(anchor.x, anchor.y - radius),
+			Vector2i(anchor.x + radius, anchor.y + radius),
+			Vector2i(anchor.x - radius, anchor.y + radius),
+			Vector2i(anchor.x + radius, anchor.y - radius),
+			Vector2i(anchor.x - radius, anchor.y - radius)
+		]
+		for center: Vector2i in candidate_centers:
+			if _try_place_structure_with_single_door(grid, center, footprint, structure_tile, anchor):
+				return
+
+func _count_zone_components(grid: Dictionary) -> Dictionary:
+	return {
+		"halls": _count_components_for_tile(grid, CELL_HALL),
+		"houses": _count_components_for_tile(grid, CELL_HOUSE),
+		"buildings": _count_components_for_tile(grid, CELL_BUILDING)
+	}
+
+func _count_components_for_tile(grid: Dictionary, tile_type: int) -> int:
+	var visited: Dictionary = {}
+	var component_count := 0
+	for key: Variant in grid.keys():
+		var start_cell := key as Vector2i
+		if visited.has(start_cell):
+			continue
+		if _cell_at(grid, start_cell.x, start_cell.y) != tile_type:
+			continue
+
+		component_count += 1
+		var queue: Array[Vector2i] = [start_cell]
+		visited[start_cell] = true
+		while not queue.is_empty():
+			var current: Vector2i = queue.pop_front()
+			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var neighbor := current + direction
+				if visited.has(neighbor):
+					continue
+				if _cell_at(grid, neighbor.x, neighbor.y) != tile_type:
+					continue
+				visited[neighbor] = true
+				queue.append(neighbor)
+
+	return component_count
 
 func _on_overlay_toggle_toggled(toggled_on: bool) -> void:
 	_show_zone_overlay = toggled_on
@@ -657,16 +757,25 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var bounds := _find_bounds(grid)
+	var hall_zones := int(_latest_zone_counts.get("halls", 0))
+	var house_zones := int(_latest_zone_counts.get("houses", 0))
+	var building_zones := int(_latest_zone_counts.get("buildings", 0))
+	var requested_halls := int(_latest_requested_zone_counts.get("halls", 0))
+	var requested_houses := int(_latest_requested_zone_counts.get("houses", 0))
+	var requested_buildings := int(_latest_requested_zone_counts.get("buildings", 0))
 
-	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nHall count: %d | Houses: %d | Buildings: %d" % [
+	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d" % [
 		seed_text,
 		bounds.size.x,
 		bounds.size.y,
 		bounds.position.x,
 		bounds.position.y,
-		hall_count,
-		housing_count,
-		civic_building_count
+		hall_zones,
+		requested_halls,
+		house_zones,
+		requested_houses,
+		building_zones,
+		requested_buildings
 	]
 
 func _update_hover_tooltip(mouse_position: Vector2) -> void:
