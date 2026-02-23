@@ -208,7 +208,7 @@ func _find_bounds(grid: Dictionary) -> Rect2i:
 	var min_y := 2147483647
 	var max_x := -2147483648
 	var max_y := -2147483648
-	for key in grid.keys():
+	for key: Variant in grid.keys():
 		var cell := key as Vector2i
 		min_x = mini(min_x, cell.x)
 		min_y = mini(min_y, cell.y)
@@ -303,7 +303,7 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 		"Citadel": 0,
 		"Gates": 0
 	}
-	for tile in grid.values():
+	for tile: Variant in grid.values():
 		match int(tile):
 			CELL_DISTRICT:
 				tile_counts["Districts"] += 1
