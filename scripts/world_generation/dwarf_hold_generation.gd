@@ -227,18 +227,28 @@ func _generate_city() -> void:
 		hubs.append(district_center)
 
 	for i in housing_count:
-		var home_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
-		var home_center := home_anchor + Vector2i(_rng.randi_range(-14, 14), _rng.randi_range(-9, 9))
-		var home_size := Vector2i(_rng.randi_range(1, 3), _rng.randi_range(1, 2))
-		_dig_structure_with_room(grid, home_center, home_size, CELL_HOUSE)
-		_connect_points(grid, home_center, home_anchor, CELL_TUNNEL)
+		var placed_home := false
+		for _attempt in 24:
+			var home_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+			var home_center := home_anchor + Vector2i(_rng.randi_range(-14, 14), _rng.randi_range(-9, 9))
+			var home_size := Vector2i(_rng.randi_range(1, 3), _rng.randi_range(1, 2))
+			if _try_place_structure_with_single_door(grid, home_center, home_size, CELL_HOUSE, home_anchor):
+				placed_home = true
+				break
+		if not placed_home:
+			continue
 
 	for i in civic_building_count:
-		var civic_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
-		var civic_center := civic_anchor + Vector2i(_rng.randi_range(-15, 15), _rng.randi_range(-10, 10))
-		var civic_size := Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
-		_dig_structure_with_room(grid, civic_center, civic_size, CELL_BUILDING)
-		_connect_points(grid, civic_center, civic_anchor, CELL_TUNNEL)
+		var placed_building := false
+		for _attempt in 24:
+			var civic_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+			var civic_center := civic_anchor + Vector2i(_rng.randi_range(-15, 15), _rng.randi_range(-10, 10))
+			var civic_size := Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
+			if _try_place_structure_with_single_door(grid, civic_center, civic_size, CELL_BUILDING, civic_anchor):
+				placed_building = true
+				break
+		if not placed_building:
+			continue
 
 	var bounds := _find_bounds(grid)
 	var gate_y := keep_center.y
@@ -277,6 +287,56 @@ func _dig_structure_with_room(grid: Dictionary, center: Vector2i, footprint: Vec
 		_dig_rect(grid, room_from, room_to, CELL_ROOM)
 	else:
 		_set_cell(grid, center, CELL_ROOM)
+
+func _try_place_structure_with_single_door(grid: Dictionary, center: Vector2i, footprint: Vector2i, structure_tile: int, anchor: Vector2i) -> bool:
+	if not _can_place_structure(grid, center, footprint):
+		return false
+	_dig_structure_with_room(grid, center, footprint, structure_tile)
+	var doorway := _pick_structure_door_cell(center, footprint)
+	var exterior := doorway + _outward_direction_for_door(center, footprint, doorway)
+	_connect_points(grid, exterior, anchor, CELL_TUNNEL)
+	return true
+
+func _can_place_structure(grid: Dictionary, center: Vector2i, footprint: Vector2i) -> bool:
+	var from_cell := center - footprint
+	var to_cell := center + footprint
+	for y in range(from_cell.y - 1, to_cell.y + 2):
+		for x in range(from_cell.x - 1, to_cell.x + 2):
+			var tile := _cell_at(grid, x, y)
+			if tile == CELL_HOUSE or tile == CELL_BUILDING or tile == CELL_ROOM or tile == CELL_KEEP:
+				return false
+			if (x == from_cell.x - 1 or x == to_cell.x + 1 or y == from_cell.y - 1 or y == to_cell.y + 1) and _is_corridor_cell(tile):
+				return false
+	return true
+
+func _pick_structure_door_cell(center: Vector2i, footprint: Vector2i) -> Vector2i:
+	var from_cell := center - footprint
+	var to_cell := center + footprint
+	var side := _rng.randi_range(0, 3)
+	match side:
+		0:
+			var top_x := center.x if from_cell.x + 1 > to_cell.x - 1 else _rng.randi_range(from_cell.x + 1, to_cell.x - 1)
+			return Vector2i(top_x, from_cell.y)
+		1:
+			var bottom_x := center.x if from_cell.x + 1 > to_cell.x - 1 else _rng.randi_range(from_cell.x + 1, to_cell.x - 1)
+			return Vector2i(bottom_x, to_cell.y)
+		2:
+			var left_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
+			return Vector2i(from_cell.x, left_y)
+		_:
+			var right_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
+			return Vector2i(to_cell.x, right_y)
+
+func _outward_direction_for_door(center: Vector2i, footprint: Vector2i, door: Vector2i) -> Vector2i:
+	var from_cell := center - footprint
+	var to_cell := center + footprint
+	if door.y == from_cell.y:
+		return Vector2i.UP
+	if door.y == to_cell.y:
+		return Vector2i.DOWN
+	if door.x == from_cell.x:
+		return Vector2i.LEFT
+	return Vector2i.RIGHT
 
 func _compute_single_doors(grid: Dictionary) -> Dictionary:
 	var room_components := _collect_room_components(grid)
@@ -402,6 +462,9 @@ func _nearest_point(target: Vector2i, points: Array[Vector2i]) -> Vector2i:
 	return nearest
 
 func _set_cell(grid: Dictionary, cell: Vector2i, tile: int) -> void:
+	var existing := _cell_at(grid, cell.x, cell.y)
+	if _is_corridor_cell(tile) and _is_structural_cell(existing):
+		return
 	grid[cell] = tile
 
 func _cell_at(grid: Dictionary, x: int, y: int) -> int:
