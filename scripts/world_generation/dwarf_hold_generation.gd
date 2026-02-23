@@ -281,6 +281,7 @@ func _render_city(grid: Dictionary) -> void:
 		return
 	city_layer.clear()
 	var bounds := _find_bounds(grid)
+	var house_decor_overrides := _build_house_decor_layouts(grid)
 	for y in range(bounds.position.y, bounds.end.y):
 		for x in range(bounds.position.x, bounds.end.x):
 			var cell := _cell_at(grid, x, y)
@@ -288,10 +289,75 @@ func _render_city(grid: Dictionary) -> void:
 				continue
 			var base_tile := _pick_base_tile(grid, x, y, cell)
 			_place_tile(Vector2i(x, y), base_tile)
-			var decor_tile := _pick_decor_tile(grid, x, y, cell)
+			var decor_tile := _pick_decor_tile(grid, x, y, cell, house_decor_overrides)
 			if not decor_tile.is_empty():
 				_place_tile(Vector2i(x, y), decor_tile)
 	_reset_view(bounds)
+
+func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
+	var visited: Dictionary = {}
+	var overrides: Dictionary = {}
+	for key: Variant in grid.keys():
+		var start_cell := key as Vector2i
+		if _cell_at(grid, start_cell.x, start_cell.y) != CELL_HOUSE:
+			continue
+		if visited.has(start_cell):
+			continue
+
+		var queue: Array[Vector2i] = [start_cell]
+		var component: Array[Vector2i] = []
+		visited[start_cell] = true
+		while not queue.is_empty():
+			var current := queue.pop_front()
+			component.append(current)
+			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var neighbor := current + direction
+				if visited.has(neighbor):
+					continue
+				if _cell_at(grid, neighbor.x, neighbor.y) != CELL_HOUSE:
+					continue
+				visited[neighbor] = true
+				queue.append(neighbor)
+
+		if component.is_empty():
+			continue
+		_place_house_decor_template(component, overrides)
+
+	return overrides
+
+func _place_house_decor_template(component: Array[Vector2i], overrides: Dictionary) -> void:
+	var occupied: Dictionary = {}
+	for cell: Vector2i in component:
+		occupied[cell] = true
+
+	var min_x := component[0].x
+	var max_x := component[0].x
+	var min_y := component[0].y
+	var max_y := component[0].y
+	for cell: Vector2i in component:
+		min_x = mini(min_x, cell.x)
+		max_x = maxi(max_x, cell.x)
+		min_y = mini(min_y, cell.y)
+		max_y = maxi(max_y, cell.y)
+
+	var top_left_chest := Vector2i(min_x + 1, min_y + 1)
+	var top_left_bed := Vector2i(min_x + 2, min_y + 1)
+	var top_right_wardrobe := Vector2i(max_x - 1, min_y + 1)
+	var center_table := Vector2i((min_x + max_x) / 2, (min_y + max_y) / 2)
+	var stool_a := center_table + Vector2i(-1, 0)
+	var stool_b := center_table + Vector2i(0, -1)
+
+	_try_assign_house_decor(overrides, occupied, top_left_chest, "chest")
+	_try_assign_house_decor(overrides, occupied, top_left_bed, "bed")
+	_try_assign_house_decor(overrides, occupied, top_right_wardrobe, "wardrobe")
+	_try_assign_house_decor(overrides, occupied, center_table, "table")
+	_try_assign_house_decor(overrides, occupied, stool_a, "stool")
+	_try_assign_house_decor(overrides, occupied, stool_b, "stool")
+
+func _try_assign_house_decor(overrides: Dictionary, occupied: Dictionary, cell: Vector2i, tile_key: String) -> void:
+	if not occupied.has(cell):
+		return
+	overrides[cell] = tile_key
 
 func _on_city_panel_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -358,26 +424,39 @@ func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 			return "stone"
 
 func _wall_or_floor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
-	var left_open := _is_corridor_cell(_cell_at(grid, x - 1, y))
-	var right_open := _is_corridor_cell(_cell_at(grid, x + 1, y))
-	var top_open := _is_corridor_cell(_cell_at(grid, x, y - 1))
-	var bottom_open := _is_corridor_cell(_cell_at(grid, x, y + 1))
+	var left_cell := _cell_at(grid, x - 1, y)
+	var right_cell := _cell_at(grid, x + 1, y)
+	var top_cell := _cell_at(grid, x, y - 1)
+	var bottom_cell := _cell_at(grid, x, y + 1)
+	var left_open := _is_corridor_cell(left_cell)
+	var right_open := _is_corridor_cell(right_cell)
+	var top_open := _is_corridor_cell(top_cell)
+	var bottom_open := _is_corridor_cell(bottom_cell)
+	var left_same := left_cell == cell
+	var right_same := right_cell == cell
+	var top_same := top_cell == cell
+	var bottom_same := bottom_cell == cell
 
 	if left_open:
 		return "door" if _rng.randf() < 0.25 else "wall_left"
 	if right_open:
 		return "door" if _rng.randf() < 0.25 else "wall_right"
-	if top_open:
+	if top_open or not top_same:
 		return "wall_top"
-	if bottom_open:
+	if bottom_open or not bottom_same:
 		return "wall_bottom"
+	if not left_same:
+		return "wall_left"
+	if not right_same:
+		return "wall_right"
 
-	for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		if _cell_at(grid, x + offset.x, y + offset.y) != cell:
-			return "stone"
 	return "floor"
 
-func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
+func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, house_decor_overrides: Dictionary) -> String:
+	var key := Vector2i(x, y)
+	if house_decor_overrides.has(key):
+		return String(house_decor_overrides[key])
+
 	if _is_corridor_cell(cell):
 		if _rng.randf() < 0.015:
 			return ["target", "sign", "keg", "water_bucket"][_rng.randi_range(0, 3)]
