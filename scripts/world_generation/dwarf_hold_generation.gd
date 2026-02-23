@@ -15,8 +15,8 @@ const CELL_BUILDING := 8
 @export var room_count := 120
 @export var housing_count := 180
 @export var civic_building_count := 70
-@export var tile_size := Vector2i(16, 16)
-@export var tilesheet_path := "res://Github Game/tilesheet/Interior_Tileset.png"
+@export var tile_size := Vector2i(32, 32)
+@export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
 
 const TILE_ATLAS := {
 	"dirt": Vector2i(0, 2),
