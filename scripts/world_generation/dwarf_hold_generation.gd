@@ -129,7 +129,10 @@ func _configure_tile_layer() -> void:
 	var atlas := TileSetAtlasSource.new()
 	atlas.texture = texture
 	atlas.texture_region_size = tile_size
+	var unique_atlas_coords: Dictionary = {}
 	for atlas_coords: Vector2i in TILE_ATLAS.values():
+		unique_atlas_coords[atlas_coords] = true
+	for atlas_coords: Vector2i in unique_atlas_coords.keys():
 		atlas.create_tile(atlas_coords)
 
 	var tile_set := TileSet.new()
@@ -255,7 +258,9 @@ func _compute_single_doors(grid: Dictionary) -> Dictionary:
 		if not touches_corridor:
 			continue
 
-		var room_candidates: Array[Vector2i] = candidate_doors_by_room.get(adjacent_room_id, [])
+		if not candidate_doors_by_room.has(adjacent_room_id):
+			candidate_doors_by_room[adjacent_room_id] = []
+		var room_candidates: Array = candidate_doors_by_room[adjacent_room_id]
 		room_candidates.append(cell)
 		candidate_doors_by_room[adjacent_room_id] = room_candidates
 
