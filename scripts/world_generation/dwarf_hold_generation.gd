@@ -93,6 +93,7 @@ const EXPECTED_TILE_COORDS := {
 @onready var city_panel: PanelContainer = %CityPanel
 @onready var city_layer: TileMapLayer = %CityTileLayer
 @onready var decor_layer: TileMapLayer = %DecorTileLayer
+@onready var zone_overlay: Control = %ZoneOverlay
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
 @onready var tile_hover_label: Label = %TileHoverLabel
 
@@ -232,31 +233,15 @@ func _generate_city() -> void:
 
 	_render_city(grid)
 	_update_summary(grid, seed_text)
-	queue_redraw()
+	_update_zone_overlay()
 
 func _on_overlay_toggle_toggled(toggled_on: bool) -> void:
 	_show_zone_overlay = toggled_on
-	queue_redraw()
+	_update_zone_overlay()
 
-func _draw() -> void:
-	if not _show_zone_overlay or _latest_grid.is_empty():
-		return
-
-	var panel_rect := Rect2(city_panel.global_position, city_panel.size)
-	for key: Variant in _latest_grid.keys():
-		var cell := key as Vector2i
-		var tile := int(_latest_grid[cell])
-		if not ZONE_OVERLAY_COLORS.has(tile):
-			continue
-
-		var cell_top_left_panel := city_layer.position + (Vector2(cell * tile_size) * _zoom_level)
-		var cell_top_left_global := city_panel.global_position + cell_top_left_panel
-		var cell_rect_global := Rect2(cell_top_left_global, Vector2(tile_size) * _zoom_level)
-		if not panel_rect.intersects(cell_rect_global):
-			continue
-
-		var cell_top_left_local := cell_top_left_global - get_global_rect().position
-		draw_rect(Rect2(cell_top_left_local, cell_rect_global.size), ZONE_OVERLAY_COLORS[tile], true)
+func _update_zone_overlay() -> void:
+	if zone_overlay.has_method("set_overlay_state"):
+		zone_overlay.call("set_overlay_state", _latest_grid, tile_size, _zoom_level, city_layer.position, ZONE_OVERLAY_COLORS, _show_zone_overlay)
 
 func _dig_structure_with_room(grid: Dictionary, center: Vector2i, footprint: Vector2i, structure_tile: int) -> void:
 	var from_cell := center - footprint
@@ -552,8 +537,7 @@ func _update_city_layer_transform() -> void:
 	decor_layer.position = city_layer.position
 	if tile_hover_tooltip.visible:
 		tile_hover_tooltip.position = _clamp_tooltip_position(tile_hover_tooltip.position)
-	if _show_zone_overlay:
-		queue_redraw()
+	_update_zone_overlay()
 
 func _place_tile(target_layer: TileMapLayer, cell: Vector2i, tile_key: String) -> void:
 	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))
