@@ -763,7 +763,8 @@ func _update_hover_tooltip(mouse_position: Vector2) -> void:
 
 	var atlas_coords := hovered_layer.get_cell_atlas_coords(hovered_cell)
 	var tile_name := _tile_name_from_atlas(atlas_coords)
-	tile_hover_label.text = "Tile: %s" % tile_name
+	var zone_name := _zone_name_for_cell(hovered_cell)
+	tile_hover_label.text = "Tile: %s\nZone: %s" % [tile_name, zone_name]
 	tile_hover_tooltip.visible = true
 	tile_hover_tooltip.reset_size()
 	tile_hover_tooltip.position = _clamp_tooltip_position(mouse_position + Vector2(14, 14))
@@ -776,6 +777,31 @@ func _tile_name_from_atlas(atlas_coords: Vector2i) -> String:
 		if TILE_ATLAS[tile_key] == atlas_coords:
 			return tile_key.replace("_", " ").capitalize()
 	return "Unknown"
+
+func _zone_name_for_cell(cell: Vector2i) -> String:
+	if _latest_grid.is_empty():
+		return "Unknown"
+
+	var zone := _cell_at(_latest_grid, cell.x, cell.y)
+	match zone:
+		CELL_KEEP:
+			return "Keep"
+		CELL_HALL:
+			return "Hall"
+		CELL_TUNNEL:
+			return "Tunnel"
+		CELL_DISTRICT:
+			return "District"
+		CELL_HOUSE:
+			return "House"
+		CELL_BUILDING:
+			return "Building"
+		CELL_ROOM:
+			return "Room"
+		CELL_GATE:
+			return "Gate"
+		_:
+			return "Rock"
 
 func _clamp_tooltip_position(desired_position: Vector2) -> Vector2:
 	var tooltip_size := tile_hover_tooltip.size
