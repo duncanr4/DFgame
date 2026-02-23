@@ -214,9 +214,9 @@ func _generate_city() -> void:
 	_render_city(grid)
 	_update_summary(grid, seed_text)
 
-func _dig_structure_with_room(grid: Dictionary, center: Vector2i, size: Vector2i, structure_tile: int) -> void:
-	var from_cell := center - size
-	var to_cell := center + size
+func _dig_structure_with_room(grid: Dictionary, center: Vector2i, footprint: Vector2i, structure_tile: int) -> void:
+	var from_cell := center - footprint
+	var to_cell := center + footprint
 	_dig_rect(grid, from_cell, to_cell, structure_tile)
 
 	var room_from := from_cell + Vector2i.ONE
@@ -255,9 +255,9 @@ func _compute_single_doors(grid: Dictionary) -> Dictionary:
 		if not touches_corridor:
 			continue
 
-		if not candidate_doors_by_room.has(adjacent_room_id):
-			candidate_doors_by_room[adjacent_room_id] = []
-		candidate_doors_by_room[adjacent_room_id].append(cell)
+		var room_candidates: Array[Vector2i] = candidate_doors_by_room.get(adjacent_room_id, [])
+		room_candidates.append(cell)
+		candidate_doors_by_room[adjacent_room_id] = room_candidates
 
 	var chosen_doors: Dictionary = {}
 	for room_id_variant: Variant in candidate_doors_by_room.keys():
