@@ -255,7 +255,8 @@ func _draw() -> void:
 		if not panel_rect.intersects(cell_rect_global):
 			continue
 
-		draw_rect(Rect2(to_local(cell_top_left_global), cell_rect_global.size), ZONE_OVERLAY_COLORS[tile], true)
+		var cell_top_left_local := cell_top_left_global - get_global_rect().position
+		draw_rect(Rect2(cell_top_left_local, cell_rect_global.size), ZONE_OVERLAY_COLORS[tile], true)
 
 func _dig_structure_with_room(grid: Dictionary, center: Vector2i, footprint: Vector2i, structure_tile: int) -> void:
 	var from_cell := center - footprint
