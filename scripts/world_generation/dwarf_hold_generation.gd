@@ -2,17 +2,10 @@ extends Control
 
 const CELL_ROCK := 0
 const CELL_HALL := 1
-const CELL_TUNNEL := 2
-const CELL_DISTRICT := 3
-const CELL_KEEP := 4
-const CELL_GATE := 5
-const CELL_ROOM := 6
-const CELL_HOUSE := 7
-const CELL_BUILDING := 8
+const CELL_HOUSE := 2
+const CELL_BUILDING := 3
 
-@export var district_count := 14
 @export var hall_count := 18
-@export var room_count := 120
 @export var housing_count := 180
 @export var civic_building_count := 70
 @export var tile_size := Vector2i(32, 32)
@@ -108,25 +101,15 @@ var _latest_grid: Dictionary = {}
 var _show_zone_overlay := false
 
 const ZONE_OVERLAY_COLORS := {
-	CELL_KEEP: Color(0.79, 0.33, 0.21, 0.35),
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
-	CELL_TUNNEL: Color(0.19, 0.42, 0.76, 0.22),
-	CELL_DISTRICT: Color(0.31, 0.73, 0.36, 0.35),
 	CELL_HOUSE: Color(0.84, 0.72, 0.24, 0.35),
-	CELL_BUILDING: Color(0.61, 0.35, 0.88, 0.35),
-	CELL_ROOM: Color(0.94, 0.53, 0.25, 0.18),
-	CELL_GATE: Color(0.84, 0.19, 0.22, 0.45)
+	CELL_BUILDING: Color(0.61, 0.35, 0.88, 0.35)
 }
 
 const ZONE_LEGEND_ORDER := [
-	{"tile": CELL_KEEP, "name": "Keep"},
 	{"tile": CELL_HALL, "name": "Hall"},
-	{"tile": CELL_TUNNEL, "name": "Tunnel"},
-	{"tile": CELL_DISTRICT, "name": "District"},
 	{"tile": CELL_HOUSE, "name": "House"},
-	{"tile": CELL_BUILDING, "name": "Building"},
-	{"tile": CELL_ROOM, "name": "Room"},
-	{"tile": CELL_GATE, "name": "Gate"}
+	{"tile": CELL_BUILDING, "name": "Building"}
 ]
 
 const MIN_ZOOM := 0.25
@@ -204,27 +187,19 @@ func _generate_city() -> void:
 	_rng.seed = hash(seed_text)
 
 	var grid: Dictionary = {}
-	var keep_center := Vector2i.ZERO
-	var keep_size := Vector2i(18, 14)
-	_dig_rect(grid, keep_center - keep_size / 2, keep_center + keep_size / 2, CELL_KEEP)
+	var seed_hall_center := Vector2i.ZERO
+	var seed_hall_size := Vector2i(18, 14)
+	_dig_rect(grid, seed_hall_center - seed_hall_size / 2, seed_hall_center + seed_hall_size / 2, CELL_HALL)
 
-	var hubs: Array[Vector2i] = [keep_center]
+	var hubs: Array[Vector2i] = [seed_hall_center]
 
 	for i in hall_count:
 		var anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
 		var center := anchor + Vector2i(_rng.randi_range(-30, 30), _rng.randi_range(-20, 20))
 		var hall_size := Vector2i(_rng.randi_range(4, 10), _rng.randi_range(3, 7))
 		_dig_rect(grid, center - hall_size / 2, center + hall_size / 2, CELL_HALL)
-		_connect_points(grid, center, _nearest_point(center, hubs), CELL_TUNNEL)
+		_connect_points(grid, center, _nearest_point(center, hubs), CELL_HALL)
 		hubs.append(center)
-
-	for i in district_count:
-		var anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
-		var district_center := anchor + Vector2i(_rng.randi_range(-28, 28), _rng.randi_range(-18, 18))
-		var radius := Vector2i(_rng.randi_range(6, 12), _rng.randi_range(4, 9))
-		_dig_ellipse(grid, district_center, radius, CELL_DISTRICT)
-		_connect_points(grid, district_center, _nearest_point(district_center, hubs), CELL_TUNNEL)
-		hubs.append(district_center)
 
 	for i in housing_count:
 		var placed_home := false
@@ -250,17 +225,6 @@ func _generate_city() -> void:
 		if not placed_building:
 			continue
 
-	var bounds := _find_bounds(grid)
-	var gate_y := keep_center.y
-	var left_gate_x := bounds.position.x - 6
-	var right_gate_x := bounds.end.x + 5
-	for x in range(left_gate_x, left_gate_x + 4):
-		_set_cell(grid, Vector2i(x, gate_y), CELL_GATE)
-	for x in range(right_gate_x - 3, right_gate_x + 1):
-		_set_cell(grid, Vector2i(x, gate_y), CELL_GATE)
-	_connect_points(grid, Vector2i(left_gate_x, gate_y), keep_center, CELL_HALL)
-	_connect_points(grid, Vector2i(right_gate_x, gate_y), keep_center, CELL_HALL)
-
 	_door_cells = _compute_single_doors(grid)
 	_latest_grid = grid
 
@@ -281,20 +245,13 @@ func _dig_structure_with_room(grid: Dictionary, center: Vector2i, footprint: Vec
 	var to_cell := center + footprint
 	_dig_rect(grid, from_cell, to_cell, structure_tile)
 
-	var room_from := from_cell + Vector2i.ONE
-	var room_to := to_cell - Vector2i.ONE
-	if room_from.x <= room_to.x and room_from.y <= room_to.y:
-		_dig_rect(grid, room_from, room_to, CELL_ROOM)
-	else:
-		_set_cell(grid, center, CELL_ROOM)
-
 func _try_place_structure_with_single_door(grid: Dictionary, center: Vector2i, footprint: Vector2i, structure_tile: int, anchor: Vector2i) -> bool:
 	if not _can_place_structure(grid, center, footprint):
 		return false
 	_dig_structure_with_room(grid, center, footprint, structure_tile)
 	var doorway := _pick_structure_door_cell(center, footprint)
 	var exterior := doorway + _outward_direction_for_door(center, footprint, doorway)
-	_connect_points(grid, exterior, anchor, CELL_TUNNEL)
+	_connect_points(grid, exterior, anchor, CELL_HALL)
 	return true
 
 func _can_place_structure(grid: Dictionary, center: Vector2i, footprint: Vector2i) -> bool:
@@ -303,7 +260,7 @@ func _can_place_structure(grid: Dictionary, center: Vector2i, footprint: Vector2
 	for y in range(from_cell.y - 1, to_cell.y + 2):
 		for x in range(from_cell.x - 1, to_cell.x + 2):
 			var tile := _cell_at(grid, x, y)
-			if tile == CELL_HOUSE or tile == CELL_BUILDING or tile == CELL_ROOM or tile == CELL_KEEP:
+			if tile == CELL_HOUSE or tile == CELL_BUILDING:
 				return false
 			if (x == from_cell.x - 1 or x == to_cell.x + 1 or y == from_cell.y - 1 or y == to_cell.y + 1) and _is_corridor_cell(tile):
 				return false
@@ -339,83 +296,46 @@ func _outward_direction_for_door(center: Vector2i, footprint: Vector2i, door: Ve
 	return Vector2i.RIGHT
 
 func _compute_single_doors(grid: Dictionary) -> Dictionary:
-	var room_components := _collect_room_components(grid)
-	var room_ids_by_cell: Dictionary = room_components["ids_by_cell"]
-	var candidate_doors_by_room: Dictionary = {}
-
-	for key: Variant in grid.keys():
-		var cell := key as Vector2i
-		var tile := _cell_at(grid, cell.x, cell.y)
-		if tile != CELL_HOUSE and tile != CELL_BUILDING:
-			continue
-
-		var adjacent_room_id := -1
-		for room_direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var room_neighbor := cell + room_direction
-			if room_ids_by_cell.has(room_neighbor):
-				adjacent_room_id = int(room_ids_by_cell[room_neighbor])
-				break
-		if adjacent_room_id < 0:
-			continue
-
-		var touches_corridor := false
-		for corridor_direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var corridor_neighbor := cell + corridor_direction
-			if _is_corridor_cell(_cell_at(grid, corridor_neighbor.x, corridor_neighbor.y)):
-				touches_corridor = true
-				break
-		if not touches_corridor:
-			continue
-
-		if not candidate_doors_by_room.has(adjacent_room_id):
-			candidate_doors_by_room[adjacent_room_id] = []
-		var room_candidates: Array = candidate_doors_by_room[adjacent_room_id]
-		room_candidates.append(cell)
-		candidate_doors_by_room[adjacent_room_id] = room_candidates
-
-	var chosen_doors: Dictionary = {}
-	for room_id_variant: Variant in candidate_doors_by_room.keys():
-		var room_id := int(room_id_variant)
-		var candidates: Array = candidate_doors_by_room[room_id]
-		if candidates.is_empty():
-			continue
-		var selected := candidates[_rng.randi_range(0, candidates.size() - 1)] as Vector2i
-		chosen_doors[selected] = true
-
-	return chosen_doors
-
-func _collect_room_components(grid: Dictionary) -> Dictionary:
 	var visited: Dictionary = {}
-	var room_ids_by_cell: Dictionary = {}
-	var next_room_id := 0
+	var chosen_doors: Dictionary = {}
 
 	for key: Variant in grid.keys():
 		var start_cell := key as Vector2i
-		if _cell_at(grid, start_cell.x, start_cell.y) != CELL_ROOM:
+		var tile := _cell_at(grid, start_cell.x, start_cell.y)
+		if tile != CELL_HOUSE and tile != CELL_BUILDING:
 			continue
 		if visited.has(start_cell):
 			continue
 
 		var queue: Array[Vector2i] = [start_cell]
 		visited[start_cell] = true
+		var component_cells: Array[Vector2i] = []
 		while not queue.is_empty():
 			var current: Vector2i = queue.pop_front()
-			room_ids_by_cell[current] = next_room_id
+			component_cells.append(current)
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var neighbor: Vector2i = current + direction
 				if visited.has(neighbor):
 					continue
-				if _cell_at(grid, neighbor.x, neighbor.y) != CELL_ROOM:
+				if _cell_at(grid, neighbor.x, neighbor.y) != tile:
 					continue
 				visited[neighbor] = true
 				queue.append(neighbor)
 
-		next_room_id += 1
+		var candidates: Array[Vector2i] = []
+		for component_cell: Vector2i in component_cells:
+			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var corridor_neighbor := component_cell + direction
+				if _is_corridor_cell(_cell_at(grid, corridor_neighbor.x, corridor_neighbor.y)):
+					candidates.append(component_cell)
+					break
 
-	return {
-		"ids_by_cell": room_ids_by_cell,
-		"count": next_room_id
-	}
+		if candidates.is_empty():
+			continue
+		var selected := candidates[_rng.randi_range(0, candidates.size() - 1)] as Vector2i
+		chosen_doors[selected] = true
+
+	return chosen_doors
 
 func _dig_rect(grid: Dictionary, from_cell: Vector2i, to_cell: Vector2i, tile: int) -> void:
 	for y in range(from_cell.y, to_cell.y + 1):
@@ -471,10 +391,10 @@ func _cell_at(grid: Dictionary, x: int, y: int) -> int:
 	return int(grid.get(Vector2i(x, y), CELL_ROCK))
 
 func _is_structural_cell(cell: int) -> bool:
-	return cell == CELL_ROOM or cell == CELL_HOUSE or cell == CELL_BUILDING or cell == CELL_KEEP
+	return cell == CELL_HOUSE or cell == CELL_BUILDING
 
 func _is_corridor_cell(cell: int) -> bool:
-	return cell == CELL_TUNNEL or cell == CELL_HALL or cell == CELL_DISTRICT or cell == CELL_GATE
+	return cell == CELL_HALL
 
 func _find_bounds(grid: Dictionary) -> Rect2i:
 	if grid.is_empty():
@@ -635,10 +555,10 @@ func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 	if _is_structural_cell(cell):
 		return _wall_or_floor_tile(grid, x, y, cell)
 	match cell:
-		CELL_DISTRICT:
-			return "dirt" if _rng.randf() < 0.55 else "mushroom_crop_wild"
-		CELL_HALL, CELL_TUNNEL, CELL_GATE:
+		CELL_HALL:
 			return "floor"
+		CELL_HOUSE, CELL_BUILDING:
+			return _wall_or_floor_tile(grid, x, y, cell)
 		_:
 			return "stone"
 
@@ -697,13 +617,6 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 				return ""
 			return corridor_tile
 		return ""
-	if cell == CELL_DISTRICT:
-		if _rng.randf() < 0.06:
-			var district_tile: String = String(["mushroom_crops", "mushroom_wild", "grain_bag"][_rng.randi_range(0, 2)])
-			if _is_furniture_tile(district_tile) and base_tile != "floor":
-				return ""
-			return district_tile
-		return ""
 	if _is_structural_cell(cell):
 		if _is_corridor_cell(_cell_at(grid, x - 1, y)) or _is_corridor_cell(_cell_at(grid, x + 1, y)) or _is_corridor_cell(_cell_at(grid, x, y - 1)) or _is_corridor_cell(_cell_at(grid, x, y + 1)):
 			return ""
@@ -719,11 +632,6 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 			if _is_furniture_tile(building_tile) and base_tile != "floor":
 				return ""
 			return building_tile
-		if cell == CELL_KEEP:
-			var keep_tile: String = String(["table", "table_alt", "keg", "target"][_rng.randi_range(0, 3)])
-			if _is_furniture_tile(keep_tile) and base_tile != "floor":
-				return ""
-			return keep_tile
 		var default_tile: String = String(["table", "mug", "water_bucket"][_rng.randi_range(0, 2)])
 		if _is_furniture_tile(default_tile) and base_tile != "floor":
 			return ""
@@ -732,17 +640,14 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var bounds := _find_bounds(grid)
-	var room_zone_count := int(_collect_room_components(grid)["count"])
 
-	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nDistrict count: %d | Hall count: %d | Room zones: %d | Houses: %d | Buildings: %d" % [
+	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nHall count: %d | Houses: %d | Buildings: %d" % [
 		seed_text,
 		bounds.size.x,
 		bounds.size.y,
 		bounds.position.x,
 		bounds.position.y,
-		district_count,
 		hall_count,
-		room_zone_count,
 		housing_count,
 		civic_building_count
 	]
@@ -784,22 +689,12 @@ func _zone_name_for_cell(cell: Vector2i) -> String:
 
 	var zone := _cell_at(_latest_grid, cell.x, cell.y)
 	match zone:
-		CELL_KEEP:
-			return "Keep"
 		CELL_HALL:
 			return "Hall"
-		CELL_TUNNEL:
-			return "Tunnel"
-		CELL_DISTRICT:
-			return "District"
 		CELL_HOUSE:
 			return "House"
 		CELL_BUILDING:
 			return "Building"
-		CELL_ROOM:
-			return "Room"
-		CELL_GATE:
-			return "Gate"
 		_:
 			return "Rock"
 
