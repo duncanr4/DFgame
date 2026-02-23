@@ -493,6 +493,19 @@ func _place_house_decor_template(component: Array[Vector2i], overrides: Dictiona
 	_try_assign_house_decor(overrides, occupied, center_table, "table")
 	_try_assign_house_decor(overrides, occupied, stool_a, "stool")
 	_try_assign_house_decor(overrides, occupied, stool_b, "stool")
+	_ensure_house_has_bed(component, overrides)
+
+func _ensure_house_has_bed(component: Array[Vector2i], overrides: Dictionary) -> void:
+	for cell: Vector2i in component:
+		if overrides.get(cell, "") == "bed":
+			return
+
+	var fallback_bed_cell := component[0]
+	for cell: Vector2i in component:
+		if not overrides.has(cell):
+			fallback_bed_cell = cell
+			break
+	overrides[fallback_bed_cell] = "bed"
 
 func _try_assign_house_decor(overrides: Dictionary, occupied: Dictionary, cell: Vector2i, tile_key: String) -> void:
 	if not occupied.has(cell):
