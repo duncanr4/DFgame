@@ -2000,32 +2000,7 @@ export function generateDwarfholdMap(options = {}) {
     markers
   });
 
-  const districts = extractDistrictLots({
-    tiles,
-    roadNetwork,
-    randomFn,
-    minLotArea: clamp(Math.round(18 * scaleFactor), 12, 42)
-  });
-
-  assignDistrictStages(districts, roadNetwork.center, randomFn);
-  placeDistrictStructures({
-    districts,
-    roadNetwork,
-    tiles,
-    usedTypes,
-    randomFn,
-    features,
-    featureSet,
-    markers,
-    scaleFactor
-  });
-
-  const npcs = generateNpcRoster({
-    districts,
-    randomFn,
-    resolvedPopulation: population,
-    scaleFactor
-  });
+  const npcs = [];
 
   applyVoidMask(tiles, randomFn);
 
@@ -2046,10 +2021,8 @@ export function generateDwarfholdMap(options = {}) {
     description += ` Banners of ${factionLabel} mark clan claims on pillars and gatehouses.`;
   }
 
-  const districtSummary = districts.length > 0 ? `${districts.length} carved districts radiate from the main arteries.` : 'New corridors await carving into the mountain.';
   addFeatureNote('entrance', features, featureSet, randomFn, 'Gatehouse — reinforced portals guard the surface approach.');
   features.push(`Canvas extent — ${mapWidth}×${mapHeight} tiles of vaulted chambers.`);
-  features.push(districtSummary);
 
   if (Array.isArray(roadNetwork?.stageSummaries)) {
     roadNetwork.stageSummaries.forEach((stage) => {
@@ -2057,10 +2030,6 @@ export function generateDwarfholdMap(options = {}) {
       const areaText = stage?.area ? `${stage.area} tiles of corridors` : 'corridors';
       features.push(`${label} — ${areaText} reinforce the spine of the hold.`);
     });
-  }
-
-  if (npcs.length > 0) {
-    features.push(`Notables — ${npcs.length} dwarves with homes, workposts, and leisure haunts are mapped.`);
   }
 
   const legend = {};

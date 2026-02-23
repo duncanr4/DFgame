@@ -110,7 +110,7 @@ text = "Dwarf Hold Generator"
 
 [node name="Description" type="Label" parent="Margin/Layout/Controls" unique_id=2013604842]
 layout_mode = 2
-text = "Generate a procedurally carved dwarven city with districts, halls, tunnels, and gates."
+text = "Generate a procedurally carved dwarven hold with halls, houses, and buildings."
 autowrap_mode = 3
 
 [node name="SeedInput" type="LineEdit" parent="Margin/Layout/Controls" unique_id=1809044796]
