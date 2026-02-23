@@ -203,10 +203,14 @@ func _generate_city() -> void:
 
 	for i in housing_count:
 		var placed_home := false
-		for _attempt in 24:
+		for _attempt in 32:
 			var home_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
 			var home_center := home_anchor + Vector2i(_rng.randi_range(-14, 14), _rng.randi_range(-9, 9))
-			var home_size := Vector2i(_rng.randi_range(1, 3), _rng.randi_range(1, 2))
+			var home_size_min := Vector2i(2, 2)
+			var home_size_max := Vector2i(6, 5)
+			var home_size_x := maxi(_rng.randi_range(home_size_min.x, home_size_max.x), _rng.randi_range(home_size_min.x, home_size_max.x))
+			var home_size_y := maxi(_rng.randi_range(home_size_min.y, home_size_max.y), _rng.randi_range(home_size_min.y, home_size_max.y))
+			var home_size := Vector2i(home_size_x, home_size_y)
 			if _try_place_structure_with_single_door(grid, home_center, home_size, CELL_HOUSE, home_anchor):
 				placed_home = true
 				break
@@ -489,6 +493,19 @@ func _place_house_decor_template(component: Array[Vector2i], overrides: Dictiona
 	_try_assign_house_decor(overrides, occupied, center_table, "table")
 	_try_assign_house_decor(overrides, occupied, stool_a, "stool")
 	_try_assign_house_decor(overrides, occupied, stool_b, "stool")
+	_ensure_house_has_bed(component, overrides)
+
+func _ensure_house_has_bed(component: Array[Vector2i], overrides: Dictionary) -> void:
+	for cell: Vector2i in component:
+		if overrides.get(cell, "") == "bed":
+			return
+
+	var fallback_bed_cell := component[0]
+	for cell: Vector2i in component:
+		if not overrides.has(cell):
+			fallback_bed_cell = cell
+			break
+	overrides[fallback_bed_cell] = "bed"
 
 func _try_assign_house_decor(overrides: Dictionary, occupied: Dictionary, cell: Vector2i, tile_key: String) -> void:
 	if not occupied.has(cell):
