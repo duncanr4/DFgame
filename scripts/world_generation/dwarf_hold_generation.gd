@@ -52,6 +52,40 @@ const TILE_ATLAS := {
 	"anvil": Vector2i(6, 4)
 }
 
+const EXPECTED_TILE_COORDS := {
+	"dirt": Vector2i(0, 2),
+	"workbench": Vector2i(0, 3),
+	"shelf": Vector2i(0, 4),
+	"winepress": Vector2i(0, 5),
+	"grain_bag": Vector2i(0, 6),
+	"wall_right": Vector2i(1, 1),
+	"bed": Vector2i(1, 2),
+	"butcher_table": Vector2i(1, 3),
+	"chest": Vector2i(1, 4),
+	"flour": Vector2i(1, 5),
+	"sign": Vector2i(1, 6),
+	"stone": Vector2i(2, 1),
+	"wall_top": Vector2i(2, 2),
+	"wall_bottom": Vector2i(2, 0),
+	"mushroom_crops": Vector2i(2, 3),
+	"wardrobe": Vector2i(2, 4),
+	"floor": Vector2i(2, 5),
+	"armor_stand": Vector2i(2, 6),
+	"wall_left": Vector2i(3, 1),
+	"table": Vector2i(3, 3),
+	"mug": Vector2i(3, 4),
+	"mushroom_crop_wild": Vector2i(3, 5),
+	"water_bucket": Vector2i(3, 6),
+	"stool": Vector2i(4, 2),
+	"table_alt": Vector2i(5, 2),
+	"door": Vector2i(4, 3),
+	"desk": Vector2i(4, 4),
+	"mushroom_wild": Vector2i(4, 5),
+	"keg": Vector2i(5, 5),
+	"target": Vector2i(6, 3),
+	"anvil": Vector2i(6, 4)
+}
+
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
 @onready var city_summary: Label = %CitySummary
@@ -78,6 +112,8 @@ func _ready() -> void:
 	_generate_city()
 
 func _configure_tile_layer() -> void:
+	if not _validate_tile_mapping():
+		return
 	if not FileAccess.file_exists(tilesheet_path):
 		push_error("Missing dwarf hold tilesheet at %s" % tilesheet_path)
 		return
@@ -96,6 +132,18 @@ func _configure_tile_layer() -> void:
 	tile_set.tile_size = tile_size
 	tile_set.add_source(atlas, 0)
 	city_layer.tile_set = tile_set
+
+func _validate_tile_mapping() -> bool:
+	for tile_key: String in EXPECTED_TILE_COORDS.keys():
+		if not TILE_ATLAS.has(tile_key):
+			push_error("Tile mapping missing required key: %s" % tile_key)
+			return false
+		var expected_coords: Vector2i = EXPECTED_TILE_COORDS[tile_key]
+		var actual_coords: Vector2i = TILE_ATLAS[tile_key]
+		if actual_coords != expected_coords:
+			push_error("Tile mapping mismatch for %s. Expected %s but found %s" % [tile_key, expected_coords, actual_coords])
+			return false
+	return true
 
 func _on_generate_pressed() -> void:
 	_generate_city()
