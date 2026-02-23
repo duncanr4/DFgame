@@ -427,8 +427,14 @@ func _compute_single_doors(grid: Dictionary) -> Dictionary:
 				visited[neighbor] = true
 				queue.append(neighbor)
 
+		var component_lookup: Dictionary = {}
+		for component_cell: Vector2i in component_cells:
+			component_lookup[component_cell] = true
+
 		var candidates: Array[Vector2i] = []
 		for component_cell: Vector2i in component_cells:
+			if _is_component_corner_cell(component_cell, component_lookup):
+				continue
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var corridor_neighbor := component_cell + direction
 				if _is_corridor_cell(_cell_at(grid, corridor_neighbor.x, corridor_neighbor.y)):
@@ -441,6 +447,17 @@ func _compute_single_doors(grid: Dictionary) -> Dictionary:
 		chosen_doors[selected] = true
 
 	return chosen_doors
+
+func _is_component_corner_cell(cell: Vector2i, component_lookup: Dictionary) -> bool:
+	var has_left := component_lookup.has(cell + Vector2i.LEFT)
+	var has_right := component_lookup.has(cell + Vector2i.RIGHT)
+	var has_up := component_lookup.has(cell + Vector2i.UP)
+	var has_down := component_lookup.has(cell + Vector2i.DOWN)
+	if (not has_left and not has_up) or (not has_left and not has_down):
+		return true
+	if (not has_right and not has_up) or (not has_right and not has_down):
+		return true
+	return false
 
 func _dig_rect(grid: Dictionary, from_cell: Vector2i, to_cell: Vector2i, tile: int) -> void:
 	for y in range(from_cell.y, to_cell.y + 1):
@@ -583,7 +600,7 @@ func _place_house_decor_template(component: Array[Vector2i], overrides: Dictiona
 
 	var top_left_chest := Vector2i(min_x + 1, min_y + 1)
 	var top_left_bed := Vector2i(min_x + 2, min_y + 1)
-	var top_right_wardrobe := Vector2i(max_x - 1, min_y + 1)
+	var top_right_wardrobe := _find_wall_adjacent_cell(component, occupied, overrides, Vector2i(max_x - 1, min_y + 1))
 	var center_table := Vector2i((min_x + max_x) / 2, (min_y + max_y) / 2)
 	var stool_a := center_table + Vector2i(-1, 0)
 	var stool_b := center_table + Vector2i(0, -1)
@@ -612,6 +629,22 @@ func _try_assign_house_decor(overrides: Dictionary, occupied: Dictionary, cell: 
 	if not occupied.has(cell):
 		return
 	overrides[cell] = tile_key
+
+func _find_wall_adjacent_cell(component: Array[Vector2i], occupied: Dictionary, overrides: Dictionary, preferred_cell: Vector2i) -> Vector2i:
+	if occupied.has(preferred_cell) and not overrides.has(preferred_cell) and _is_component_wall_adjacent(preferred_cell, occupied):
+		return preferred_cell
+	for cell: Vector2i in component:
+		if overrides.has(cell):
+			continue
+		if _is_component_wall_adjacent(cell, occupied):
+			return cell
+	return preferred_cell
+
+func _is_component_wall_adjacent(cell: Vector2i, occupied: Dictionary) -> bool:
+	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		if not occupied.has(cell + direction):
+			return true
+	return false
 
 func _on_city_panel_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -726,6 +759,8 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 		var house_tile := String(house_decor_overrides[key])
 		if _is_furniture_tile(house_tile) and base_tile != "floor":
 			return ""
+		if (house_tile == "wardrobe" or house_tile == "shelf") and not _is_adjacent_to_stone_or_wall(grid, x, y):
+			return ""
 		return house_tile
 
 	if _is_corridor_cell(cell):
@@ -744,10 +779,14 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 			var house_random_tile: String = String(["bed", "chest", "wardrobe", "stool", "mug"][_rng.randi_range(0, 4)])
 			if _is_furniture_tile(house_random_tile) and base_tile != "floor":
 				return ""
+			if house_random_tile == "wardrobe" and not _is_adjacent_to_stone_or_wall(grid, x, y):
+				return ""
 			return house_random_tile
 		if cell == CELL_BUILDING:
 			var building_tile: String = String(["workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour"][_rng.randi_range(0, 7)])
 			if _is_furniture_tile(building_tile) and base_tile != "floor":
+				return ""
+			if building_tile == "shelf" and not _is_adjacent_to_stone_or_wall(grid, x, y):
 				return ""
 			return building_tile
 		var default_tile: String = String(["table", "mug", "water_bucket"][_rng.randi_range(0, 2)])
@@ -755,6 +794,16 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 			return ""
 		return default_tile
 	return ""
+
+func _is_adjacent_to_stone_or_wall(grid: Dictionary, x: int, y: int) -> bool:
+	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var neighbor := Vector2i(x, y) + direction
+		var neighbor_cell := _cell_at(grid, neighbor.x, neighbor.y)
+		if neighbor_cell == CELL_ROCK:
+			return true
+		if _is_structural_cell(neighbor_cell) and _wall_or_floor_tile(grid, neighbor.x, neighbor.y, neighbor_cell) == "stone":
+			return true
+	return false
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var bounds := _find_bounds(grid)
