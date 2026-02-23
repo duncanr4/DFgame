@@ -292,7 +292,7 @@ func _render_city(grid: Dictionary) -> void:
 				continue
 			var base_tile := _pick_base_tile(grid, x, y, cell)
 			_place_tile(city_layer, Vector2i(x, y), base_tile)
-			var decor_tile := _pick_decor_tile(grid, x, y, cell, house_decor_overrides)
+			var decor_tile := _pick_decor_tile(grid, x, y, cell, base_tile, house_decor_overrides)
 			if not decor_tile.is_empty():
 				_place_tile(decor_layer, Vector2i(x, y), decor_tile)
 	_reset_view(bounds)
@@ -457,18 +457,34 @@ func _wall_or_floor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 
 	return "floor"
 
-func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, house_decor_overrides: Dictionary) -> String:
+func _is_furniture_tile(tile_key: String) -> bool:
+	return tile_key in [
+		"bed", "chest", "wardrobe", "stool", "mug",
+		"workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour",
+		"table", "table_alt", "keg", "target", "water_bucket", "grain_bag"
+	]
+
+func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: String, house_decor_overrides: Dictionary) -> String:
 	var key := Vector2i(x, y)
 	if house_decor_overrides.has(key):
-		return String(house_decor_overrides[key])
+		var house_tile := String(house_decor_overrides[key])
+		if _is_furniture_tile(house_tile) and base_tile != "floor":
+			return ""
+		return house_tile
 
 	if _is_corridor_cell(cell):
 		if _rng.randf() < 0.015:
-			return ["target", "sign", "keg", "water_bucket"][_rng.randi_range(0, 3)]
+			var corridor_tile := ["target", "sign", "keg", "water_bucket"][_rng.randi_range(0, 3)]
+			if _is_furniture_tile(corridor_tile) and base_tile != "floor":
+				return ""
+			return corridor_tile
 		return ""
 	if cell == CELL_DISTRICT:
 		if _rng.randf() < 0.06:
-			return ["mushroom_crops", "mushroom_wild", "grain_bag"][_rng.randi_range(0, 2)]
+			var district_tile := ["mushroom_crops", "mushroom_wild", "grain_bag"][_rng.randi_range(0, 2)]
+			if _is_furniture_tile(district_tile) and base_tile != "floor":
+				return ""
+			return district_tile
 		return ""
 	if _is_structural_cell(cell):
 		if _is_corridor_cell(_cell_at(grid, x - 1, y)) or _is_corridor_cell(_cell_at(grid, x + 1, y)) or _is_corridor_cell(_cell_at(grid, x, y - 1)) or _is_corridor_cell(_cell_at(grid, x, y + 1)):
@@ -476,12 +492,24 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, house_decor_o
 		if _rng.randf() > 0.09:
 			return ""
 		if cell == CELL_HOUSE:
-			return ["bed", "chest", "wardrobe", "stool", "mug"][_rng.randi_range(0, 4)]
+			var house_random_tile := ["bed", "chest", "wardrobe", "stool", "mug"][_rng.randi_range(0, 4)]
+			if _is_furniture_tile(house_random_tile) and base_tile != "floor":
+				return ""
+			return house_random_tile
 		if cell == CELL_BUILDING:
-			return ["workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour"][_rng.randi_range(0, 7)]
+			var building_tile := ["workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour"][_rng.randi_range(0, 7)]
+			if _is_furniture_tile(building_tile) and base_tile != "floor":
+				return ""
+			return building_tile
 		if cell == CELL_KEEP:
-			return ["table", "table_alt", "keg", "target"][_rng.randi_range(0, 3)]
-		return ["table", "mug", "water_bucket"][_rng.randi_range(0, 2)]
+			var keep_tile := ["table", "table_alt", "keg", "target"][_rng.randi_range(0, 3)]
+			if _is_furniture_tile(keep_tile) and base_tile != "floor":
+				return ""
+			return keep_tile
+		var default_tile := ["table", "mug", "water_bucket"][_rng.randi_range(0, 2)]
+		if _is_furniture_tile(default_tile) and base_tile != "floor":
+			return ""
+		return default_tile
 	return ""
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
