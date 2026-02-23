@@ -232,14 +232,25 @@ func _dig_ellipse(grid: Dictionary, center: Vector2i, radius: Vector2i, tile: in
 				_set_cell(grid, Vector2i(x, y), tile)
 
 func _connect_points(grid: Dictionary, start: Vector2i, finish: Vector2i, tile: int) -> void:
+	var corridor_width := _rng.randi_range(2, 5)
 	var cursor := start
 	while cursor.x != finish.x:
-		_set_cell(grid, cursor, tile)
+		_dig_corridor_at(grid, cursor, tile, true, corridor_width)
 		cursor.x += 1 if finish.x > cursor.x else -1
 	while cursor.y != finish.y:
-		_set_cell(grid, cursor, tile)
+		_dig_corridor_at(grid, cursor, tile, false, corridor_width)
 		cursor.y += 1 if finish.y > cursor.y else -1
-	_set_cell(grid, finish, tile)
+	_dig_corridor_at(grid, finish, tile, true, corridor_width)
+	_dig_corridor_at(grid, finish, tile, false, corridor_width)
+
+func _dig_corridor_at(grid: Dictionary, origin: Vector2i, tile: int, horizontal: bool, width: int) -> void:
+	var start_offset := -int(width / 2)
+	for i in width:
+		var offset := start_offset + i
+		if horizontal:
+			_set_cell(grid, Vector2i(origin.x, origin.y + offset), tile)
+		else:
+			_set_cell(grid, Vector2i(origin.x + offset, origin.y), tile)
 
 func _nearest_point(target: Vector2i, points: Array[Vector2i]) -> Vector2i:
 	var nearest := points[0]
