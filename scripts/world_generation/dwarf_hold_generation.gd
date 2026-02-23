@@ -222,6 +222,15 @@ func _generate_city() -> void:
 		hubs.append(center)
 
 	for i in requested_house_count:
+		var house_footprint := (func() -> Vector2i:
+			var home_size_min := Vector2i(2, 2)
+			var home_size_max := Vector2i(6, 5)
+			var home_size_x := maxi(_rng.randi_range(home_size_min.x, home_size_max.x), _rng.randi_range(home_size_min.x, home_size_max.x))
+			var home_size_y := maxi(_rng.randi_range(home_size_min.y, home_size_max.y), _rng.randi_range(home_size_min.y, home_size_max.y))
+			return Vector2i(home_size_x, home_size_y)
+		).call() as Vector2i
+		if _place_structure_along_halls(grid, CELL_HOUSE, house_footprint):
+			continue
 		_place_structure_zone(
 			grid,
 			hubs,
@@ -229,14 +238,13 @@ func _generate_city() -> void:
 			func() -> Vector2i:
 				return Vector2i(_rng.randi_range(-14, 14), _rng.randi_range(-9, 9)),
 			func() -> Vector2i:
-				var home_size_min := Vector2i(2, 2)
-				var home_size_max := Vector2i(6, 5)
-				var home_size_x := maxi(_rng.randi_range(home_size_min.x, home_size_max.x), _rng.randi_range(home_size_min.x, home_size_max.x))
-				var home_size_y := maxi(_rng.randi_range(home_size_min.y, home_size_max.y), _rng.randi_range(home_size_min.y, home_size_max.y))
-				return Vector2i(home_size_x, home_size_y)
+				return house_footprint
 		)
 
 	for i in requested_building_count:
+		var civic_footprint := Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
+		if _place_structure_along_halls(grid, CELL_BUILDING, civic_footprint):
+			continue
 		_place_structure_zone(
 			grid,
 			hubs,
@@ -244,7 +252,7 @@ func _generate_city() -> void:
 			func() -> Vector2i:
 				return Vector2i(_rng.randi_range(-15, 15), _rng.randi_range(-10, 10)),
 			func() -> Vector2i:
-				return Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
+				return civic_footprint
 		)
 
 	_door_cells = _compute_single_doors(grid)
@@ -285,6 +293,39 @@ func _place_structure_zone(
 	var fallback_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
 	var fallback_footprint := size_generator.call() as Vector2i
 	_place_structure_in_open_space(grid, structure_tile, fallback_anchor, fallback_footprint)
+
+func _place_structure_along_halls(grid: Dictionary, structure_tile: int, footprint: Vector2i) -> bool:
+	var hall_edge_candidates := _collect_hall_edge_candidates(grid)
+	if hall_edge_candidates.is_empty():
+		return false
+	for _attempt in 140:
+		var candidate: Dictionary = hall_edge_candidates[_rng.randi_range(0, hall_edge_candidates.size() - 1)]
+		var hall_cell := candidate["hall"] as Vector2i
+		var side_dir := candidate["side"] as Vector2i
+		var structural_radius := footprint.x if side_dir.x != 0 else footprint.y
+		var standoff := structural_radius + _rng.randi_range(1, 3)
+		var center := hall_cell + side_dir * standoff
+		if not _can_place_structure(grid, center, footprint):
+			continue
+		_dig_structure_with_room(grid, center, footprint, structure_tile)
+		var doorway := _pick_structure_door_cell_facing(center, footprint, -side_dir)
+		var exterior := doorway + _outward_direction_for_door(center, footprint, doorway)
+		_connect_points(grid, exterior, hall_cell, CELL_HALL)
+		return true
+	return false
+
+func _collect_hall_edge_candidates(grid: Dictionary) -> Array[Dictionary]:
+	var candidates: Array[Dictionary] = []
+	for key: Variant in grid.keys():
+		var hall_cell := key as Vector2i
+		if _cell_at(grid, hall_cell.x, hall_cell.y) != CELL_HALL:
+			continue
+		for side_dir: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var side_cell := hall_cell + side_dir
+			if _cell_at(grid, side_cell.x, side_cell.y) != CELL_ROCK:
+				continue
+			candidates.append({"hall": hall_cell, "side": side_dir})
+	return candidates
 
 func _place_structure_in_open_space(grid: Dictionary, structure_tile: int, anchor: Vector2i, footprint: Vector2i) -> void:
 	var start_radius := maxi(footprint.x, footprint.y) + 8
@@ -388,6 +429,21 @@ func _pick_structure_door_cell(center: Vector2i, footprint: Vector2i) -> Vector2
 		_:
 			var right_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
 			return Vector2i(to_cell.x, right_y)
+
+func _pick_structure_door_cell_facing(center: Vector2i, footprint: Vector2i, outward_dir: Vector2i) -> Vector2i:
+	var from_cell := center - footprint
+	var to_cell := center + footprint
+	if outward_dir == Vector2i.UP:
+		var top_x := center.x if from_cell.x + 1 > to_cell.x - 1 else _rng.randi_range(from_cell.x + 1, to_cell.x - 1)
+		return Vector2i(top_x, from_cell.y)
+	if outward_dir == Vector2i.DOWN:
+		var bottom_x := center.x if from_cell.x + 1 > to_cell.x - 1 else _rng.randi_range(from_cell.x + 1, to_cell.x - 1)
+		return Vector2i(bottom_x, to_cell.y)
+	if outward_dir == Vector2i.LEFT:
+		var left_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
+		return Vector2i(from_cell.x, left_y)
+	var right_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
+	return Vector2i(to_cell.x, right_y)
 
 func _outward_direction_for_door(center: Vector2i, footprint: Vector2i, door: Vector2i) -> Vector2i:
 	var from_cell := center - footprint
