@@ -10,6 +10,7 @@ const CELL_BUILDING := 3
 @export var civic_building_zone_count_range := Vector2i(45, 95)
 @export var tile_size := Vector2i(32, 32)
 @export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
+@export var structure_fallback_max_extra_radius := 240
 
 const TILE_ATLAS := {
 	"dirt": Vector2i(0, 2),
@@ -286,9 +287,9 @@ func _place_structure_zone(
 	_place_structure_in_open_space(grid, structure_tile, fallback_anchor, fallback_footprint)
 
 func _place_structure_in_open_space(grid: Dictionary, structure_tile: int, anchor: Vector2i, footprint: Vector2i) -> void:
-	var bounds := _find_bounds(grid)
-	var start_radius := maxi(bounds.size.x, bounds.size.y) + 24
-	for radius in range(start_radius, start_radius + 2000, 8):
+	var start_radius := maxi(footprint.x, footprint.y) + 8
+	var max_radius := start_radius + maxi(structure_fallback_max_extra_radius, 0)
+	for radius in range(start_radius, max_radius + 1, 8):
 		var candidate_centers := [
 			Vector2i(anchor.x + radius, anchor.y),
 			Vector2i(anchor.x - radius, anchor.y),
