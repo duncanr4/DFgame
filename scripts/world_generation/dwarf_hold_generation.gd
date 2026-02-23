@@ -55,13 +55,23 @@ const TILE_ATLAS := {
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
 @onready var city_summary: Label = %CitySummary
+@onready var city_panel: PanelContainer = %CityPanel
 @onready var city_layer: TileMapLayer = %CityTileLayer
 
 var _rng := RandomNumberGenerator.new()
+var _is_panning := false
+var _zoom_level := 1.0
+var _pan_offset := Vector2.ZERO
+var _map_origin_offset := Vector2.ZERO
+
+const MIN_ZOOM := 0.25
+const MAX_ZOOM := 2.5
+const ZOOM_STEP := 0.1
 
 func _ready() -> void:
 	_configure_tile_layer()
 	generate_button.pressed.connect(_on_generate_pressed)
+	city_panel.gui_input.connect(_on_city_panel_gui_input)
 	seed_input.text_submitted.connect(func(_text: String) -> void:
 		_generate_city()
 	)
@@ -231,6 +241,50 @@ func _render_city(grid: Dictionary) -> void:
 			var decor_tile := _pick_decor_tile(grid, x, y, cell)
 			if not decor_tile.is_empty():
 				_place_tile(Vector2i(x, y), decor_tile)
+	_reset_view(bounds)
+
+func _on_city_panel_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_button := event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_MIDDLE or mouse_button.button_index == MOUSE_BUTTON_RIGHT:
+			_is_panning = mouse_button.pressed
+		if mouse_button.pressed:
+			if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_apply_zoom(ZOOM_STEP, mouse_button.position)
+			elif mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_apply_zoom(-ZOOM_STEP, mouse_button.position)
+	if event is InputEventMouseMotion and _is_panning:
+		var motion := event as InputEventMouseMotion
+		_pan_offset += motion.relative
+		_update_city_layer_transform()
+
+func _apply_zoom(zoom_delta: float, focus_position: Vector2) -> void:
+	var previous_zoom := _zoom_level
+	_zoom_level = clampf(_zoom_level + zoom_delta, MIN_ZOOM, MAX_ZOOM)
+	if is_equal_approx(previous_zoom, _zoom_level):
+		return
+	var zoom_ratio := _zoom_level / previous_zoom
+	_pan_offset = focus_position - ((focus_position - _pan_offset) * zoom_ratio)
+	_update_city_layer_transform()
+
+func _reset_view(bounds: Rect2i) -> void:
+	var panel_size := city_panel.size
+	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
+		return
+	var map_size := Vector2(bounds.size * tile_size)
+	_map_origin_offset = -Vector2(bounds.position * tile_size)
+	var fit_zoom := minf(
+		panel_size.x / maxf(map_size.x + 32.0, 1.0),
+		panel_size.y / maxf(map_size.y + 32.0, 1.0)
+	)
+	_zoom_level = clampf(fit_zoom, MIN_ZOOM, 1.0)
+	var scaled_map_size := map_size * _zoom_level
+	_pan_offset = (panel_size - scaled_map_size) * 0.5
+	_update_city_layer_transform()
+
+func _update_city_layer_transform() -> void:
+	city_layer.scale = Vector2.ONE * _zoom_level
+	city_layer.position = _pan_offset + (_map_origin_offset * _zoom_level)
 
 func _place_tile(cell: Vector2i, tile_key: String) -> void:
 	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))
