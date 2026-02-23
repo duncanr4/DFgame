@@ -1,15 +1,35 @@
 [gd_scene format=3 uid="uid://dxmy7es4xf4sm"]
 
-[ext_resource type="Script" path="res://scripts/world_generation/dwarf_hold_generation.gd" id="1_8mfx7"]
+[ext_resource type="Script" uid="uid://c2qflakubfv3i" path="res://scripts/world_generation/dwarf_hold_generation.gd" id="1_8mfx7"]
+[ext_resource type="Texture2D" uid="uid://cwixo3v65o0po" path="res://resources/images/dwarfhold/map.png" id="2_c8dd5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1prb4"]
 bg_color = Color(0.0745098, 0.0588235, 0.054902, 1)
-corner_radius_bottom_left = 8
-corner_radius_bottom_right = 8
 corner_radius_top_left = 8
 corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
-[node name="DwarfHoldGeneration" type="Control"]
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_osnrk"]
+texture = ExtResource("2_c8dd5")
+texture_region_size = Vector2i(32, 32)
+3:3/0 = 0
+0:3/0 = 0
+4:2/0 = 0
+1:2/0 = 0
+0:2/0 = 0
+2:4/0 = 0
+2:5/0 = 0
+4:4/0 = 0
+2:6/0 = 0
+1:4/0 = 0
+6:3/0 = 0
+2:2/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_3ixrg"]
+sources/0 = SubResource("TileSetAtlasSource_osnrk")
+
+[node name="DwarfHoldGeneration" type="Control" unique_id=2014620824]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -18,7 +38,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_8mfx7")
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="Margin" type="MarginContainer" parent="." unique_id=1137079699]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -30,13 +50,13 @@ offset_bottom = -24.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Layout" type="HBoxContainer" parent="Margin"]
+[node name="Layout" type="HBoxContainer" parent="Margin" unique_id=148521347]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 16
 
-[node name="CityPanel" type="PanelContainer" parent="Margin/Layout"]
+[node name="CityPanel" type="PanelContainer" parent="Margin/Layout" unique_id=470817688]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -46,36 +66,40 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_1prb4")
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
-[node name="Controls" type="VBoxContainer" parent="Margin/Layout"]
+[node name="Controls" type="VBoxContainer" parent="Margin/Layout" unique_id=715080455]
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Margin/Layout/Controls"]
+[node name="Title" type="Label" parent="Margin/Layout/Controls" unique_id=1777287391]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "Dwarf Hold Generator"
 
-[node name="Description" type="Label" parent="Margin/Layout/Controls"]
+[node name="Description" type="Label" parent="Margin/Layout/Controls" unique_id=2013604842]
 layout_mode = 2
-autowrap_mode = 3
 text = "Generate a procedurally carved dwarven city with districts, halls, tunnels, and gates."
+autowrap_mode = 3
 
-[node name="SeedInput" type="LineEdit" parent="Margin/Layout/Controls"]
+[node name="SeedInput" type="LineEdit" parent="Margin/Layout/Controls" unique_id=1809044796]
 unique_name_in_owner = true
 layout_mode = 2
 placeholder_text = "Optional seed"
 
-[node name="GenerateButton" type="Button" parent="Margin/Layout/Controls"]
+[node name="GenerateButton" type="Button" parent="Margin/Layout/Controls" unique_id=1308803337]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Generate New Hold"
 
-[node name="CitySummary" type="Label" parent="Margin/Layout/Controls"]
+[node name="CitySummary" type="Label" parent="Margin/Layout/Controls" unique_id=951096892]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-autowrap_mode = 3
-vertical_alignment = 1
 text = "Awaiting generation"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=2022403230]
+tile_set = SubResource("TileSet_3ixrg")
+rendering_quadrant_size = 32
