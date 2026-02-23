@@ -474,14 +474,14 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 
 	if _is_corridor_cell(cell):
 		if _rng.randf() < 0.015:
-			var corridor_tile := ["target", "sign", "keg", "water_bucket"][_rng.randi_range(0, 3)]
+			var corridor_tile: String = String(["target", "sign", "keg", "water_bucket"][_rng.randi_range(0, 3)])
 			if _is_furniture_tile(corridor_tile) and base_tile != "floor":
 				return ""
 			return corridor_tile
 		return ""
 	if cell == CELL_DISTRICT:
 		if _rng.randf() < 0.06:
-			var district_tile := ["mushroom_crops", "mushroom_wild", "grain_bag"][_rng.randi_range(0, 2)]
+			var district_tile: String = String(["mushroom_crops", "mushroom_wild", "grain_bag"][_rng.randi_range(0, 2)])
 			if _is_furniture_tile(district_tile) and base_tile != "floor":
 				return ""
 			return district_tile
@@ -492,21 +492,21 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 		if _rng.randf() > 0.09:
 			return ""
 		if cell == CELL_HOUSE:
-			var house_random_tile := ["bed", "chest", "wardrobe", "stool", "mug"][_rng.randi_range(0, 4)]
+			var house_random_tile: String = String(["bed", "chest", "wardrobe", "stool", "mug"][_rng.randi_range(0, 4)])
 			if _is_furniture_tile(house_random_tile) and base_tile != "floor":
 				return ""
 			return house_random_tile
 		if cell == CELL_BUILDING:
-			var building_tile := ["workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour"][_rng.randi_range(0, 7)]
+			var building_tile: String = String(["workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour"][_rng.randi_range(0, 7)])
 			if _is_furniture_tile(building_tile) and base_tile != "floor":
 				return ""
 			return building_tile
 		if cell == CELL_KEEP:
-			var keep_tile := ["table", "table_alt", "keg", "target"][_rng.randi_range(0, 3)]
+			var keep_tile: String = String(["table", "table_alt", "keg", "target"][_rng.randi_range(0, 3)])
 			if _is_furniture_tile(keep_tile) and base_tile != "floor":
 				return ""
 			return keep_tile
-		var default_tile := ["table", "mug", "water_bucket"][_rng.randi_range(0, 2)]
+		var default_tile: String = String(["table", "mug", "water_bucket"][_rng.randi_range(0, 2)])
 		if _is_furniture_tile(default_tile) and base_tile != "floor":
 			return ""
 		return default_tile
