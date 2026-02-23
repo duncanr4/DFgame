@@ -94,6 +94,7 @@ const EXPECTED_TILE_COORDS := {
 @onready var city_layer: TileMapLayer = %CityTileLayer
 @onready var decor_layer: TileMapLayer = %DecorTileLayer
 @onready var zone_overlay: Control = %ZoneOverlay
+@onready var zone_legend: RichTextLabel = %ZoneLegend
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
 @onready var tile_hover_label: Label = %TileHoverLabel
 
@@ -117,6 +118,17 @@ const ZONE_OVERLAY_COLORS := {
 	CELL_GATE: Color(0.84, 0.19, 0.22, 0.45)
 }
 
+const ZONE_LEGEND_ORDER := [
+	{"tile": CELL_KEEP, "name": "Keep"},
+	{"tile": CELL_HALL, "name": "Hall"},
+	{"tile": CELL_TUNNEL, "name": "Tunnel"},
+	{"tile": CELL_DISTRICT, "name": "District"},
+	{"tile": CELL_HOUSE, "name": "House"},
+	{"tile": CELL_BUILDING, "name": "Building"},
+	{"tile": CELL_ROOM, "name": "Room"},
+	{"tile": CELL_GATE, "name": "Gate"}
+]
+
 const MIN_ZOOM := 0.25
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
@@ -129,7 +141,18 @@ func _ready() -> void:
 	seed_input.text_submitted.connect(func(_text: String) -> void:
 		_generate_city()
 	)
+	_update_zone_legend()
 	_generate_city()
+
+func _update_zone_legend() -> void:
+	var lines: PackedStringArray = ["[b]Zone Overlay Legend[/b]"]
+	for entry: Dictionary in ZONE_LEGEND_ORDER:
+		var tile := int(entry["tile"])
+		var zone_name := String(entry["name"])
+		var color := Color(ZONE_OVERLAY_COLORS[tile])
+		var color_hex := color.to_html(false)
+		lines.append("[color=#%s]■[/color] %s" % [color_hex, zone_name])
+	zone_legend.text = "\n".join(lines)
 
 func _configure_tile_layer() -> void:
 	if not _validate_tile_mapping():
