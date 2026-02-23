@@ -68,6 +68,19 @@ clip_contents = true
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
+[node name="TileHoverTooltip" type="PanelContainer" parent="Margin/Layout/CityPanel" unique_id=206020702]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1prb4")
+
+[node name="TileHoverLabel" type="Label" parent="Margin/Layout/CityPanel/TileHoverTooltip" unique_id=1038601715]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = ""
+
 [node name="Controls" type="VBoxContainer" parent="Margin/Layout" unique_id=715080455]
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
