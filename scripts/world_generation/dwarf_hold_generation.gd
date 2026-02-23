@@ -88,10 +88,12 @@ const EXPECTED_TILE_COORDS := {
 
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
+@onready var overlay_toggle: CheckButton = %OverlayToggle
 @onready var city_summary: Label = %CitySummary
 @onready var city_panel: PanelContainer = %CityPanel
 @onready var city_layer: TileMapLayer = %CityTileLayer
 @onready var decor_layer: TileMapLayer = %DecorTileLayer
+@onready var zone_overlay: Control = %ZoneOverlay
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
 @onready var tile_hover_label: Label = %TileHoverLabel
 
@@ -101,6 +103,19 @@ var _zoom_level := 1.0
 var _pan_offset := Vector2.ZERO
 var _map_origin_offset := Vector2.ZERO
 var _door_cells: Dictionary = {}
+var _latest_grid: Dictionary = {}
+var _show_zone_overlay := false
+
+const ZONE_OVERLAY_COLORS := {
+	CELL_KEEP: Color(0.79, 0.33, 0.21, 0.35),
+	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
+	CELL_TUNNEL: Color(0.19, 0.42, 0.76, 0.22),
+	CELL_DISTRICT: Color(0.31, 0.73, 0.36, 0.35),
+	CELL_HOUSE: Color(0.84, 0.72, 0.24, 0.35),
+	CELL_BUILDING: Color(0.61, 0.35, 0.88, 0.35),
+	CELL_ROOM: Color(0.94, 0.53, 0.25, 0.18),
+	CELL_GATE: Color(0.84, 0.19, 0.22, 0.45)
+}
 
 const MIN_ZOOM := 0.25
 const MAX_ZOOM := 2.5
@@ -109,6 +124,7 @@ const ZOOM_STEP := 0.1
 func _ready() -> void:
 	_configure_tile_layer()
 	generate_button.pressed.connect(_on_generate_pressed)
+	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
 	seed_input.text_submitted.connect(func(_text: String) -> void:
 		_generate_city()
@@ -213,9 +229,19 @@ func _generate_city() -> void:
 	_connect_points(grid, Vector2i(right_gate_x, gate_y), keep_center, CELL_HALL)
 
 	_door_cells = _compute_single_doors(grid)
+	_latest_grid = grid
 
 	_render_city(grid)
 	_update_summary(grid, seed_text)
+	_update_zone_overlay()
+
+func _on_overlay_toggle_toggled(toggled_on: bool) -> void:
+	_show_zone_overlay = toggled_on
+	_update_zone_overlay()
+
+func _update_zone_overlay() -> void:
+	if zone_overlay.has_method("set_overlay_state"):
+		zone_overlay.call("set_overlay_state", _latest_grid, tile_size, _zoom_level, city_layer.position, ZONE_OVERLAY_COLORS, _show_zone_overlay)
 
 func _dig_structure_with_room(grid: Dictionary, center: Vector2i, footprint: Vector2i, structure_tile: int) -> void:
 	var from_cell := center - footprint
@@ -511,6 +537,7 @@ func _update_city_layer_transform() -> void:
 	decor_layer.position = city_layer.position
 	if tile_hover_tooltip.visible:
 		tile_hover_tooltip.position = _clamp_tooltip_position(tile_hover_tooltip.position)
+	_update_zone_overlay()
 
 func _place_tile(target_layer: TileMapLayer, cell: Vector2i, tile_key: String) -> void:
 	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))

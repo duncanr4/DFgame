@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dxmy7es4xf4sm"]
 
 [ext_resource type="Script" uid="uid://c2qflakubfv3i" path="res://scripts/world_generation/dwarf_hold_generation.gd" id="1_8mfx7"]
+[ext_resource type="Script" path="res://scripts/world_generation/zone_overlay_layer.gd" id="3_wd6by"]
 [ext_resource type="Texture2D" uid="uid://cwixo3v65o0po" path="res://resources/images/dwarfhold/map.png" id="2_c8dd5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1prb4"]
@@ -72,6 +73,17 @@ position = Vector2(16, 16)
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
+[node name="ZoneOverlay" type="Control" parent="Margin/Layout/CityPanel" unique_id=816640221]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_wd6by")
+
 [node name="TileHoverTooltip" type="PanelContainer" parent="Margin/Layout/CityPanel" unique_id=206020702]
 unique_name_in_owner = true
 visible = false
@@ -110,6 +122,11 @@ placeholder_text = "Optional seed"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Generate New Hold"
+
+[node name="OverlayToggle" type="CheckButton" parent="Margin/Layout/Controls" unique_id=195430028]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Show zone overlay"
 
 [node name="CitySummary" type="Label" parent="Margin/Layout/Controls" unique_id=951096892]
 unique_name_in_owner = true
