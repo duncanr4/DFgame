@@ -170,6 +170,57 @@ const CIVIC_BUILDING_TYPES: Dictionary[String, Dictionary] = {
 		"preferred_footprint_max": Vector2i(4, 3),
 		"decor_tile_pool": PackedStringArray(["workbench", "desk", "shelf", "butcher_table"]),
 		"adjacency_preferences": {}
+	},
+	"kitchen": {
+		"placement_weight": 0.85,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["butcher_table", "table", "stool", "water_bucket"]),
+		"adjacency_preferences": {}
+	},
+	"barracks": {
+		"placement_weight": 0.8,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": PackedStringArray(["bed", "chest", "armor_stand", "target"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.35
+		}
+	},
+	"temple": {
+		"placement_weight": 0.65,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["table_alt", "sign", "mug", "stool"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.2
+		}
+	},
+	"mushroom_farm": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(3, 3),
+		"preferred_footprint_max": Vector2i(5, 4),
+		"decor_tile_pool": PackedStringArray(["mushroom_crops", "mushroom_crop_wild", "grain_bag", "water_bucket"]),
+		"adjacency_preferences": {}
+	},
+	"archives": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["shelf", "desk", "sign", "chest"]),
+		"adjacency_preferences": {}
+	},
+	"infirmary": {
+		"placement_weight": 0.6,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["bed", "table", "water_bucket", "chest"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.25
+		}
 	}
 }
 
