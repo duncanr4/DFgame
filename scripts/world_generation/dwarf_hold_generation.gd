@@ -125,6 +125,22 @@ const ZONE_LEGEND_ORDER := [
 	{"tile": CELL_BUILDING, "name": "Building"}
 ]
 
+const BUILDING_SUBTYPE_LEGEND_COLORS := {
+	"forge": Color(0.93, 0.52, 0.35, 0.45),
+	"brewery": Color(0.89, 0.68, 0.29, 0.45),
+	"armory": Color(0.63, 0.65, 0.81, 0.45),
+	"workshop": Color(0.56, 0.79, 0.67, 0.45)
+}
+
+const BUILDING_SUBTYPE_FLAVOR := {
+	"forge": "The air rings with hammer blows and quenched steel.",
+	"brewery": "Warm casks and sour mash scent the stone halls.",
+	"armory": "Weapon racks and sparring marks line the walls.",
+	"granary": "Stores of grain and flour are stacked for lean winters.",
+	"mushroom_farm": "Low beds of mushrooms thrive in cool, damp soil.",
+	"archives": "Tablet shelves and ledgers preserve clan memory."
+}
+
 const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
@@ -370,6 +386,12 @@ func _update_zone_legend() -> void:
 		var color := Color(ZONE_OVERLAY_COLORS[tile])
 		var color_hex := color.to_html(false)
 		lines.append("[color=#%s]■[/color] %s" % [color_hex, zone_name])
+
+	lines.append("")
+	lines.append("[b]Building Subtype Keys[/b]")
+	for subtype: String in BUILDING_SUBTYPE_LEGEND_COLORS.keys():
+		var subtype_color := Color(BUILDING_SUBTYPE_LEGEND_COLORS[subtype])
+		lines.append("[color=#%s]■[/color] %s" % [subtype_color.to_html(false), _display_name_for_building_type(subtype)])
 	zone_legend.text = "\n".join(lines)
 
 func _configure_tile_layer() -> void:
@@ -1248,6 +1270,7 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var requested_houses := int(_latest_requested_zone_counts.get("houses", 0))
 	var requested_buildings := int(_latest_requested_zone_counts.get("buildings", 0))
 
+	var building_subtype_summary := _building_subtype_summary_text()
 	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d" % [
 		seed_text,
 		bounds.size.x,
@@ -1261,6 +1284,8 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 		building_zones,
 		requested_buildings
 	]
+	if not building_subtype_summary.is_empty():
+		city_summary.text += "\nBuilding Types: %s" % building_subtype_summary
 
 func _update_hover_tooltip(mouse_position: Vector2) -> void:
 	if city_layer.tile_set == null:
@@ -1279,7 +1304,14 @@ func _update_hover_tooltip(mouse_position: Vector2) -> void:
 	var atlas_coords := hovered_layer.get_cell_atlas_coords(hovered_cell)
 	var tile_name := _tile_name_from_atlas(atlas_coords)
 	var zone_name := _zone_name_for_cell(hovered_cell)
-	tile_hover_label.text = "Tile: %s\nZone: %s" % [tile_name, zone_name]
+	var tooltip_lines: PackedStringArray = ["Tile: %s" % tile_name, "Zone: %s" % zone_name]
+	var subtype := _building_type_for_cell_or_empty(hovered_cell)
+	if not subtype.is_empty():
+		tooltip_lines.append("Subtype: %s" % _display_name_for_building_type(subtype))
+		var flavor := String(BUILDING_SUBTYPE_FLAVOR.get(subtype, ""))
+		if not flavor.is_empty():
+			tooltip_lines.append(flavor)
+	tile_hover_label.text = "\n".join(tooltip_lines)
 	tile_hover_tooltip.visible = true
 	tile_hover_tooltip.reset_size()
 	tile_hover_tooltip.position = _clamp_tooltip_position(mouse_position + Vector2(14, 14))
@@ -1304,9 +1336,44 @@ func _zone_name_for_cell(cell: Vector2i) -> String:
 		CELL_HOUSE:
 			return "House"
 		CELL_BUILDING:
-			return "Building"
+			var subtype := _building_type_for_cell_or_empty(cell)
+			if subtype.is_empty():
+				return "Building"
+			return "Building (%s)" % _display_name_for_building_type(subtype)
 		_:
 			return "Rock"
+
+func _building_type_for_cell_or_empty(cell: Vector2i) -> String:
+	if not _latest_civic_building_type_map.has(cell):
+		return ""
+	return String(_latest_civic_building_type_map[cell])
+
+func _display_name_for_building_type(building_type: String) -> String:
+	var words := building_type.split("_", false)
+	for i in range(words.size()):
+		words[i] = String(words[i]).capitalize()
+	return " ".join(words)
+
+func _building_subtype_summary_text() -> String:
+	if _latest_civic_buildings_by_id.is_empty():
+		return ""
+
+	var subtype_counts: Dictionary = {}
+	for building_id: String in _latest_civic_buildings_by_id.keys():
+		var payload := _latest_civic_buildings_by_id[building_id] as Dictionary
+		var subtype := String(payload.get("type", "workshop"))
+		subtype_counts[subtype] = int(subtype_counts.get(subtype, 0)) + 1
+
+	var sorted_subtypes := subtype_counts.keys()
+	sorted_subtypes.sort_custom(func(a: Variant, b: Variant) -> bool:
+		return String(a) < String(b)
+	)
+
+	var entries: PackedStringArray = []
+	for subtype_variant: Variant in sorted_subtypes:
+		var subtype := String(subtype_variant)
+		entries.append("%s: %d" % [_display_name_for_building_type(subtype), int(subtype_counts[subtype])])
+	return ", ".join(entries)
 
 func _clamp_tooltip_position(desired_position: Vector2) -> Vector2:
 	var tooltip_size := tile_hover_tooltip.size

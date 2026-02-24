@@ -130,7 +130,7 @@ text = "Show zone overlay"
 
 [node name="ZoneLegend" type="RichTextLabel" parent="Margin/Layout/Controls" unique_id=1078314459]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 170)
+custom_minimum_size = Vector2(0, 260)
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true
