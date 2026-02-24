@@ -622,12 +622,12 @@ func _render_city(grid: Dictionary) -> void:
 		return
 	city_layer.clear()
 	decor_layer.clear()
-	var bounds := _find_bounds(grid)
+	var bounds := _find_bounds(grid).grow(1)
 	var house_decor_overrides := _build_house_decor_layouts(grid)
 	for y in range(bounds.position.y, bounds.end.y):
 		for x in range(bounds.position.x, bounds.end.x):
 			var cell := _cell_at(grid, x, y)
-			if cell == CELL_ROCK:
+			if cell == CELL_ROCK and not _is_hall_border_rock_cell(grid, x, y):
 				continue
 			var base_tile := _pick_base_tile(grid, x, y, cell)
 			_place_tile(city_layer, Vector2i(x, y), base_tile)
@@ -792,10 +792,23 @@ func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 	match cell:
 		CELL_HALL:
 			return "floor"
+		CELL_ROCK:
+			if _is_hall_border_rock_cell(grid, x, y):
+				return "stone"
+			return ""
 		CELL_HOUSE, CELL_BUILDING:
 			return _wall_or_floor_tile(grid, x, y, cell)
 		_:
 			return "stone"
+
+func _is_hall_border_rock_cell(grid: Dictionary, x: int, y: int) -> bool:
+	if _cell_at(grid, x, y) != CELL_ROCK:
+		return false
+	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var neighbor := Vector2i(x, y) + direction
+		if _is_corridor_cell(_cell_at(grid, neighbor.x, neighbor.y)):
+			return true
+	return false
 
 func _wall_or_floor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 	var current_cell := Vector2i(x, y)
