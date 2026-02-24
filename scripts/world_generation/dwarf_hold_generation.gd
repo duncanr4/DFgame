@@ -299,6 +299,55 @@ const CIVIC_BUILDING_TYPES: Dictionary[String, Dictionary] = {
 		"preferred_footprint_max": Vector2i(4, 3),
 		"decor_tile_pool": PackedStringArray(["desk", "chest", "table_alt", "shelf"]),
 		"adjacency_preferences": {}
+	},
+	"butchery": {
+		"placement_weight": 0.75,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["butcher_table", "table", "water_bucket", "chest"]),
+		"adjacency_preferences": {}
+	},
+	"bakery": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["table_alt", "flour", "grain_bag", "stool"]),
+		"adjacency_preferences": {}
+	},
+	"cooperage": {
+		"placement_weight": 0.6,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["keg", "workbench", "chest", "table"]),
+		"adjacency_preferences": {}
+	},
+	"tannery": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["water_bucket", "workbench", "chest", "table_alt"]),
+		"adjacency_preferences": {}
+	},
+	"millhouse": {
+		"placement_weight": 0.65,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["flour", "grain_bag", "table", "shelf"]),
+		"adjacency_preferences": {}
+	},
+	"cobblers_shop": {
+		"placement_weight": 0.45,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["stool", "chest", "table", "desk"]),
+		"adjacency_preferences": {}
+	},
+	"ropemakers_hall": {
+		"placement_weight": 0.45,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["table", "workbench", "chest", "stool"]),
+		"adjacency_preferences": {}
 	}
 }
 
