@@ -389,10 +389,20 @@ func _update_zone_legend() -> void:
 
 	lines.append("")
 	lines.append("[b]Building Subtype Keys[/b]")
-	for subtype: String in BUILDING_SUBTYPE_LEGEND_COLORS.keys():
-		var subtype_color := Color(BUILDING_SUBTYPE_LEGEND_COLORS[subtype])
+	var subtype_order: Array[String] = []
+	for subtype_variant: Variant in CIVIC_BUILDING_TYPES.keys():
+		subtype_order.append(String(subtype_variant))
+	subtype_order.sort()
+	for subtype: String in subtype_order:
+		var subtype_color := _legend_color_for_building_type(subtype)
 		lines.append("[color=#%s]■[/color] %s" % [subtype_color.to_html(false), _display_name_for_building_type(subtype)])
 	zone_legend.text = "\n".join(lines)
+
+func _legend_color_for_building_type(building_type: String) -> Color:
+	if BUILDING_SUBTYPE_LEGEND_COLORS.has(building_type):
+		return Color(BUILDING_SUBTYPE_LEGEND_COLORS[building_type])
+	var hue := fposmod(float(hash(building_type)) * 0.61803398875, 1.0)
+	return Color.from_hsv(hue, 0.55, 0.85, 0.45)
 
 func _configure_tile_layer() -> void:
 	if not _validate_tile_mapping():
