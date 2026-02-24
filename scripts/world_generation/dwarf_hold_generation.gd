@@ -99,6 +99,8 @@ var _pan_offset := Vector2.ZERO
 var _map_origin_offset := Vector2.ZERO
 var _door_cells: Dictionary = {}
 var _latest_grid: Dictionary = {}
+var _latest_civic_buildings_by_id: Dictionary = {}
+var _latest_civic_building_type_map: Dictionary = {}
 var _show_zone_overlay := false
 var _latest_zone_counts := {
 	"halls": 0,
@@ -126,6 +128,228 @@ const ZONE_LEGEND_ORDER := [
 const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
+
+const CIVIC_BUILDING_TYPES: Dictionary[String, Dictionary] = {
+	"forge": {
+		"placement_weight": 1.25,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["anvil", "workbench", "armor_stand", "water_bucket"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.7
+		}
+	},
+	"brewery": {
+		"placement_weight": 1.05,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["keg", "winepress", "mug", "table_alt"]),
+		"adjacency_preferences": {}
+	},
+	"granary": {
+		"placement_weight": 0.95,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["grain_bag", "flour", "shelf", "table"]),
+		"adjacency_preferences": {}
+	},
+	"armory": {
+		"placement_weight": 0.9,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["armor_stand", "target", "anvil", "workbench"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.45
+		}
+	},
+	"workshop": {
+		"placement_weight": 1.1,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["workbench", "desk", "shelf", "butcher_table"]),
+		"adjacency_preferences": {}
+	},
+	"kitchen": {
+		"placement_weight": 0.85,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["butcher_table", "table", "stool", "water_bucket"]),
+		"adjacency_preferences": {}
+	},
+	"barracks": {
+		"placement_weight": 0.8,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": PackedStringArray(["bed", "chest", "armor_stand", "target"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.35
+		}
+	},
+	"temple": {
+		"placement_weight": 0.65,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["table_alt", "sign", "mug", "stool"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.2
+		}
+	},
+	"mushroom_farm": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(3, 3),
+		"preferred_footprint_max": Vector2i(5, 4),
+		"decor_tile_pool": PackedStringArray(["mushroom_crops", "mushroom_crop_wild", "grain_bag", "water_bucket"]),
+		"adjacency_preferences": {}
+	},
+	"archives": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["shelf", "desk", "sign", "chest"]),
+		"adjacency_preferences": {}
+	},
+	"infirmary": {
+		"placement_weight": 0.6,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["bed", "table", "water_bucket", "chest"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.25
+		}
+	},
+	"miners_guild": {
+		"placement_weight": 0.75,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": PackedStringArray(["stone", "target", "workbench", "chest"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.3
+		}
+	},
+	"mason_lodge": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["stone", "table", "desk", "workbench"]),
+		"adjacency_preferences": {}
+	},
+	"engineers_foundry": {
+		"placement_weight": 0.65,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["anvil", "workbench", "desk", "water_bucket"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.4
+		}
+	},
+	"gemcutters_studio": {
+		"placement_weight": 0.6,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["table_alt", "chest", "sign", "desk"]),
+		"adjacency_preferences": {}
+	},
+	"runesmith_sanctum": {
+		"placement_weight": 0.5,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["anvil", "sign", "shelf", "desk"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.2
+		}
+	},
+	"smeltery": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": PackedStringArray(["anvil", "water_bucket", "stone", "workbench"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.5
+		}
+	},
+	"cartographers_office": {
+		"placement_weight": 0.45,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["desk", "sign", "table", "shelf"]),
+		"adjacency_preferences": {}
+	},
+	"explorers_guild": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["target", "table", "chest", "water_bucket"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.15
+		}
+	},
+	"merchants_counting_house": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["desk", "chest", "table_alt", "shelf"]),
+		"adjacency_preferences": {}
+	},
+	"butchery": {
+		"placement_weight": 0.75,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["butcher_table", "table", "water_bucket", "chest"]),
+		"adjacency_preferences": {}
+	},
+	"bakery": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["table_alt", "flour", "grain_bag", "stool"]),
+		"adjacency_preferences": {}
+	},
+	"cooperage": {
+		"placement_weight": 0.6,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["keg", "workbench", "chest", "table"]),
+		"adjacency_preferences": {}
+	},
+	"tannery": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["water_bucket", "workbench", "chest", "table_alt"]),
+		"adjacency_preferences": {}
+	},
+	"millhouse": {
+		"placement_weight": 0.65,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["flour", "grain_bag", "table", "shelf"]),
+		"adjacency_preferences": {}
+	},
+	"cobblers_shop": {
+		"placement_weight": 0.45,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["stool", "chest", "table", "desk"]),
+		"adjacency_preferences": {}
+	},
+	"ropemakers_hall": {
+		"placement_weight": 0.45,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["table", "workbench", "chest", "stool"]),
+		"adjacency_preferences": {}
+	}
+}
 
 func _ready() -> void:
 	_configure_tile_layer()
@@ -207,6 +431,8 @@ func _generate_city() -> void:
 	}
 
 	var grid: Dictionary = {}
+	_latest_civic_buildings_by_id = {}
+	_latest_civic_building_type_map = {}
 	var seed_hall_center := Vector2i.ZERO
 	var seed_hall_size := Vector2i(18, 14)
 	_dig_rect(grid, seed_hall_center - seed_hall_size / 2, seed_hall_center + seed_hall_size / 2, CELL_HALL)
@@ -252,21 +478,30 @@ func _generate_city() -> void:
 		)
 
 	for i in requested_building_count:
-		var civic_footprint := Vector2i(_rng.randi_range(2, 4), _rng.randi_range(2, 3))
-		if _place_structure_along_halls(grid, CELL_BUILDING, civic_footprint):
+		var civic_type := _pick_civic_building_type()
+		var civic_definition := CIVIC_BUILDING_TYPES[civic_type] as Dictionary
+		var civic_footprint := _roll_civic_footprint(civic_definition)
+		var prefers_hall_arteries := _civic_prefers_hall_arteries(civic_definition)
+		if prefers_hall_arteries and _place_structure_along_halls(grid, CELL_BUILDING, civic_footprint, civic_type):
 			continue
-		_place_structure_zone(
+		var civic_size_generator := func() -> Vector2i:
+			return civic_footprint
+		var placed := _place_structure_zone(
 			grid,
 			hubs,
 			CELL_BUILDING,
 			func() -> Vector2i:
 				return Vector2i(_rng.randi_range(-15, 15), _rng.randi_range(-10, 10)),
-			func() -> Vector2i:
-				return civic_footprint
+			civic_size_generator,
+			civic_type
 		)
+		if not placed and not prefers_hall_arteries:
+			_place_structure_along_halls(grid, CELL_BUILDING, civic_footprint, civic_type)
 
 	_door_cells = _compute_single_doors(grid)
 	_latest_grid = grid
+	_latest_civic_buildings_by_id = _compute_civic_buildings_by_id(grid)
+	_latest_civic_building_type_map = _build_civic_building_type_lookup(_latest_civic_buildings_by_id)
 	_latest_zone_counts = _count_zone_components(grid)
 
 	_render_city(grid)
@@ -279,13 +514,42 @@ func _pick_seeded_zone_target(count_range: Vector2i) -> int:
 	var maximum := maxi(count_range.x, count_range.y)
 	return _rng.randi_range(minimum, maximum)
 
+func _pick_civic_building_type() -> String:
+	var total_weight := 0.0
+	for type_name: String in CIVIC_BUILDING_TYPES.keys():
+		var definition := CIVIC_BUILDING_TYPES[type_name] as Dictionary
+		total_weight += float(definition.get("placement_weight", 1.0))
+	if total_weight <= 0.0:
+		return "workshop"
+
+	var cursor := _rng.randf() * total_weight
+	for type_name: String in CIVIC_BUILDING_TYPES.keys():
+		var definition := CIVIC_BUILDING_TYPES[type_name] as Dictionary
+		cursor -= float(definition.get("placement_weight", 1.0))
+		if cursor <= 0.0:
+			return type_name
+	return String(CIVIC_BUILDING_TYPES.keys()[0])
+
+func _roll_civic_footprint(civic_definition: Dictionary) -> Vector2i:
+	var minimum := civic_definition.get("preferred_footprint_min", Vector2i(2, 2)) as Vector2i
+	var maximum := civic_definition.get("preferred_footprint_max", Vector2i(4, 3)) as Vector2i
+	return Vector2i(
+		_rng.randi_range(mini(minimum.x, maximum.x), maxi(minimum.x, maximum.x)),
+		_rng.randi_range(mini(minimum.y, maximum.y), maxi(minimum.y, maximum.y))
+	)
+
+func _civic_prefers_hall_arteries(civic_definition: Dictionary) -> bool:
+	var adjacency := civic_definition.get("adjacency_preferences", {}) as Dictionary
+	return bool(adjacency.get("prefers_hall_arteries", false))
+
 func _place_structure_zone(
 	grid: Dictionary,
 	hubs: Array[Vector2i],
 	structure_tile: int,
 	offset_generator: Callable,
-	size_generator: Callable
-) -> void:
+	size_generator: Callable,
+	building_type: String = ""
+) -> bool:
 	var max_search_rings := 16
 	for ring in range(max_search_rings):
 		var expansion := ring * 4
@@ -298,13 +562,14 @@ func _place_structure_zone(
 				center += Vector2i(_rng.randi_range(-expansion, expansion), _rng.randi_range(-expansion, expansion))
 			var footprint := size_generator.call() as Vector2i
 			if _try_place_structure_with_single_door(grid, center, footprint, structure_tile, anchor):
-				return
+				_register_building_type_metadata(center, footprint, structure_tile, building_type)
+				return true
 
 	var fallback_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
 	var fallback_footprint := size_generator.call() as Vector2i
-	_place_structure_in_open_space(grid, structure_tile, fallback_anchor, fallback_footprint)
+	return _place_structure_in_open_space(grid, structure_tile, fallback_anchor, fallback_footprint, building_type)
 
-func _place_structure_along_halls(grid: Dictionary, structure_tile: int, footprint: Vector2i) -> bool:
+func _place_structure_along_halls(grid: Dictionary, structure_tile: int, footprint: Vector2i, building_type: String = "") -> bool:
 	var hall_edge_candidates := _collect_hall_edge_candidates(grid)
 	if hall_edge_candidates.is_empty():
 		return false
@@ -318,6 +583,7 @@ func _place_structure_along_halls(grid: Dictionary, structure_tile: int, footpri
 		if not _can_place_structure(grid, center, footprint):
 			continue
 		_dig_structure_with_room(grid, center, footprint, structure_tile)
+		_register_building_type_metadata(center, footprint, structure_tile, building_type)
 		var doorway := _pick_side_center_door_cell_facing(center, footprint, -side_dir)
 		var exterior := doorway + _outward_direction_for_door(center, footprint, doorway)
 		_connect_points(grid, exterior, hall_cell, CELL_HALL)
@@ -337,7 +603,7 @@ func _collect_hall_edge_candidates(grid: Dictionary) -> Array[Dictionary]:
 			candidates.append({"hall": hall_cell, "side": side_dir})
 	return candidates
 
-func _place_structure_in_open_space(grid: Dictionary, structure_tile: int, anchor: Vector2i, footprint: Vector2i) -> void:
+func _place_structure_in_open_space(grid: Dictionary, structure_tile: int, anchor: Vector2i, footprint: Vector2i, building_type: String = "") -> bool:
 	var start_radius := maxi(footprint.x, footprint.y) + 8
 	var max_radius := start_radius + maxi(structure_fallback_max_extra_radius, 0)
 	for radius in range(start_radius, max_radius + 1, 8):
@@ -353,7 +619,67 @@ func _place_structure_in_open_space(grid: Dictionary, structure_tile: int, ancho
 		]
 		for center: Vector2i in candidate_centers:
 			if _try_place_structure_with_single_door(grid, center, footprint, structure_tile, anchor):
-				return
+				_register_building_type_metadata(center, footprint, structure_tile, building_type)
+				return true
+	return false
+
+
+func _register_building_type_metadata(center: Vector2i, footprint: Vector2i, structure_tile: int, building_type: String) -> void:
+	if structure_tile != CELL_BUILDING:
+		return
+	if building_type.is_empty():
+		return
+	for y in range(center.y - footprint.y, center.y + footprint.y + 1):
+		for x in range(center.x - footprint.x, center.x + footprint.x + 1):
+			_latest_civic_building_type_map[Vector2i(x, y)] = building_type
+
+func _compute_civic_buildings_by_id(grid: Dictionary) -> Dictionary:
+	var visited: Dictionary = {}
+	var by_id: Dictionary = {}
+	for key: Variant in grid.keys():
+		var start_cell := key as Vector2i
+		if visited.has(start_cell):
+			continue
+		if _cell_at(grid, start_cell.x, start_cell.y) != CELL_BUILDING:
+			continue
+		var queue: Array[Vector2i] = [start_cell]
+		visited[start_cell] = true
+		var component: Array[Vector2i] = []
+		while not queue.is_empty():
+			var current: Vector2i = queue.pop_front()
+			component.append(current)
+			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var neighbor := current + direction
+				if visited.has(neighbor):
+					continue
+				if _cell_at(grid, neighbor.x, neighbor.y) != CELL_BUILDING:
+					continue
+				visited[neighbor] = true
+				queue.append(neighbor)
+		if component.is_empty():
+			continue
+		var anchor := _stable_component_anchor(component)
+		var building_id := "%d:%d" % [anchor.x, anchor.y]
+		var building_type := String(_latest_civic_building_type_map.get(anchor, "workshop"))
+		by_id[building_id] = {"anchor": anchor, "type": building_type, "cells": component}
+	return by_id
+
+func _stable_component_anchor(component: Array[Vector2i]) -> Vector2i:
+	var anchor := component[0]
+	for cell: Vector2i in component:
+		if cell.x < anchor.x or (cell.x == anchor.x and cell.y < anchor.y):
+			anchor = cell
+	return anchor
+
+func _build_civic_building_type_lookup(buildings_by_id: Dictionary) -> Dictionary:
+	var lookup: Dictionary = {}
+	for building_id: String in buildings_by_id.keys():
+		var payload := buildings_by_id[building_id] as Dictionary
+		var building_type := String(payload.get("type", "workshop"))
+		var cells := payload.get("cells", []) as Array
+		for cell_variant: Variant in cells:
+			lookup[cell_variant as Vector2i] = building_type
+	return lookup
 
 func _count_zone_components(grid: Dictionary) -> Dictionary:
 	return {
@@ -850,6 +1176,17 @@ func _is_furniture_tile(tile_key: String) -> bool:
 		"table", "table_alt", "keg", "target", "water_bucket", "grain_bag"
 	]
 
+func _building_type_for_cell(cell: Vector2i) -> String:
+	return String(_latest_civic_building_type_map.get(cell, "workshop"))
+
+func _pick_civic_building_decor_tile(cell: Vector2i) -> String:
+	var building_type := _building_type_for_cell(cell)
+	var civic_definition := CIVIC_BUILDING_TYPES.get(building_type, CIVIC_BUILDING_TYPES["workshop"]) as Dictionary
+	var decor_pool := civic_definition.get("decor_tile_pool", PackedStringArray(["workbench", "desk", "anvil"])) as PackedStringArray
+	if decor_pool.is_empty():
+		return ""
+	return String(decor_pool[_rng.randi_range(0, decor_pool.size() - 1)])
+
 func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: String, house_decor_overrides: Dictionary) -> String:
 	var key := Vector2i(x, y)
 	if house_decor_overrides.has(key):
@@ -880,7 +1217,7 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 				return ""
 			return house_random_tile
 		if cell == CELL_BUILDING:
-			var building_tile: String = String(["workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour"][_rng.randi_range(0, 7)])
+			var building_tile := _pick_civic_building_decor_tile(Vector2i(x, y))
 			if _is_furniture_tile(building_tile) and base_tile != "floor":
 				return ""
 			if building_tile == "shelf" and not _is_adjacent_to_stone_or_wall(grid, x, y):
