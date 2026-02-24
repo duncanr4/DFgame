@@ -145,7 +145,7 @@ const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
 
-const CIVIC_BUILDING_TYPES: Dictionary[String, Dictionary] = {
+const CIVIC_BUILDING_TYPES := {
 	"forge": {
 		"placement_weight": 1.25,
 		"preferred_footprint_min": Vector2i(2, 2),
