@@ -791,11 +791,20 @@ func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 		return _wall_or_floor_tile(grid, x, y, cell)
 	match cell:
 		CELL_HALL:
-			return "floor"
+			return _hall_wall_or_floor_tile(grid, x, y)
 		CELL_HOUSE, CELL_BUILDING:
 			return _wall_or_floor_tile(grid, x, y, cell)
 		_:
 			return "stone"
+
+func _hall_wall_or_floor_tile(grid: Dictionary, x: int, y: int) -> String:
+	var left_is_hall := _is_corridor_cell(_cell_at(grid, x - 1, y))
+	var right_is_hall := _is_corridor_cell(_cell_at(grid, x + 1, y))
+	var top_is_hall := _is_corridor_cell(_cell_at(grid, x, y - 1))
+	var bottom_is_hall := _is_corridor_cell(_cell_at(grid, x, y + 1))
+	if left_is_hall and right_is_hall and top_is_hall and bottom_is_hall:
+		return "floor"
+	return "stone"
 
 func _wall_or_floor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 	var current_cell := Vector2i(x, y)
