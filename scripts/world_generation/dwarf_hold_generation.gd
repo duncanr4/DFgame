@@ -125,13 +125,6 @@ const ZONE_LEGEND_ORDER := [
 	{"tile": CELL_BUILDING, "name": "Building"}
 ]
 
-const BUILDING_SUBTYPE_LEGEND_COLORS := {
-	"forge": Color(0.93, 0.52, 0.35, 0.45),
-	"brewery": Color(0.89, 0.68, 0.29, 0.45),
-	"armory": Color(0.63, 0.65, 0.81, 0.45),
-	"workshop": Color(0.56, 0.79, 0.67, 0.45)
-}
-
 const BUILDING_SUBTYPE_FLAVOR := {
 	"forge": "The air rings with hammer blows and quenched steel.",
 	"brewery": "Warm casks and sour mash scent the stone halls.",
@@ -386,23 +379,7 @@ func _update_zone_legend() -> void:
 		var color := Color(ZONE_OVERLAY_COLORS[tile])
 		var color_hex := color.to_html(false)
 		lines.append("[color=#%s]■[/color] %s" % [color_hex, zone_name])
-
-	lines.append("")
-	lines.append("[b]Building Subtype Keys[/b]")
-	var subtype_order: Array[String] = []
-	for subtype_variant: Variant in CIVIC_BUILDING_TYPES.keys():
-		subtype_order.append(String(subtype_variant))
-	subtype_order.sort()
-	for subtype: String in subtype_order:
-		var subtype_color := _legend_color_for_building_type(subtype)
-		lines.append("[color=#%s]■[/color] %s" % [subtype_color.to_html(false), _display_name_for_building_type(subtype)])
 	zone_legend.text = "\n".join(lines)
-
-func _legend_color_for_building_type(building_type: String) -> Color:
-	if BUILDING_SUBTYPE_LEGEND_COLORS.has(building_type):
-		return Color(BUILDING_SUBTYPE_LEGEND_COLORS[building_type])
-	var hue := fposmod(float(hash(building_type)) * 0.61803398875, 1.0)
-	return Color.from_hsv(hue, 0.55, 0.85, 0.45)
 
 func _configure_tile_layer() -> void:
 	if not _validate_tile_mapping():
