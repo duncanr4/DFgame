@@ -150,7 +150,7 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 1.25,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["anvil", "workbench", "armor_stand", "water_bucket"]),
+		"decor_tile_pool": ["anvil", "workbench", "armor_stand", "water_bucket"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.7
@@ -160,21 +160,21 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 1.05,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["keg", "winepress", "mug", "table_alt"]),
+		"decor_tile_pool": ["keg", "winepress", "mug", "table_alt"],
 		"adjacency_preferences": {}
 	},
 	"granary": {
 		"placement_weight": 0.95,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["grain_bag", "flour", "shelf", "table"]),
+		"decor_tile_pool": ["grain_bag", "flour", "shelf", "table"],
 		"adjacency_preferences": {}
 	},
 	"armory": {
 		"placement_weight": 0.9,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["armor_stand", "target", "anvil", "workbench"]),
+		"decor_tile_pool": ["armor_stand", "target", "anvil", "workbench"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.45
@@ -184,21 +184,21 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 1.1,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["workbench", "desk", "shelf", "butcher_table"]),
+		"decor_tile_pool": ["workbench", "desk", "shelf", "butcher_table"],
 		"adjacency_preferences": {}
 	},
 	"kitchen": {
 		"placement_weight": 0.85,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["butcher_table", "table", "stool", "water_bucket"]),
+		"decor_tile_pool": ["butcher_table", "table", "stool", "water_bucket"],
 		"adjacency_preferences": {}
 	},
 	"barracks": {
 		"placement_weight": 0.8,
 		"preferred_footprint_min": Vector2i(3, 2),
 		"preferred_footprint_max": Vector2i(5, 3),
-		"decor_tile_pool": PackedStringArray(["bed", "chest", "armor_stand", "target"]),
+		"decor_tile_pool": ["bed", "chest", "armor_stand", "target"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.35
@@ -208,7 +208,7 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.65,
 		"preferred_footprint_min": Vector2i(3, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["table_alt", "sign", "mug", "stool"]),
+		"decor_tile_pool": ["table_alt", "sign", "mug", "stool"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.2
@@ -218,21 +218,21 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.7,
 		"preferred_footprint_min": Vector2i(3, 3),
 		"preferred_footprint_max": Vector2i(5, 4),
-		"decor_tile_pool": PackedStringArray(["mushroom_crops", "mushroom_crop_wild", "grain_bag", "water_bucket"]),
+		"decor_tile_pool": ["mushroom_crops", "mushroom_crop_wild", "grain_bag", "water_bucket"],
 		"adjacency_preferences": {}
 	},
 	"archives": {
 		"placement_weight": 0.55,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["shelf", "desk", "sign", "chest"]),
+		"decor_tile_pool": ["shelf", "desk", "sign", "chest"],
 		"adjacency_preferences": {}
 	},
 	"infirmary": {
 		"placement_weight": 0.6,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["bed", "table", "water_bucket", "chest"]),
+		"decor_tile_pool": ["bed", "table", "water_bucket", "chest"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.25
@@ -242,7 +242,7 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.75,
 		"preferred_footprint_min": Vector2i(3, 2),
 		"preferred_footprint_max": Vector2i(5, 3),
-		"decor_tile_pool": PackedStringArray(["stone", "target", "workbench", "chest"]),
+		"decor_tile_pool": ["stone", "target", "workbench", "chest"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.3
@@ -252,14 +252,14 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.7,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["stone", "table", "desk", "workbench"]),
+		"decor_tile_pool": ["stone", "table", "desk", "workbench"],
 		"adjacency_preferences": {}
 	},
 	"engineers_foundry": {
 		"placement_weight": 0.65,
 		"preferred_footprint_min": Vector2i(3, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["anvil", "workbench", "desk", "water_bucket"]),
+		"decor_tile_pool": ["anvil", "workbench", "desk", "water_bucket"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.4
@@ -269,14 +269,14 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.6,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["table_alt", "chest", "sign", "desk"]),
+		"decor_tile_pool": ["table_alt", "chest", "sign", "desk"],
 		"adjacency_preferences": {}
 	},
 	"runesmith_sanctum": {
 		"placement_weight": 0.5,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["anvil", "sign", "shelf", "desk"]),
+		"decor_tile_pool": ["anvil", "sign", "shelf", "desk"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.2
@@ -286,7 +286,7 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.7,
 		"preferred_footprint_min": Vector2i(3, 2),
 		"preferred_footprint_max": Vector2i(5, 3),
-		"decor_tile_pool": PackedStringArray(["anvil", "water_bucket", "stone", "workbench"]),
+		"decor_tile_pool": ["anvil", "water_bucket", "stone", "workbench"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.5
@@ -296,14 +296,14 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.45,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["desk", "sign", "table", "shelf"]),
+		"decor_tile_pool": ["desk", "sign", "table", "shelf"],
 		"adjacency_preferences": {}
 	},
 	"explorers_guild": {
 		"placement_weight": 0.55,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["target", "table", "chest", "water_bucket"]),
+		"decor_tile_pool": ["target", "table", "chest", "water_bucket"],
 		"adjacency_preferences": {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.15
@@ -313,56 +313,56 @@ const CIVIC_BUILDING_TYPES := {
 		"placement_weight": 0.55,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["desk", "chest", "table_alt", "shelf"]),
+		"decor_tile_pool": ["desk", "chest", "table_alt", "shelf"],
 		"adjacency_preferences": {}
 	},
 	"butchery": {
 		"placement_weight": 0.75,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["butcher_table", "table", "water_bucket", "chest"]),
+		"decor_tile_pool": ["butcher_table", "table", "water_bucket", "chest"],
 		"adjacency_preferences": {}
 	},
 	"bakery": {
 		"placement_weight": 0.7,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["table_alt", "flour", "grain_bag", "stool"]),
+		"decor_tile_pool": ["table_alt", "flour", "grain_bag", "stool"],
 		"adjacency_preferences": {}
 	},
 	"cooperage": {
 		"placement_weight": 0.6,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["keg", "workbench", "chest", "table"]),
+		"decor_tile_pool": ["keg", "workbench", "chest", "table"],
 		"adjacency_preferences": {}
 	},
 	"tannery": {
 		"placement_weight": 0.55,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["water_bucket", "workbench", "chest", "table_alt"]),
+		"decor_tile_pool": ["water_bucket", "workbench", "chest", "table_alt"],
 		"adjacency_preferences": {}
 	},
 	"millhouse": {
 		"placement_weight": 0.65,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(4, 3),
-		"decor_tile_pool": PackedStringArray(["flour", "grain_bag", "table", "shelf"]),
+		"decor_tile_pool": ["flour", "grain_bag", "table", "shelf"],
 		"adjacency_preferences": {}
 	},
 	"cobblers_shop": {
 		"placement_weight": 0.45,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["stool", "chest", "table", "desk"]),
+		"decor_tile_pool": ["stool", "chest", "table", "desk"],
 		"adjacency_preferences": {}
 	},
 	"ropemakers_hall": {
 		"placement_weight": 0.45,
 		"preferred_footprint_min": Vector2i(2, 2),
 		"preferred_footprint_max": Vector2i(3, 3),
-		"decor_tile_pool": PackedStringArray(["table", "workbench", "chest", "stool"]),
+		"decor_tile_pool": ["table", "workbench", "chest", "stool"],
 		"adjacency_preferences": {}
 	}
 }
@@ -1214,7 +1214,7 @@ func _building_type_for_cell(cell: Vector2i) -> String:
 func _pick_civic_building_decor_tile(cell: Vector2i) -> String:
 	var building_type := _building_type_for_cell(cell)
 	var civic_definition := CIVIC_BUILDING_TYPES.get(building_type, CIVIC_BUILDING_TYPES["workshop"]) as Dictionary
-	var decor_pool := civic_definition.get("decor_tile_pool", PackedStringArray(["workbench", "desk", "anvil"])) as PackedStringArray
+	var decor_pool := PackedStringArray(civic_definition.get("decor_tile_pool", ["workbench", "desk", "anvil"]))
 	if decor_pool.is_empty():
 		return ""
 	return String(decor_pool[_rng.randi_range(0, decor_pool.size() - 1)])
