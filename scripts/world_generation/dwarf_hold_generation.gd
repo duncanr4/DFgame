@@ -91,6 +91,9 @@ const EXPECTED_TILE_COORDS := {
 @onready var zone_legend: RichTextLabel = %ZoneLegend
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
 @onready var tile_hover_label: Label = %TileHoverLabel
+@onready var chest_inventory_title: Label = %ChestInventoryTitle
+@onready var chest_inventory_list: RichTextLabel = %ChestInventoryList
+@onready var loot_chest_button: Button = %LootChestButton
 
 var _rng := RandomNumberGenerator.new()
 var _is_panning := false
@@ -102,6 +105,8 @@ var _latest_grid: Dictionary = {}
 var _latest_civic_buildings_by_id: Dictionary = {}
 var _latest_civic_building_type_map: Dictionary = {}
 var _show_zone_overlay := false
+var _chest_inventories: Dictionary = {}
+var _selected_chest_cell := Vector2i(2147483647, 2147483647)
 var _latest_zone_counts := {
 	"halls": 0,
 	"houses": 0,
@@ -137,6 +142,17 @@ const BUILDING_SUBTYPE_FLAVOR := {
 const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
+
+const CHEST_LOOT_TABLE := [
+	{"name": "Iron Ingot", "min": 1, "max": 5},
+	{"name": "Gold Nugget", "min": 1, "max": 3},
+	{"name": "Mushroom Ration", "min": 2, "max": 6},
+	{"name": "Runed Tablet", "min": 1, "max": 2},
+	{"name": "Ale Keg", "min": 1, "max": 2},
+	{"name": "Stone Block", "min": 3, "max": 8},
+	{"name": "Leather Strap", "min": 2, "max": 7},
+	{"name": "Gem Shard", "min": 1, "max": 4}
+]
 
 const CIVIC_BUILDING_TYPES := {
 	"forge": {
@@ -365,10 +381,12 @@ func _ready() -> void:
 	generate_button.pressed.connect(_on_generate_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
+	loot_chest_button.pressed.connect(_on_loot_chest_button_pressed)
 	seed_input.text_submitted.connect(func(_text: String) -> void:
 		_generate_city()
 	)
 	_update_zone_legend()
+	_clear_chest_selection()
 	_generate_city()
 
 func _update_zone_legend() -> void:
@@ -512,6 +530,8 @@ func _generate_city() -> void:
 	_latest_civic_buildings_by_id = _compute_civic_buildings_by_id(grid)
 	_latest_civic_building_type_map = _build_civic_building_type_lookup(_latest_civic_buildings_by_id)
 	_latest_zone_counts = _count_zone_components(grid)
+	_chest_inventories.clear()
+	_clear_chest_selection()
 
 	_render_city(grid)
 	_update_summary(grid, seed_text)
@@ -965,11 +985,73 @@ func _render_city(grid: Dictionary) -> void:
 			if cell == CELL_ROCK and not _is_hall_border_rock_cell(grid, x, y):
 				continue
 			var base_tile := _pick_base_tile(grid, x, y, cell)
-			_place_tile(city_layer, Vector2i(x, y), base_tile)
+			var render_cell := Vector2i(x, y)
+			_place_tile(city_layer, render_cell, base_tile)
 			var decor_tile := _pick_decor_tile(grid, x, y, cell, base_tile, house_decor_overrides)
 			if not decor_tile.is_empty():
-				_place_tile(decor_layer, Vector2i(x, y), decor_tile)
+				_place_tile(decor_layer, render_cell, decor_tile)
+				if decor_tile == "chest":
+					_ensure_chest_inventory(render_cell)
 	_reset_view(bounds)
+
+func _ensure_chest_inventory(cell: Vector2i) -> void:
+	if _chest_inventories.has(cell):
+		return
+	var loot_entries: Array[Dictionary] = []
+	var loot_count := _rng.randi_range(2, 4)
+	for _roll in loot_count:
+		var loot_def := CHEST_LOOT_TABLE[_rng.randi_range(0, CHEST_LOOT_TABLE.size() - 1)] as Dictionary
+		loot_entries.append({
+			"name": String(loot_def.get("name", "Supplies")),
+			"quantity": _rng.randi_range(int(loot_def.get("min", 1)), int(loot_def.get("max", 1)))
+		})
+	_chest_inventories[cell] = loot_entries
+
+func _cell_from_mouse_position(mouse_position: Vector2) -> Vector2i:
+	var local_position := (mouse_position - city_layer.position) / _zoom_level
+	return city_layer.local_to_map(local_position)
+
+func _is_chest_cell(cell: Vector2i) -> bool:
+	if decor_layer.get_cell_source_id(cell) < 0:
+		return false
+	return decor_layer.get_cell_atlas_coords(cell) == TILE_ATLAS["chest"]
+
+func _handle_chest_click(mouse_position: Vector2) -> void:
+	var clicked_cell := _cell_from_mouse_position(mouse_position)
+	if not _is_chest_cell(clicked_cell):
+		_clear_chest_selection()
+		return
+	_selected_chest_cell = clicked_cell
+	_update_chest_inventory_panel()
+
+func _update_chest_inventory_panel() -> void:
+	if _selected_chest_cell.x == 2147483647:
+		_clear_chest_selection()
+		return
+	var loot_entries := _chest_inventories.get(_selected_chest_cell, []) as Array
+	chest_inventory_title.text = "Chest Inventory (%d, %d)" % [_selected_chest_cell.x, _selected_chest_cell.y]
+	if loot_entries.is_empty():
+		chest_inventory_list.text = "[i]This chest is empty.[/i]"
+		loot_chest_button.disabled = true
+		return
+	var lines: PackedStringArray = []
+	for entry_variant: Variant in loot_entries:
+		var entry := entry_variant as Dictionary
+		lines.append("• %s x%d" % [String(entry.get("name", "Supplies")), int(entry.get("quantity", 1))])
+	chest_inventory_list.text = "\n".join(lines)
+	loot_chest_button.disabled = false
+
+func _clear_chest_selection() -> void:
+	_selected_chest_cell = Vector2i(2147483647, 2147483647)
+	chest_inventory_title.text = "Chest Inventory"
+	chest_inventory_list.text = "Click a chest tile to inspect its contents."
+	loot_chest_button.disabled = true
+
+func _on_loot_chest_button_pressed() -> void:
+	if _selected_chest_cell.x == 2147483647:
+		return
+	_chest_inventories[_selected_chest_cell] = []
+	_update_chest_inventory_panel()
 
 func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
 	var visited: Dictionary = {}
@@ -1071,6 +1153,8 @@ func _on_city_panel_gui_input(event: InputEvent) -> void:
 		if mouse_button.button_index == MOUSE_BUTTON_MIDDLE or mouse_button.button_index == MOUSE_BUTTON_RIGHT:
 			_is_panning = mouse_button.pressed
 		if mouse_button.pressed:
+			if mouse_button.button_index == MOUSE_BUTTON_LEFT:
+				_handle_chest_click(mouse_button.position)
 			if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP:
 				_apply_zoom(ZOOM_STEP, mouse_button.position)
 			elif mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
