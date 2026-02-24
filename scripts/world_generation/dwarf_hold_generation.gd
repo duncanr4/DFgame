@@ -221,6 +221,84 @@ const CIVIC_BUILDING_TYPES: Dictionary[String, Dictionary] = {
 			"prefers_hall_arteries": true,
 			"hall_artery_bonus_weight": 0.25
 		}
+	},
+	"miners_guild": {
+		"placement_weight": 0.75,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": PackedStringArray(["stone", "target", "workbench", "chest"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.3
+		}
+	},
+	"mason_lodge": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["stone", "table", "desk", "workbench"]),
+		"adjacency_preferences": {}
+	},
+	"engineers_foundry": {
+		"placement_weight": 0.65,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["anvil", "workbench", "desk", "water_bucket"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.4
+		}
+	},
+	"gemcutters_studio": {
+		"placement_weight": 0.6,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["table_alt", "chest", "sign", "desk"]),
+		"adjacency_preferences": {}
+	},
+	"runesmith_sanctum": {
+		"placement_weight": 0.5,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["anvil", "sign", "shelf", "desk"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.2
+		}
+	},
+	"smeltery": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": PackedStringArray(["anvil", "water_bucket", "stone", "workbench"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.5
+		}
+	},
+	"cartographers_office": {
+		"placement_weight": 0.45,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": PackedStringArray(["desk", "sign", "table", "shelf"]),
+		"adjacency_preferences": {}
+	},
+	"explorers_guild": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["target", "table", "chest", "water_bucket"]),
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.15
+		}
+	},
+	"merchants_counting_house": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": PackedStringArray(["desk", "chest", "table_alt", "shelf"]),
+		"adjacency_preferences": {}
 	}
 }
 
