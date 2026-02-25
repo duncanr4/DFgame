@@ -11,6 +11,10 @@ const CELL_BUILDING := 3
 @export var tile_size := Vector2i(32, 32)
 @export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
 @export var structure_fallback_max_extra_radius := 240
+@export var tavern_vehicle_sprite_path := "res://resources/images/dwarfhold/very_epic_taverner_vehicle.png"
+@export var tavern_npc_count := 5
+@export var tavern_player_speed := 92.0
+@export var tavern_npc_speed_range := Vector2(38.0, 62.0)
 
 const TILE_ATLAS := {
 	"dirt": Vector2i(0, 2),
@@ -89,6 +93,7 @@ const EXPECTED_TILE_COORDS := {
 @onready var decor_layer: TileMapLayer = %DecorTileLayer
 @onready var lighting_layer: Node2D = %LightingLayer
 @onready var torch_lights: Node2D = %TorchLights
+@onready var actor_layer: Node2D = %ActorLayer
 @onready var ambient_shadow: ColorRect = %AmbientShadow
 @onready var zone_overlay: Control = %ZoneOverlay
 @onready var zone_legend: RichTextLabel = %ZoneLegend
@@ -128,6 +133,20 @@ var _latest_requested_zone_counts := {
 	"buildings": 0
 }
 var _torch_light_texture: Texture2D
+var _tavern_character_texture: Texture2D
+var _walkable_cells: Array[Vector2i] = []
+var _player_sprite: Sprite2D
+var _player_cell := Vector2i.ZERO
+var _player_facing_row := 0
+var _npc_states: Array[Dictionary] = []
+
+const TAVERN_SPRITE_COLUMNS := 12
+const TAVERN_SPRITE_ROWS := 8
+const TAVERN_CHARACTER_COLUMNS := 3
+const TAVERN_CHARACTER_ROWS := 4
+const TAVERN_CHARACTER_SLOT_COUNT := 8
+const TAVERN_FRAME_ADVANCE_SECONDS := 0.22
+const TAVERN_WANDER_COOLDOWN_RANGE := Vector2(0.35, 1.25)
 
 const ZONE_OVERLAY_COLORS := {
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
@@ -401,6 +420,7 @@ const CIVIC_BUILDING_TYPES := {
 func _ready() -> void:
 	_configure_tile_layer()
 	_torch_light_texture = _create_torch_light_texture()
+	_tavern_character_texture = load(tavern_vehicle_sprite_path) as Texture2D
 	generate_button.pressed.connect(_on_generate_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
@@ -414,6 +434,10 @@ func _ready() -> void:
 	_update_zone_legend()
 	_clear_chest_selection()
 	_generate_city()
+
+func _process(delta: float) -> void:
+	_update_player_movement(delta)
+	_update_npc_movement(delta)
 
 func _update_zone_legend() -> void:
 	var lines: PackedStringArray = ["[b]Zone Overlay Legend[/b]"]
@@ -560,6 +584,7 @@ func _generate_city() -> void:
 	_clear_chest_selection()
 
 	_render_city(grid)
+	_spawn_tavern_characters(grid)
 	_update_summary(grid, seed_text)
 	_update_zone_overlay()
 
@@ -1356,11 +1381,165 @@ func _update_city_layer_transform() -> void:
 	city_layer.position = _pan_offset + (_map_origin_offset * _zoom_level)
 	decor_layer.scale = city_layer.scale
 	decor_layer.position = city_layer.position
+	actor_layer.scale = city_layer.scale
+	actor_layer.position = city_layer.position
 	if tile_hover_tooltip.visible:
 		tile_hover_tooltip.position = _clamp_tooltip_position(tile_hover_tooltip.position)
 	lighting_layer.scale = city_layer.scale
 	lighting_layer.position = city_layer.position
 	_update_zone_overlay()
+
+func _spawn_tavern_characters(grid: Dictionary) -> void:
+	for child: Node in actor_layer.get_children():
+		child.queue_free()
+	_npc_states.clear()
+	_player_sprite = null
+	_walkable_cells = _collect_walkable_cells(grid)
+	if _walkable_cells.is_empty() or _tavern_character_texture == null:
+		return
+
+	_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
+	_player_facing_row = 0
+	_player_sprite = _create_tavern_character_sprite(0)
+	_actor_sprite_to_cell(_player_sprite, _player_cell)
+	actor_layer.add_child(_player_sprite)
+
+	for i in tavern_npc_count:
+		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
+		var npc_sprite := _create_tavern_character_sprite((i + 1) % TAVERN_CHARACTER_SLOT_COUNT)
+		_actor_sprite_to_cell(npc_sprite, spawn_cell)
+		actor_layer.add_child(npc_sprite)
+		_npc_states.append({
+			"sprite": npc_sprite,
+			"slot": (i + 1) % TAVERN_CHARACTER_SLOT_COUNT,
+			"cell": spawn_cell,
+			"facing_row": 0,
+			"frame": 1,
+			"frame_elapsed": 0.0,
+			"speed": _rng.randf_range(tavern_npc_speed_range.x, tavern_npc_speed_range.y),
+			"cooldown": _rng.randf_range(TAVERN_WANDER_COOLDOWN_RANGE.x, TAVERN_WANDER_COOLDOWN_RANGE.y),
+			"direction": Vector2.ZERO,
+			"target": _cell_center_position(spawn_cell)
+		})
+
+func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for key: Variant in grid.keys():
+		var cell := key as Vector2i
+		var zone := int(grid[key])
+		if zone == CELL_HALL or zone == CELL_HOUSE or zone == CELL_BUILDING:
+			cells.append(cell)
+	return cells
+
+func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = _tavern_character_texture
+	sprite.region_enabled = true
+	sprite.centered = true
+	_update_character_frame(sprite, character_slot, 1, 0)
+	return sprite
+
+func _update_player_movement(delta: float) -> void:
+	if _player_sprite == null:
+		return
+	var input_direction := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	if input_direction.length_squared() > 0.0:
+		input_direction = input_direction.normalized()
+		var target_position := _player_sprite.position + input_direction * tavern_player_speed * delta
+		var target_cell := city_layer.local_to_map(target_position)
+		if _is_walkable_cell(target_cell):
+			_player_sprite.position = target_position
+			_player_cell = target_cell
+			var facing_row := _facing_row_from_direction(input_direction)
+			if facing_row != _player_facing_row:
+				_player_facing_row = facing_row
+			var walk_frame := 1 + int(Time.get_ticks_msec() / int(TAVERN_FRAME_ADVANCE_SECONDS * 1000.0)) % TAVERN_CHARACTER_COLUMNS
+			_update_character_frame(_player_sprite, 0, walk_frame, _player_facing_row)
+		else:
+			_update_character_frame(_player_sprite, 0, 1, _player_facing_row)
+	else:
+		_update_character_frame(_player_sprite, 0, 1, _player_facing_row)
+
+func _update_npc_movement(delta: float) -> void:
+	for state: Dictionary in _npc_states:
+		var sprite := state.get("sprite") as Sprite2D
+		if sprite == null:
+			continue
+		var cooldown := float(state.get("cooldown", 0.0)) - delta
+		var direction := state.get("direction", Vector2.ZERO) as Vector2
+		var target := state.get("target", sprite.position) as Vector2
+		if direction.length_squared() <= 0.0 and cooldown <= 0.0:
+			for _attempt in 6:
+				var candidate := _pick_random_wander_direction()
+				var candidate_cell := city_layer.local_to_map(sprite.position + candidate * float(tile_size.x))
+				if _is_walkable_cell(candidate_cell):
+					direction = candidate
+					target = _cell_center_position(candidate_cell)
+					state["cell"] = candidate_cell
+					state["facing_row"] = _facing_row_from_direction(candidate)
+					break
+			cooldown = _rng.randf_range(TAVERN_WANDER_COOLDOWN_RANGE.x, TAVERN_WANDER_COOLDOWN_RANGE.y)
+
+		if direction.length_squared() > 0.0:
+			var speed := float(state.get("speed", tavern_npc_speed_range.x))
+			sprite.position = sprite.position.move_toward(target, speed * delta)
+			if sprite.position.distance_to(target) <= 0.5:
+				sprite.position = target
+				direction = Vector2.ZERO
+
+		var frame_elapsed := float(state.get("frame_elapsed", 0.0)) + delta
+		var frame := int(state.get("frame", 1))
+		if direction.length_squared() > 0.0 and frame_elapsed >= TAVERN_FRAME_ADVANCE_SECONDS:
+			frame_elapsed = 0.0
+			frame = (frame + 1) % TAVERN_CHARACTER_COLUMNS
+		elif direction.length_squared() <= 0.0:
+			frame = 1
+			frame_elapsed = 0.0
+
+		var facing_row := int(state.get("facing_row", 0))
+		var slot := int(state.get("slot", 1))
+		_update_character_frame(sprite, slot, frame, facing_row)
+
+		state["cooldown"] = cooldown
+		state["direction"] = direction
+		state["target"] = target
+		state["frame"] = frame
+		state["frame_elapsed"] = frame_elapsed
+
+func _pick_random_wander_direction() -> Vector2:
+	var directions: Array[Vector2] = [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]
+	return directions[_rng.randi_range(0, directions.size() - 1)]
+
+func _is_walkable_cell(cell: Vector2i) -> bool:
+	if _latest_grid.is_empty():
+		return false
+	var zone := int(_latest_grid.get(cell, CELL_ROCK))
+	return zone == CELL_HALL or zone == CELL_HOUSE or zone == CELL_BUILDING
+
+func _facing_row_from_direction(direction: Vector2) -> int:
+	if absf(direction.x) > absf(direction.y):
+		return 2 if direction.x < 0.0 else 1
+	return 3 if direction.y < 0.0 else 0
+
+func _update_character_frame(sprite: Sprite2D, character_slot: int, frame_column: int, facing_row: int) -> void:
+	if sprite.texture == null:
+		return
+	var source_size := sprite.texture.get_size()
+	var frame_width := int(source_size.x / TAVERN_SPRITE_COLUMNS)
+	var frame_height := int(source_size.y / TAVERN_SPRITE_ROWS)
+	if frame_width <= 0 or frame_height <= 0:
+		return
+	var slot_column := character_slot % 4
+	var slot_row := character_slot / 4
+	var atlas_column := slot_column * TAVERN_CHARACTER_COLUMNS + (frame_column % TAVERN_CHARACTER_COLUMNS)
+	var atlas_row := slot_row * TAVERN_CHARACTER_ROWS + (facing_row % TAVERN_CHARACTER_ROWS)
+	sprite.region_rect = Rect2(atlas_column * frame_width, atlas_row * frame_height, frame_width, frame_height)
+
+func _actor_sprite_to_cell(sprite: Sprite2D, cell: Vector2i) -> void:
+	sprite.position = _cell_center_position(cell)
+
+func _cell_center_position(cell: Vector2i) -> Vector2:
+	return city_layer.map_to_local(cell) + Vector2(tile_size) * 0.5
 
 func _place_tile(target_layer: TileMapLayer, cell: Vector2i, tile_key: String) -> void:
 	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))

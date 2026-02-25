@@ -80,6 +80,10 @@ position = Vector2(16, 16)
 [node name="TorchLights" type="Node2D" parent="Margin/Layout/CityPanel/LightingLayer"]
 unique_name_in_owner = true
 
+[node name="ActorLayer" type="Node2D" parent="Margin/Layout/CityPanel"]
+unique_name_in_owner = true
+position = Vector2(16, 16)
+
 [node name="AmbientShadow" type="ColorRect" parent="Margin/Layout/CityPanel"]
 unique_name_in_owner = true
 layout_mode = 1
