@@ -421,6 +421,8 @@ func _ready() -> void:
 	_configure_tile_layer()
 	_torch_light_texture = _create_torch_light_texture()
 	_tavern_character_texture = load(tavern_vehicle_sprite_path) as Texture2D
+	if _tavern_character_texture == null:
+		_tavern_character_texture = _create_placeholder_tavern_character_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
@@ -1509,6 +1511,45 @@ func _update_npc_movement(delta: float) -> void:
 func _pick_random_wander_direction() -> Vector2:
 	var directions: Array[Vector2] = [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]
 	return directions[_rng.randi_range(0, directions.size() - 1)]
+
+func _create_placeholder_tavern_character_texture() -> Texture2D:
+	var frame_size := Vector2i(16, 16)
+	var texture_size := Vector2i(TAVERN_SPRITE_COLUMNS * frame_size.x, TAVERN_SPRITE_ROWS * frame_size.y)
+	var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.0, 0.0, 0.0, 0.0))
+
+	var base_palette := [
+		Color(0.86, 0.29, 0.29, 1.0),
+		Color(0.31, 0.73, 0.38, 1.0),
+		Color(0.29, 0.53, 0.86, 1.0),
+		Color(0.85, 0.69, 0.25, 1.0),
+		Color(0.71, 0.36, 0.84, 1.0),
+		Color(0.23, 0.76, 0.77, 1.0),
+		Color(0.88, 0.47, 0.16, 1.0),
+		Color(0.52, 0.61, 0.22, 1.0)
+	]
+
+	for slot in TAVERN_CHARACTER_SLOT_COUNT:
+		var slot_column := slot % 4
+		var slot_row := slot / 4
+		var base_color: Color = base_palette[slot % base_palette.size()]
+		for facing in TAVERN_CHARACTER_ROWS:
+			for frame in TAVERN_CHARACTER_COLUMNS:
+				var atlas_column := slot_column * TAVERN_CHARACTER_COLUMNS + frame
+				var atlas_row := slot_row * TAVERN_CHARACTER_ROWS + facing
+				var top_left := Vector2i(atlas_column * frame_size.x, atlas_row * frame_size.y)
+
+				var brightness := 0.85 + (0.07 * frame) + (0.03 * facing)
+				var fill_color := base_color * brightness
+				fill_color.a = 1.0
+				image.fill_rect(Rect2i(top_left, frame_size), fill_color)
+
+				var eye_y := top_left.y + 4
+				image.set_pixel(top_left.x + 5, eye_y, Color(0.1, 0.1, 0.1, 1.0))
+				image.set_pixel(top_left.x + 10, eye_y, Color(0.1, 0.1, 0.1, 1.0))
+				image.fill_rect(Rect2i(top_left + Vector2i(4, 11), Vector2i(8, 2)), Color(0.14, 0.14, 0.14, 1.0))
+
+	return ImageTexture.create_from_image(image)
 
 func _is_walkable_cell(cell: Vector2i) -> bool:
 	if _latest_grid.is_empty():
