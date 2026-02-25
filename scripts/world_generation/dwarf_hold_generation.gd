@@ -91,9 +91,14 @@ const EXPECTED_TILE_COORDS := {
 @onready var zone_legend: RichTextLabel = %ZoneLegend
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
 @onready var tile_hover_label: Label = %TileHoverLabel
-@onready var chest_inventory_title: Label = %ChestInventoryTitle
-@onready var chest_inventory_list: RichTextLabel = %ChestInventoryList
-@onready var loot_chest_button: Button = %LootChestButton
+@onready var chest_popup: PanelContainer = %ChestPopup
+@onready var chest_popup_title: Label = %ChestPopupTitle
+@onready var chest_grid: GridContainer = %ChestGrid
+@onready var backpack_grid: GridContainer = %BackpackGrid
+@onready var chest_popup_status_label: Label = %ChestPopupStatusLabel
+@onready var chest_popup_take_all_button: Button = %ChestPopupTakeAllButton
+@onready var chest_popup_close_button: Button = %ChestPopupCloseButton
+@onready var chest_popup_close_footer_button: Button = %ChestPopupCloseFooterButton
 
 var _rng := RandomNumberGenerator.new()
 var _is_panning := false
@@ -107,6 +112,8 @@ var _latest_civic_building_type_map: Dictionary = {}
 var _show_zone_overlay := false
 var _chest_inventories: Dictionary = {}
 var _selected_chest_cell := Vector2i(2147483647, 2147483647)
+var _chest_slot_panels: Array[PanelContainer] = []
+var _chest_slot_labels: Array[Label] = []
 var _latest_zone_counts := {
 	"halls": 0,
 	"houses": 0,
@@ -142,6 +149,10 @@ const BUILDING_SUBTYPE_FLAVOR := {
 const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
+
+const CHEST_SLOT_COLUMNS := 8
+const CHEST_SLOT_ROWS := 4
+const BACKPACK_SLOT_ROWS := 3
 
 const CHEST_LOOT_TABLE := [
 	{"name": "Iron Ingot", "min": 1, "max": 5},
@@ -381,7 +392,10 @@ func _ready() -> void:
 	generate_button.pressed.connect(_on_generate_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
-	loot_chest_button.pressed.connect(_on_loot_chest_button_pressed)
+	chest_popup_take_all_button.pressed.connect(_on_loot_chest_button_pressed)
+	chest_popup_close_button.pressed.connect(_on_chest_popup_close_button_pressed)
+	chest_popup_close_footer_button.pressed.connect(_on_chest_popup_close_button_pressed)
+	_initialize_chest_popup_grids()
 	seed_input.text_submitted.connect(func(_text: String) -> void:
 		_generate_city()
 	)
@@ -1029,29 +1043,89 @@ func _update_chest_inventory_panel() -> void:
 		_clear_chest_selection()
 		return
 	var loot_entries := _chest_inventories.get(_selected_chest_cell, []) as Array
-	chest_inventory_title.text = "Chest Inventory (%d, %d)" % [_selected_chest_cell.x, _selected_chest_cell.y]
+	chest_popup.visible = true
+	chest_popup_title.text = "Chest (%d, %d)" % [_selected_chest_cell.x, _selected_chest_cell.y]
+	_populate_chest_slots(loot_entries)
 	if loot_entries.is_empty():
-		chest_inventory_list.text = "[i]This chest is empty.[/i]"
-		loot_chest_button.disabled = true
+		chest_popup_status_label.text = "This chest is empty."
+		chest_popup_take_all_button.disabled = true
 		return
-	var lines: PackedStringArray = []
-	for entry_variant: Variant in loot_entries:
-		var entry := entry_variant as Dictionary
-		lines.append("• %s x%d" % [String(entry.get("name", "Supplies")), int(entry.get("quantity", 1))])
-	chest_inventory_list.text = "\n".join(lines)
-	loot_chest_button.disabled = false
+	chest_popup_status_label.text = "Click another chest tile to inspect a different chest."
+	chest_popup_take_all_button.disabled = false
 
 func _clear_chest_selection() -> void:
 	_selected_chest_cell = Vector2i(2147483647, 2147483647)
-	chest_inventory_title.text = "Chest Inventory"
-	chest_inventory_list.text = "Click a chest tile to inspect its contents."
-	loot_chest_button.disabled = true
+	chest_popup_title.text = "Chest"
+	chest_popup_status_label.text = "Select a chest tile to view contents"
+	chest_popup_take_all_button.disabled = true
+	_populate_chest_slots([])
+	chest_popup.visible = false
 
 func _on_loot_chest_button_pressed() -> void:
 	if _selected_chest_cell.x == 2147483647:
 		return
 	_chest_inventories[_selected_chest_cell] = []
 	_update_chest_inventory_panel()
+
+func _on_chest_popup_close_button_pressed() -> void:
+	_clear_chest_selection()
+
+func _initialize_chest_popup_grids() -> void:
+	_create_inventory_slots(chest_grid, CHEST_SLOT_COLUMNS * CHEST_SLOT_ROWS, _chest_slot_panels, _chest_slot_labels)
+	var backpack_panels: Array[PanelContainer] = []
+	var backpack_labels: Array[Label] = []
+	_create_inventory_slots(backpack_grid, CHEST_SLOT_COLUMNS * BACKPACK_SLOT_ROWS, backpack_panels, backpack_labels)
+
+func _create_inventory_slots(target_grid: GridContainer, slot_count: int, out_panels: Array[PanelContainer], out_labels: Array[Label]) -> void:
+	for child in target_grid.get_children():
+		child.queue_free()
+	out_panels.clear()
+	out_labels.clear()
+	for _slot in slot_count:
+		var panel := PanelContainer.new()
+		panel.custom_minimum_size = Vector2(36, 36)
+		var slot_style := StyleBoxFlat.new()
+		slot_style.bg_color = Color(0.68, 0.56, 0.44, 1.0) if target_grid == chest_grid else Color(0.76, 0.80, 0.78, 1.0)
+		slot_style.border_width_left = 2
+		slot_style.border_width_top = 2
+		slot_style.border_width_right = 2
+		slot_style.border_width_bottom = 2
+		slot_style.border_color = Color(0.34, 0.22, 0.12, 1.0) if target_grid == chest_grid else Color(0.52, 0.56, 0.54, 1.0)
+		panel.add_theme_stylebox_override("panel", slot_style)
+		var label := Label.new()
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		label.text = ""
+		panel.add_child(label)
+		target_grid.add_child(panel)
+		out_panels.append(panel)
+		out_labels.append(label)
+
+func _populate_chest_slots(loot_entries: Array) -> void:
+	for i in range(_chest_slot_labels.size()):
+		_chest_slot_labels[i].text = ""
+		_chest_slot_panels[i].tooltip_text = ""
+	for i in range(mini(loot_entries.size(), _chest_slot_labels.size())):
+		var entry := loot_entries[i] as Dictionary
+		var item_name := String(entry.get("name", "Supplies"))
+		var quantity := int(entry.get("quantity", 1))
+		_chest_slot_labels[i].text = "%s\n%d" % [_item_abbreviation(item_name), quantity]
+		_chest_slot_panels[i].tooltip_text = "%s x%d" % [item_name, quantity]
+
+func _item_abbreviation(item_name: String) -> String:
+	var words := item_name.split(" ", false)
+	if words.is_empty():
+		return "?"
+	if words.size() == 1:
+		return String(words[0]).substr(0, mini(3, String(words[0]).length())).to_upper()
+	var abbreviation := ""
+	for i in range(mini(words.size(), 2)):
+		var word := String(words[i])
+		if not word.is_empty():
+			abbreviation += word.substr(0, 1).to_upper()
+	return abbreviation
 
 func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
 	var visited: Dictionary = {}

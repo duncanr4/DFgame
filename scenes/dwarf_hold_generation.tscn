@@ -168,6 +168,91 @@ text = "Awaiting generation"
 vertical_alignment = 1
 autowrap_mode = 3
 
+[node name="ChestPopup" type="PanelContainer" parent="." unique_id=765229013]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -220.0
+offset_right = 250.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1prb4")
+
+[node name="Content" type="VBoxContainer" parent="ChestPopup" unique_id=1132940581]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="ChestPopup/Content" unique_id=170299281]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChestPopupTitle" type="Label" parent="ChestPopup/Content/Header" unique_id=185531805]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "Chest"
+
+[node name="ChestPopupCloseButton" type="Button" parent="ChestPopup/Content/Header" unique_id=515005198]
+unique_name_in_owner = true
+layout_mode = 2
+text = "✕"
+
+[node name="ChestSectionLabel" type="Label" parent="ChestPopup/Content" unique_id=72388914]
+layout_mode = 2
+text = "Chest Storage"
+
+[node name="ChestGrid" type="GridContainer" parent="ChestPopup/Content" unique_id=336791203]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 8
+
+[node name="ChestPopupStatusLabel" type="Label" parent="ChestPopup/Content" unique_id=143800192]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Select a chest tile to view contents"
+
+[node name="Divider" type="HSeparator" parent="ChestPopup/Content" unique_id=117610458]
+layout_mode = 2
+
+[node name="BackpackSectionLabel" type="Label" parent="ChestPopup/Content" unique_id=909011322]
+layout_mode = 2
+text = "Backpack (visual placeholder)"
+
+[node name="BackpackGrid" type="GridContainer" parent="ChestPopup/Content" unique_id=892333642]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 8
+
+[node name="Actions" type="HBoxContainer" parent="ChestPopup/Content" unique_id=148199261]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="ChestPopupTakeAllButton" type="Button" parent="ChestPopup/Content/Actions" unique_id=154842991]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Take All"
+
+[node name="ChestPopupCloseFooterButton" type="Button" parent="ChestPopup/Content/Actions" unique_id=621122801]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Close"
+
 [node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=2022403230]
 tile_set = SubResource("TileSet_3ixrg")
 rendering_quadrant_size = 32
