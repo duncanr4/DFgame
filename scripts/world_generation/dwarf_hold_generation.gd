@@ -1560,6 +1560,12 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 
 	for i in tavern_npc_count:
 		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
+		for _attempt in 12:
+			if _is_npc_walkable_cell(spawn_cell):
+				break
+			spawn_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
+		if not _is_npc_walkable_cell(spawn_cell):
+			continue
 		var npc_sprite := _create_tavern_character_sprite((i + 1) % TAVERN_CHARACTER_SLOT_COUNT)
 		_actor_sprite_to_cell(npc_sprite, spawn_cell)
 		actor_layer.add_child(npc_sprite)
@@ -1633,7 +1639,7 @@ func _update_npc_movement(delta: float) -> void:
 			for _attempt in 6:
 				var candidate := _pick_random_wander_direction()
 				var candidate_cell := city_layer.local_to_map(sprite.position + candidate * float(tile_size.x))
-				if _is_walkable_cell(candidate_cell):
+				if _is_npc_walkable_cell(candidate_cell):
 					direction = candidate
 					target = _cell_center_position(candidate_cell)
 					state["cell"] = candidate_cell
@@ -1715,6 +1721,13 @@ func _is_walkable_cell(cell: Vector2i) -> bool:
 		return false
 	var zone := int(_latest_grid.get(cell, CELL_ROCK))
 	return zone == CELL_HALL or zone == CELL_HOUSE or zone == CELL_BUILDING
+
+func _is_npc_walkable_cell(cell: Vector2i) -> bool:
+	if not _is_walkable_cell(cell):
+		return false
+	if decor_layer.get_cell_source_id(cell) < 0:
+		return true
+	return decor_layer.get_cell_atlas_coords(cell) != TILE_ATLAS["stone"]
 
 func _facing_row_from_direction(direction: Vector2) -> int:
 	if absf(direction.x) > absf(direction.y):
