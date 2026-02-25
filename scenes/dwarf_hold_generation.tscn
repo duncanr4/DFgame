@@ -73,6 +73,24 @@ position = Vector2(16, 16)
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
+[node name="LightingLayer" type="Node2D" parent="Margin/Layout/CityPanel"]
+unique_name_in_owner = true
+position = Vector2(16, 16)
+
+[node name="TorchLights" type="Node2D" parent="Margin/Layout/CityPanel/LightingLayer"]
+unique_name_in_owner = true
+
+[node name="AmbientShadow" type="ColorRect" parent="Margin/Layout/CityPanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0588235, 0.0470588, 0.0431373, 0.24)
+
 [node name="ZoneOverlay" type="Control" parent="Margin/Layout/CityPanel" unique_id=816640221]
 unique_name_in_owner = true
 layout_mode = 1
