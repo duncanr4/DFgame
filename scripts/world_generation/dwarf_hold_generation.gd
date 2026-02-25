@@ -84,6 +84,10 @@ const EXPECTED_TILE_COORDS := {
 	"target": Vector2i(6, 3),
 	"anvil": Vector2i(6, 4)
 }
+const PASSABLE_TILE_KEYS := PackedStringArray(["floor", "door"])
+const COLLISION_LAYER_WORLD := 1
+
+
 
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
@@ -499,7 +503,27 @@ func _configure_tile_layer() -> void:
 
 	var tile_set := TileSet.new()
 	tile_set.tile_size = tile_size
+	tile_set.add_physics_layer()
+	tile_set.set_physics_layer_collision_layer(0, COLLISION_LAYER_WORLD)
+	tile_set.set_physics_layer_collision_mask(0, 0)
 	tile_set.add_source(atlas, 0)
+
+	var collision_polygon := PackedVector2Array([
+		Vector2.ZERO,
+		Vector2(tile_size.x, 0),
+		Vector2(tile_size.x, tile_size.y),
+		Vector2(0, tile_size.y)
+	])
+	for atlas_coords: Vector2i in unique_atlas_coords.keys():
+		var tile_data := atlas.get_tile_data(atlas_coords, 0)
+		if tile_data == null:
+			continue
+		if _is_passable_atlas_tile(atlas_coords):
+			tile_data.set_collision_polygons_count(0, 0)
+		else:
+			tile_data.set_collision_polygons_count(0, 1)
+			tile_data.set_collision_polygon_points(0, 0, collision_polygon)
+
 	city_layer.tile_set = tile_set
 	decor_layer.tile_set = tile_set
 
@@ -514,6 +538,21 @@ func _validate_tile_mapping() -> bool:
 			push_error("Tile mapping mismatch for %s. Expected %s but found %s" % [tile_key, expected_coords, actual_coords])
 			return false
 	return true
+
+func _is_passable_atlas_tile(atlas_coords: Vector2i) -> bool:
+	for tile_key: String in PASSABLE_TILE_KEYS:
+		if TILE_ATLAS.get(tile_key, Vector2i(-1, -1)) == atlas_coords:
+			return true
+	return false
+
+func _is_passable_cell_for_actor(cell: Vector2i) -> bool:
+	if city_layer.get_cell_source_id(cell) < 0:
+		return false
+	if not _is_passable_atlas_tile(city_layer.get_cell_atlas_coords(cell)):
+		return false
+	if decor_layer.get_cell_source_id(cell) < 0:
+		return true
+	return _is_passable_atlas_tile(decor_layer.get_cell_atlas_coords(cell))
 
 func _on_generate_pressed() -> void:
 	_generate_city()
@@ -1561,10 +1600,10 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	for i in tavern_npc_count:
 		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
 		for _attempt in 12:
-			if _is_npc_walkable_cell(spawn_cell):
+			if _is_walkable_cell(spawn_cell):
 				break
 			spawn_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
-		if not _is_npc_walkable_cell(spawn_cell):
+		if not _is_walkable_cell(spawn_cell):
 			continue
 		var npc_sprite := _create_tavern_character_sprite((i + 1) % TAVERN_CHARACTER_SLOT_COUNT)
 		_actor_sprite_to_cell(npc_sprite, spawn_cell)
@@ -1720,7 +1759,9 @@ func _is_walkable_cell(cell: Vector2i) -> bool:
 	if _latest_grid.is_empty():
 		return false
 	var zone := int(_latest_grid.get(cell, CELL_ROCK))
-	return zone == CELL_HALL or zone == CELL_HOUSE or zone == CELL_BUILDING
+	if zone != CELL_HALL and zone != CELL_HOUSE and zone != CELL_BUILDING:
+		return false
+	return _is_passable_cell_for_actor(cell)
 
 func _is_npc_walkable_cell(cell: Vector2i) -> bool:
 	if not _is_walkable_cell(cell):
