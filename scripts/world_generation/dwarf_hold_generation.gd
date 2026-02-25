@@ -15,6 +15,7 @@ const CELL_BUILDING := 3
 @export var tavern_npc_count := 5
 @export var tavern_player_speed := 92.0
 @export var tavern_npc_speed_range := Vector2(38.0, 62.0)
+@export var enable_fog_of_war := true
 
 const TILE_ATLAS := {
 	"dirt": Vector2i(0, 2),
@@ -92,9 +93,11 @@ const EXPECTED_TILE_COORDS := {
 @onready var city_layer: TileMapLayer = %CityTileLayer
 @onready var decor_layer: TileMapLayer = %DecorTileLayer
 @onready var lighting_layer: Node2D = %LightingLayer
+@onready var global_darkness: CanvasModulate = %GlobalDarkness
 @onready var torch_lights: Node2D = %TorchLights
+@onready var player_light: PointLight2D = %PlayerLight
+@onready var fog_of_war: Sprite2D = %FogOfWar
 @onready var actor_layer: Node2D = %ActorLayer
-@onready var ambient_shadow: ColorRect = %AmbientShadow
 @onready var zone_overlay: Control = %ZoneOverlay
 @onready var zone_legend: RichTextLabel = %ZoneLegend
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
@@ -133,6 +136,8 @@ var _latest_requested_zone_counts := {
 	"buildings": 0
 }
 var _torch_light_texture: Texture2D
+var _fog_image: Image
+var _fog_texture: ImageTexture
 var _tavern_character_texture: Texture2D
 var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
@@ -174,11 +179,20 @@ const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
 
 const TORCH_LIGHT_COLOR := Color(1.0, 0.82, 0.56, 1.0)
+const PLAYER_LIGHT_COLOR := Color(1.0, 0.92, 0.72, 1.0)
 const TORCH_LIGHT_RADIUS_CELLS := 4.8
 const HALL_LIGHT_RADIUS_CELLS := 3.4
+const PLAYER_LIGHT_RADIUS_CELLS := 5.5
 const TORCH_LIGHT_ENERGY := 1.2
 const HALL_LIGHT_ENERGY := 0.7
+const PLAYER_LIGHT_ENERGY := 1.3
 const MAX_TORCH_LIGHTS := 84
+const LIGHT_CULL_DISTANCE_CELLS := 50.0
+const LIGHT_CHUNK_SIZE := 12
+const LIGHT_ACTIVE_CHUNK_RADIUS := 4
+
+const FOG_CHUNK_SIZE := 12
+const FOG_REVEAL_CHUNK_RADIUS := 1
 
 const CHEST_SLOT_COLUMNS := 8
 const CHEST_SLOT_ROWS := 4
@@ -420,6 +434,13 @@ const CIVIC_BUILDING_TYPES := {
 func _ready() -> void:
 	_configure_tile_layer()
 	_torch_light_texture = _create_torch_light_texture()
+	global_darkness.color = Color(0.2, 0.2, 0.24, 1.0)
+	player_light.texture = _torch_light_texture
+	player_light.color = PLAYER_LIGHT_COLOR
+	player_light.energy = PLAYER_LIGHT_ENERGY
+	player_light.blend_mode = Light2D.BLEND_MODE_ADD
+	player_light.texture_scale = maxf((float(tile_size.x) * PLAYER_LIGHT_RADIUS_CELLS) / 128.0, 0.05)
+	player_light.visible = false
 	_tavern_character_texture = load(tavern_vehicle_sprite_path) as Texture2D
 	if _tavern_character_texture == null:
 		_tavern_character_texture = _create_placeholder_tavern_character_texture()
@@ -440,6 +461,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_player_movement(delta)
 	_update_npc_movement(delta)
+	if _player_sprite != null:
+		player_light.position = _player_sprite.position
 
 func _update_zone_legend() -> void:
 	var lines: PackedStringArray = ["[b]Zone Overlay Legend[/b]"]
@@ -1045,6 +1068,7 @@ func _render_city(grid: Dictionary) -> void:
 				_place_tile(decor_layer, render_cell, decor_tile)
 				if decor_tile == "chest":
 					_ensure_chest_inventory(render_cell)
+	_initialize_fog_of_war(grid)
 	_refresh_lighting(grid)
 	_reset_view(bounds)
 
@@ -1070,10 +1094,21 @@ func _refresh_lighting(grid: Dictionary) -> void:
 		child.queue_free()
 	if _torch_light_texture == null:
 		return
+	if _player_sprite != null:
+		player_light.visible = true
+		player_light.position = _player_sprite.position
+	else:
+		player_light.visible = false
+
+	var light_center_cell := _get_light_culling_center_cell(grid)
+	var active_chunk_center := _chunk_from_cell(light_center_cell, LIGHT_CHUNK_SIZE)
 
 	var light_cells: Dictionary = {}
 	for door_cell_variant: Variant in _door_cells.keys():
-		light_cells[door_cell_variant as Vector2i] = {"radius": TORCH_LIGHT_RADIUS_CELLS, "energy": TORCH_LIGHT_ENERGY}
+		var door_cell := door_cell_variant as Vector2i
+		if not _is_light_cell_in_active_region(door_cell, light_center_cell, active_chunk_center):
+			continue
+		light_cells[door_cell] = {"radius": TORCH_LIGHT_RADIUS_CELLS, "energy": TORCH_LIGHT_ENERGY}
 
 	var hall_candidates: Array[Vector2i] = []
 	for cell_variant: Variant in grid.keys():
@@ -1092,6 +1127,8 @@ func _refresh_lighting(grid: Dictionary) -> void:
 			break
 		if light_cells.has(hall_cell):
 			continue
+		if not _is_light_cell_in_active_region(hall_cell, light_center_cell, active_chunk_center):
+			continue
 		light_cells[hall_cell] = {"radius": HALL_LIGHT_RADIUS_CELLS, "energy": HALL_LIGHT_ENERGY}
 
 	for light_cell_variant: Variant in light_cells.keys():
@@ -1099,14 +1136,34 @@ func _refresh_lighting(grid: Dictionary) -> void:
 		var payload := light_cells[light_cell] as Dictionary
 		_spawn_torch_light(light_cell, float(payload.get("radius", TORCH_LIGHT_RADIUS_CELLS)), float(payload.get("energy", TORCH_LIGHT_ENERGY)))
 
-	ambient_shadow.visible = not light_cells.is_empty()
-
 func _hall_neighbor_count(grid: Dictionary, cell: Vector2i) -> int:
 	var count := 0
 	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 		if _cell_at(grid, cell.x + direction.x, cell.y + direction.y) == CELL_HALL:
 			count += 1
 	return count
+
+func _get_light_culling_center_cell(grid: Dictionary) -> Vector2i:
+	if _player_sprite != null:
+		return _player_cell
+	if not grid.is_empty():
+		for key: Variant in grid.keys():
+			return key as Vector2i
+	return Vector2i.ZERO
+
+func _chunk_from_cell(cell: Vector2i, chunk_size: int) -> Vector2i:
+	if chunk_size <= 0:
+		return Vector2i.ZERO
+	return Vector2i(
+		int(floor(float(cell.x) / float(chunk_size))),
+		int(floor(float(cell.y) / float(chunk_size)))
+	)
+
+func _is_light_cell_in_active_region(cell: Vector2i, center_cell: Vector2i, center_chunk: Vector2i) -> bool:
+	if cell.distance_to(center_cell) > LIGHT_CULL_DISTANCE_CELLS:
+		return false
+	var chunk := _chunk_from_cell(cell, LIGHT_CHUNK_SIZE)
+	return abs(chunk.x - center_chunk.x) <= LIGHT_ACTIVE_CHUNK_RADIUS and abs(chunk.y - center_chunk.y) <= LIGHT_ACTIVE_CHUNK_RADIUS
 
 func _spawn_torch_light(cell: Vector2i, radius_cells: float, energy: float) -> void:
 	var light := PointLight2D.new()
@@ -1121,6 +1178,54 @@ func _spawn_torch_light(cell: Vector2i, radius_cells: float, energy: float) -> v
 		(float(cell.y) + 0.5) * tile_size.y
 	)
 	torch_lights.add_child(light)
+
+func _initialize_fog_of_war(grid: Dictionary) -> void:
+	if not enable_fog_of_war:
+		fog_of_war.visible = false
+		return
+	if grid.is_empty():
+		fog_of_war.visible = false
+		return
+	var bounds := _find_bounds(grid)
+	var image_size := Vector2i(
+		maxi(bounds.size.x * tile_size.x, 1),
+		maxi(bounds.size.y * tile_size.y, 1)
+	)
+	_fog_image = Image.create(image_size.x, image_size.y, false, Image.FORMAT_RGBA8)
+	_fog_image.fill(Color(1, 1, 1, 1))
+	_fog_texture = ImageTexture.create_from_image(_fog_image)
+	fog_of_war.texture = _fog_texture
+	fog_of_war.position = Vector2(bounds.position * tile_size)
+	fog_of_war.visible = true
+	_reveal_fog_chunks_around_cell(_player_cell)
+
+func _reveal_fog_chunks_around_cell(cell: Vector2i) -> void:
+	if not enable_fog_of_war:
+		return
+	if _fog_image == null or _fog_texture == null:
+		return
+	var center_chunk := _chunk_from_cell(cell, FOG_CHUNK_SIZE)
+	for chunk_y in range(center_chunk.y - FOG_REVEAL_CHUNK_RADIUS, center_chunk.y + FOG_REVEAL_CHUNK_RADIUS + 1):
+		for chunk_x in range(center_chunk.x - FOG_REVEAL_CHUNK_RADIUS, center_chunk.x + FOG_REVEAL_CHUNK_RADIUS + 1):
+			_reveal_fog_chunk(Vector2i(chunk_x, chunk_y))
+
+func _reveal_fog_chunk(chunk: Vector2i) -> void:
+	if _fog_image == null:
+		return
+	var chunk_origin_cell := chunk * FOG_CHUNK_SIZE
+	var start := Vector2i(chunk_origin_cell * tile_size)
+	var chunk_pixel_size := Vector2i(FOG_CHUNK_SIZE * tile_size.x, FOG_CHUNK_SIZE * tile_size.y)
+	var end := start + chunk_pixel_size
+	var fog_width := _fog_image.get_width()
+	var fog_height := _fog_image.get_height()
+	if end.x < 0 or end.y < 0 or start.x >= fog_width or start.y >= fog_height:
+		return
+	var clipped_start := Vector2i(maxi(start.x, 0), maxi(start.y, 0))
+	var clipped_end := Vector2i(mini(end.x, fog_width), mini(end.y, fog_height))
+	for py in range(clipped_start.y, clipped_end.y):
+		for px in range(clipped_start.x, clipped_end.x):
+			_fog_image.set_pixel(px, py, Color(0, 0, 0, 0))
+	_fog_texture.update(_fog_image)
 
 func _ensure_chest_inventory(cell: Vector2i) -> void:
 	if _chest_inventories.has(cell):
@@ -1405,6 +1510,9 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_player_sprite = _create_tavern_character_sprite(0)
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
 	actor_layer.add_child(_player_sprite)
+	player_light.visible = true
+	player_light.position = _player_sprite.position
+	_reveal_fog_chunks_around_cell(_player_cell)
 
 	for i in tavern_npc_count:
 		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
@@ -1423,6 +1531,7 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 			"direction": Vector2.ZERO,
 			"target": _cell_center_position(spawn_cell)
 		})
+	_refresh_lighting(grid)
 
 func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
@@ -1451,7 +1560,13 @@ func _update_player_movement(delta: float) -> void:
 		var target_cell := city_layer.local_to_map(target_position)
 		if _is_walkable_cell(target_cell):
 			_player_sprite.position = target_position
-			_player_cell = target_cell
+			if target_cell != _player_cell:
+				_player_cell = target_cell
+				_reveal_fog_chunks_around_cell(_player_cell)
+				if not _latest_grid.is_empty():
+					_refresh_lighting(_latest_grid)
+			else:
+				_player_cell = target_cell
 			var facing_row := _facing_row_from_direction(input_direction)
 			if facing_row != _player_facing_row:
 				_player_facing_row = facing_row
