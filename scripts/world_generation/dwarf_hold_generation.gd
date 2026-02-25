@@ -87,6 +87,9 @@ const EXPECTED_TILE_COORDS := {
 @onready var city_panel: PanelContainer = %CityPanel
 @onready var city_layer: TileMapLayer = %CityTileLayer
 @onready var decor_layer: TileMapLayer = %DecorTileLayer
+@onready var lighting_layer: Node2D = %LightingLayer
+@onready var torch_lights: Node2D = %TorchLights
+@onready var ambient_shadow: ColorRect = %AmbientShadow
 @onready var zone_overlay: Control = %ZoneOverlay
 @onready var zone_legend: RichTextLabel = %ZoneLegend
 @onready var tile_hover_tooltip: PanelContainer = %TileHoverTooltip
@@ -124,6 +127,7 @@ var _latest_requested_zone_counts := {
 	"houses": 0,
 	"buildings": 0
 }
+var _torch_light_texture: Texture2D
 
 const ZONE_OVERLAY_COLORS := {
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
@@ -149,6 +153,13 @@ const BUILDING_SUBTYPE_FLAVOR := {
 const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
+
+const TORCH_LIGHT_COLOR := Color(1.0, 0.82, 0.56, 1.0)
+const TORCH_LIGHT_RADIUS_CELLS := 4.8
+const HALL_LIGHT_RADIUS_CELLS := 3.4
+const TORCH_LIGHT_ENERGY := 1.2
+const HALL_LIGHT_ENERGY := 0.7
+const MAX_TORCH_LIGHTS := 84
 
 const CHEST_SLOT_COLUMNS := 8
 const CHEST_SLOT_ROWS := 4
@@ -389,6 +400,7 @@ const CIVIC_BUILDING_TYPES := {
 
 func _ready() -> void:
 	_configure_tile_layer()
+	_torch_light_texture = _create_torch_light_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
@@ -1006,7 +1018,82 @@ func _render_city(grid: Dictionary) -> void:
 				_place_tile(decor_layer, render_cell, decor_tile)
 				if decor_tile == "chest":
 					_ensure_chest_inventory(render_cell)
+	_refresh_lighting(grid)
 	_reset_view(bounds)
+
+
+func _create_torch_light_texture() -> Texture2D:
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([
+		Color(1.0, 1.0, 1.0, 1.0),
+		Color(1.0, 1.0, 1.0, 0.35),
+		Color(1.0, 1.0, 1.0, 0.0)
+	])
+	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.width = 256
+	texture.height = 256
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	return texture
+
+func _refresh_lighting(grid: Dictionary) -> void:
+	for child in torch_lights.get_children():
+		child.queue_free()
+	if _torch_light_texture == null:
+		return
+
+	var light_cells: Dictionary = {}
+	for door_cell_variant: Variant in _door_cells.keys():
+		light_cells[door_cell_variant as Vector2i] = {"radius": TORCH_LIGHT_RADIUS_CELLS, "energy": TORCH_LIGHT_ENERGY}
+
+	var hall_candidates: Array[Vector2i] = []
+	for cell_variant: Variant in grid.keys():
+		var cell := cell_variant as Vector2i
+		if _cell_at(grid, cell.x, cell.y) != CELL_HALL:
+			continue
+		if cell.x % 10 != 0 and cell.y % 10 != 0:
+			continue
+		if _hall_neighbor_count(grid, cell) < 3:
+			continue
+		hall_candidates.append(cell)
+
+	hall_candidates.shuffle()
+	for hall_cell in hall_candidates:
+		if light_cells.size() >= MAX_TORCH_LIGHTS:
+			break
+		if light_cells.has(hall_cell):
+			continue
+		light_cells[hall_cell] = {"radius": HALL_LIGHT_RADIUS_CELLS, "energy": HALL_LIGHT_ENERGY}
+
+	for light_cell_variant: Variant in light_cells.keys():
+		var light_cell := light_cell_variant as Vector2i
+		var payload := light_cells[light_cell] as Dictionary
+		_spawn_torch_light(light_cell, float(payload.get("radius", TORCH_LIGHT_RADIUS_CELLS)), float(payload.get("energy", TORCH_LIGHT_ENERGY)))
+
+	ambient_shadow.visible = not light_cells.is_empty()
+
+func _hall_neighbor_count(grid: Dictionary, cell: Vector2i) -> int:
+	var count := 0
+	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		if _cell_at(grid, cell.x + direction.x, cell.y + direction.y) == CELL_HALL:
+			count += 1
+	return count
+
+func _spawn_torch_light(cell: Vector2i, radius_cells: float, energy: float) -> void:
+	var light := PointLight2D.new()
+	light.texture = _torch_light_texture
+	light.color = TORCH_LIGHT_COLOR
+	light.energy = energy
+	light.blend_mode = Light2D.BLEND_MODE_ADD
+	var radius_pixels := float(tile_size.x) * radius_cells
+	light.texture_scale = maxf(radius_pixels / 128.0, 0.05)
+	light.position = Vector2(
+		(float(cell.x) + 0.5) * tile_size.x,
+		(float(cell.y) + 0.5) * tile_size.y
+	)
+	torch_lights.add_child(light)
 
 func _ensure_chest_inventory(cell: Vector2i) -> void:
 	if _chest_inventories.has(cell):
@@ -1271,6 +1358,8 @@ func _update_city_layer_transform() -> void:
 	decor_layer.position = city_layer.position
 	if tile_hover_tooltip.visible:
 		tile_hover_tooltip.position = _clamp_tooltip_position(tile_hover_tooltip.position)
+	lighting_layer.scale = city_layer.scale
+	lighting_layer.position = city_layer.position
 	_update_zone_overlay()
 
 func _place_tile(target_layer: TileMapLayer, cell: Vector2i, tile_key: String) -> void:
