@@ -179,19 +179,19 @@ const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
 
-const TORCH_LIGHT_COLOR := Color(1.0, 0.82, 0.56, 1.0)
+const TORCH_LIGHT_COLOR := Color(1.0, 0.90, 0.72, 1.0)
 const PLAYER_LIGHT_COLOR := Color(1.0, 0.92, 0.72, 1.0)
-const TORCH_LIGHT_RADIUS_CELLS := 4.8
-const HALL_LIGHT_RADIUS_CELLS := 3.4
-const PLAYER_LIGHT_RADIUS_CELLS := 5.5
-const TORCH_LIGHT_ENERGY := 1.2
-const HALL_LIGHT_ENERGY := 0.7
-const PLAYER_LIGHT_ENERGY := 1.3
-const TORCH_PLACEMENT_INTERVAL_CELLS := 6
-const MAX_TORCH_LIGHTS := 220
-const LIGHT_CULL_DISTANCE_CELLS := 50.0
+const TORCH_LIGHT_RADIUS_CELLS := 6.6
+const HALL_LIGHT_RADIUS_CELLS := 5.4
+const PLAYER_LIGHT_RADIUS_CELLS := 6.2
+const TORCH_LIGHT_ENERGY := 1.85
+const HALL_LIGHT_ENERGY := 1.35
+const PLAYER_LIGHT_ENERGY := 1.6
+const TORCH_PLACEMENT_INTERVAL_CELLS := 4
+const MAX_TORCH_LIGHTS := 420
+const LIGHT_CULL_DISTANCE_CELLS := 10000.0
 const LIGHT_CHUNK_SIZE := 12
-const LIGHT_ACTIVE_CHUNK_RADIUS := 4
+const LIGHT_ACTIVE_CHUNK_RADIUS := 999
 
 const FOG_CHUNK_SIZE := 12
 const FOG_REVEAL_CHUNK_RADIUS := 1
@@ -437,7 +437,7 @@ func _ready() -> void:
 	_configure_tile_layer()
 	_torch_light_texture = _create_torch_light_texture()
 	_torch_sprite_texture = _create_torch_sprite_texture()
-	global_darkness.color = Color(0.2, 0.2, 0.24, 1.0)
+	global_darkness.color = Color(0.92, 0.92, 0.94, 1.0)
 	player_light.texture = _torch_light_texture
 	player_light.color = PLAYER_LIGHT_COLOR
 	player_light.energy = PLAYER_LIGHT_ENERGY
@@ -1136,13 +1136,16 @@ func _refresh_lighting(grid: Dictionary) -> void:
 		var cell := cell_variant as Vector2i
 		if _cell_at(grid, cell.x, cell.y) != CELL_HALL:
 			continue
-		if cell.x % TORCH_PLACEMENT_INTERVAL_CELLS != 0 and cell.y % TORCH_PLACEMENT_INTERVAL_CELLS != 0:
-			continue
-		if _hall_neighbor_count(grid, cell) < 3:
+		if _hall_neighbor_count(grid, cell) < 2:
 			continue
 		hall_candidates.append(cell)
 
-	hall_candidates.shuffle()
+	hall_candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		if a.y == b.y:
+			return a.x < b.x
+		return a.y < b.y
+	)
+
 	for hall_cell in hall_candidates:
 		if light_cells.size() >= MAX_TORCH_LIGHTS:
 			break
@@ -1150,12 +1153,23 @@ func _refresh_lighting(grid: Dictionary) -> void:
 			continue
 		if not _is_light_cell_in_active_region(hall_cell, light_center_cell, active_chunk_center):
 			continue
+		if hall_cell.x % TORCH_PLACEMENT_INTERVAL_CELLS != 0 and hall_cell.y % TORCH_PLACEMENT_INTERVAL_CELLS != 0:
+			continue
+		if not _is_light_cell_well_spaced(hall_cell, light_cells, float(TORCH_PLACEMENT_INTERVAL_CELLS) * 0.9):
+			continue
 		light_cells[hall_cell] = {"radius": HALL_LIGHT_RADIUS_CELLS, "energy": HALL_LIGHT_ENERGY}
 
 	for light_cell_variant: Variant in light_cells.keys():
 		var light_cell := light_cell_variant as Vector2i
 		var payload := light_cells[light_cell] as Dictionary
 		_spawn_torch_light(light_cell, float(payload.get("radius", TORCH_LIGHT_RADIUS_CELLS)), float(payload.get("energy", TORCH_LIGHT_ENERGY)))
+
+func _is_light_cell_well_spaced(cell: Vector2i, existing_cells: Dictionary, min_distance: float) -> bool:
+	for existing_variant: Variant in existing_cells.keys():
+		var existing := existing_variant as Vector2i
+		if cell.distance_to(existing) < min_distance:
+			return false
+	return true
 
 func _hall_neighbor_count(grid: Dictionary, cell: Vector2i) -> int:
 	var count := 0
