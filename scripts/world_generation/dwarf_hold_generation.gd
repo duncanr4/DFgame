@@ -84,7 +84,7 @@ const EXPECTED_TILE_COORDS := {
 	"target": Vector2i(6, 3),
 	"anvil": Vector2i(6, 4)
 }
-const PASSABLE_TILE_KEYS := PackedStringArray(["floor", "door"])
+const PASSABLE_TILE_KEYS := ["floor", "door"]
 const COLLISION_LAYER_WORLD := 1
 
 
