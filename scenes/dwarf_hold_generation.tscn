@@ -136,6 +136,30 @@ bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
+[node name="ChestInventorySection" type="VBoxContainer" parent="Margin/Layout/Controls" unique_id=765229013]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ChestInventoryTitle" type="Label" parent="Margin/Layout/Controls/ChestInventorySection" unique_id=1132940581]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Chest Inventory"
+
+[node name="ChestInventoryList" type="RichTextLabel" parent="Margin/Layout/Controls/ChestInventorySection" unique_id=185531805]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = true
+text = "Click a chest tile to inspect its contents."
+
+[node name="LootChestButton" type="Button" parent="Margin/Layout/Controls/ChestInventorySection" unique_id=1255507888]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Take All"
+
 [node name="CitySummary" type="Label" parent="Margin/Layout/Controls" unique_id=951096892]
 unique_name_in_owner = true
 layout_mode = 2
