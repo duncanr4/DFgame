@@ -136,6 +136,7 @@ var _latest_requested_zone_counts := {
 	"buildings": 0
 }
 var _torch_light_texture: Texture2D
+var _torch_sprite_texture: Texture2D
 var _fog_image: Image
 var _fog_texture: ImageTexture
 var _tavern_character_texture: Texture2D
@@ -186,7 +187,8 @@ const PLAYER_LIGHT_RADIUS_CELLS := 5.5
 const TORCH_LIGHT_ENERGY := 1.2
 const HALL_LIGHT_ENERGY := 0.7
 const PLAYER_LIGHT_ENERGY := 1.3
-const MAX_TORCH_LIGHTS := 84
+const TORCH_PLACEMENT_INTERVAL_CELLS := 6
+const MAX_TORCH_LIGHTS := 220
 const LIGHT_CULL_DISTANCE_CELLS := 50.0
 const LIGHT_CHUNK_SIZE := 12
 const LIGHT_ACTIVE_CHUNK_RADIUS := 4
@@ -434,6 +436,7 @@ const CIVIC_BUILDING_TYPES := {
 func _ready() -> void:
 	_configure_tile_layer()
 	_torch_light_texture = _create_torch_light_texture()
+	_torch_sprite_texture = _create_torch_sprite_texture()
 	global_darkness.color = Color(0.2, 0.2, 0.24, 1.0)
 	player_light.texture = _torch_light_texture
 	player_light.color = PLAYER_LIGHT_COLOR
@@ -1089,6 +1092,24 @@ func _create_torch_light_texture() -> Texture2D:
 	texture.fill = GradientTexture2D.FILL_RADIAL
 	return texture
 
+func _create_torch_sprite_texture() -> Texture2D:
+	var image := Image.create(16, 24, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in range(9, 24):
+		for x in range(7, 9):
+			image.set_pixel(x, y, Color(0.28, 0.18, 0.09, 1.0))
+	for y in range(6, 14):
+		for x in range(4, 12):
+			var local := Vector2(float(x - 8), float(y - 10))
+			var dist := local.length()
+			if dist > 4.6:
+				continue
+			var outer := Color(1.0, 0.56, 0.20, 0.95)
+			var inner := Color(1.0, 0.92, 0.56, 0.98)
+			var t := clampf(dist / 4.6, 0.0, 1.0)
+			image.set_pixel(x, y, inner.lerp(outer, t))
+	return ImageTexture.create_from_image(image)
+
 func _refresh_lighting(grid: Dictionary) -> void:
 	for child in torch_lights.get_children():
 		child.queue_free()
@@ -1115,7 +1136,7 @@ func _refresh_lighting(grid: Dictionary) -> void:
 		var cell := cell_variant as Vector2i
 		if _cell_at(grid, cell.x, cell.y) != CELL_HALL:
 			continue
-		if cell.x % 10 != 0 and cell.y % 10 != 0:
+		if cell.x % TORCH_PLACEMENT_INTERVAL_CELLS != 0 and cell.y % TORCH_PLACEMENT_INTERVAL_CELLS != 0:
 			continue
 		if _hall_neighbor_count(grid, cell) < 3:
 			continue
@@ -1166,6 +1187,18 @@ func _is_light_cell_in_active_region(cell: Vector2i, center_cell: Vector2i, cent
 	return abs(chunk.x - center_chunk.x) <= LIGHT_ACTIVE_CHUNK_RADIUS and abs(chunk.y - center_chunk.y) <= LIGHT_ACTIVE_CHUNK_RADIUS
 
 func _spawn_torch_light(cell: Vector2i, radius_cells: float, energy: float) -> void:
+	var torch := Node2D.new()
+	torch.position = Vector2(
+		(float(cell.x) + 0.5) * tile_size.x,
+		(float(cell.y) + 0.5) * tile_size.y
+	)
+	if _torch_sprite_texture != null:
+		var torch_sprite := Sprite2D.new()
+		torch_sprite.texture = _torch_sprite_texture
+		torch_sprite.centered = true
+		torch_sprite.position = Vector2(0, -float(tile_size.y) * 0.24)
+		torch.add_child(torch_sprite)
+
 	var light := PointLight2D.new()
 	light.texture = _torch_light_texture
 	light.color = TORCH_LIGHT_COLOR
@@ -1173,11 +1206,8 @@ func _spawn_torch_light(cell: Vector2i, radius_cells: float, energy: float) -> v
 	light.blend_mode = Light2D.BLEND_MODE_ADD
 	var radius_pixels := float(tile_size.x) * radius_cells
 	light.texture_scale = maxf(radius_pixels / 128.0, 0.05)
-	light.position = Vector2(
-		(float(cell.x) + 0.5) * tile_size.x,
-		(float(cell.y) + 0.5) * tile_size.y
-	)
-	torch_lights.add_child(light)
+	torch.add_child(light)
+	torch_lights.add_child(torch)
 
 func _initialize_fog_of_war(grid: Dictionary) -> void:
 	if not enable_fog_of_war:
