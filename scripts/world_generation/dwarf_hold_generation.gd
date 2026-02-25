@@ -1678,7 +1678,7 @@ func _update_npc_movement(delta: float) -> void:
 			for _attempt in 6:
 				var candidate := _pick_random_wander_direction()
 				var candidate_cell := city_layer.local_to_map(sprite.position + candidate * float(tile_size.x))
-				if _is_walkable_cell(candidate_cell):
+				if _is_npc_walkable_cell(candidate_cell):
 					direction = candidate
 					target = _cell_center_position(candidate_cell)
 					state["cell"] = candidate_cell
@@ -1762,6 +1762,13 @@ func _is_walkable_cell(cell: Vector2i) -> bool:
 	if zone != CELL_HALL and zone != CELL_HOUSE and zone != CELL_BUILDING:
 		return false
 	return _is_passable_cell_for_actor(cell)
+
+func _is_npc_walkable_cell(cell: Vector2i) -> bool:
+	if not _is_walkable_cell(cell):
+		return false
+	if decor_layer.get_cell_source_id(cell) < 0:
+		return true
+	return decor_layer.get_cell_atlas_coords(cell) != TILE_ATLAS["stone"]
 
 func _facing_row_from_direction(direction: Vector2) -> int:
 	if absf(direction.x) > absf(direction.y):
