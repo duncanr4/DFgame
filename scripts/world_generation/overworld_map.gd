@@ -25,6 +25,11 @@ extends Node2D
 @export var globe_zoom_step: float = 0.35
 @export var globe_min_camera_distance: float = 2.4
 @export var globe_max_camera_distance: float = 8.0
+@export var scene3d_drag_sensitivity: float = 0.008
+@export var scene3d_zoom_step: float = 0.35
+@export var scene3d_min_camera_distance: float = 2.4
+@export var scene3d_max_camera_distance: float = 9.5
+@export var scene3d_height_scale: float = 1.6
 @export_range(0.0, 1.0, 0.01) var iceberg_temperature_threshold: float = 0.32
 @export_range(0.0, 1.0, 0.01) var iceberg_density: float = 0.12
 @export var iceberg_tile_options: Array[Vector2i] = [Vector2i(4, 3), Vector2i(5, 3)]
@@ -858,10 +863,14 @@ const CIVILIZATION_LABELS := {
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
 @onready var globe_camera: Camera3D = get_node_or_null("GlobeView/GlobeCamera")
 @onready var globe_mesh: MeshInstance3D = get_node_or_null("GlobeView/GlobeMesh")
+@onready var scene3d_view: Node3D = get_node_or_null("Scene3DView")
+@onready var scene3d_camera: Camera3D = get_node_or_null("Scene3DView/Scene3DCamera")
+@onready var scene3d_mesh: MeshInstance3D = get_node_or_null("Scene3DView/Scene3DMesh")
 @onready var map_viewport: SubViewport = get_node_or_null("MapViewport")
 @onready var map_viewport_root: Node2D = get_node_or_null("MapViewport/MapViewportRoot")
 @onready var regenerate_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/RegenerateButton")
 @onready var globe_view_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/GlobeViewButton")
+@onready var scene3d_view_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/Scene3DViewButton")
 @onready var temperature_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/TemperatureMapButton")
 @onready var elevation_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/ElevationMapButton")
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
@@ -942,6 +951,8 @@ var _overlays_original_parent: Node = null
 var _overlays_original_index := -1
 var _is_globe_view := false
 var _is_dragging_globe := false
+var _is_scene3d_view := false
+var _is_dragging_scene3d := false
 var _elevation_overlay_enabled := false
 var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
@@ -986,6 +997,9 @@ func _ready() -> void:
 	if globe_view_button != null:
 		globe_view_button.toggled.connect(_on_globe_view_toggled)
 		globe_view_button.button_pressed = false
+	if scene3d_view_button != null:
+		scene3d_view_button.toggled.connect(_on_scene3d_view_toggled)
+		scene3d_view_button.button_pressed = false
 	if temperature_map_button != null:
 		temperature_map_button.toggled.connect(_on_temperature_map_toggled)
 		temperature_map_button.button_pressed = false
@@ -1008,7 +1022,9 @@ func _ready() -> void:
 	_cache_settlement_layer_parent()
 	_cache_overlay_parent()
 	_configure_globe_viewport()
+	_configure_scene3d_mesh()
 	_set_globe_view(false)
+	_set_scene3d_view(false)
 	_cache_more_info_image_paths()
 	_configure_structure_context_menu()
 
@@ -1028,6 +1044,8 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_globe_view and _handle_globe_input(event):
 		return
+	if _is_scene3d_view and _handle_scene3d_input(event):
+		return
 	if _handle_structure_context_menu_input(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -1041,7 +1059,16 @@ func _on_regenerate_pressed() -> void:
 	await _regenerate_map()
 
 func _on_globe_view_toggled(is_pressed: bool) -> void:
+	if is_pressed and scene3d_view_button != null and scene3d_view_button.button_pressed:
+		scene3d_view_button.set_pressed_no_signal(false)
+		_set_scene3d_view(false)
 	_set_globe_view(is_pressed)
+
+func _on_scene3d_view_toggled(is_pressed: bool) -> void:
+	if is_pressed and globe_view_button != null and globe_view_button.button_pressed:
+		globe_view_button.set_pressed_no_signal(false)
+		_set_globe_view(false)
+	_set_scene3d_view(is_pressed)
 
 func _on_temperature_map_toggled(is_pressed: bool) -> void:
 	_temperature_overlay_enabled = is_pressed
@@ -1691,6 +1718,8 @@ func _generate_map() -> void:
 	_configure_overworld_camera_bounds()
 	if _is_globe_view:
 		_update_globe_texture()
+	if _is_scene3d_view:
+		_update_scene3d_texture()
 
 func _apply_base_tiles(base_biome_map: Dictionary) -> void:
 	for y in range(map_size.y):
@@ -4227,17 +4256,42 @@ func _set_globe_view(enabled: bool) -> void:
 	if globe_view != null:
 		globe_view.visible = enabled
 	if overworld_camera != null:
-		overworld_camera.enabled = not enabled
-		if not enabled:
+		overworld_camera.enabled = not (enabled or _is_scene3d_view)
+		if not enabled and not _is_scene3d_view:
 			overworld_camera.make_current()
 	if globe_camera != null:
 		globe_camera.current = enabled
 	if not enabled:
 		_is_dragging_globe = false
-	if enabled:
+	if enabled and not _is_scene3d_view:
 		_move_map_layer_to_viewport()
 		_update_globe_texture()
-	else:
+	elif not enabled and not _is_scene3d_view:
+		_restore_map_layer_parent()
+	_update_elevation_overlay_visibility()
+	_update_temperature_overlay_visibility()
+	_update_moisture_overlay_visibility()
+	_update_biome_overlay_visibility()
+	_update_culture_overlay_visibility()
+	if enabled:
+		_hide_map_tooltip()
+
+func _set_scene3d_view(enabled: bool) -> void:
+	_is_scene3d_view = enabled
+	if scene3d_view != null:
+		scene3d_view.visible = enabled
+	if overworld_camera != null:
+		overworld_camera.enabled = not (_is_globe_view or enabled)
+		if not _is_globe_view and not enabled:
+			overworld_camera.make_current()
+	if scene3d_camera != null:
+		scene3d_camera.current = enabled
+	if not enabled:
+		_is_dragging_scene3d = false
+	if enabled and not _is_globe_view:
+		_move_map_layer_to_viewport()
+		_update_scene3d_texture()
+	elif not enabled and not _is_globe_view:
 		_restore_map_layer_parent()
 	_update_elevation_overlay_visibility()
 	_update_temperature_overlay_visibility()
@@ -4284,8 +4338,8 @@ func _move_map_layer_to_viewport() -> void:
 func _update_map_tooltip() -> void:
 	if tooltip_panel == null or map_layer == null:
 		return
-	if _is_globe_view:
-		if _is_dragging_globe or _hovered_tile.x < 0 or _hovered_tile.y < 0:
+	if _is_globe_view or _is_scene3d_view:
+		if _is_dragging_globe or _is_dragging_scene3d or _hovered_tile.x < 0 or _hovered_tile.y < 0:
 			_hide_map_tooltip()
 			return
 		_refresh_map_tooltip(_hovered_tile)
@@ -4580,6 +4634,25 @@ func _handle_globe_input(event: InputEvent) -> bool:
 		return true
 	return false
 
+func _handle_scene3d_input(event: InputEvent) -> bool:
+	var mouse_button_event := event as InputEventMouseButton
+	if mouse_button_event != null:
+		if mouse_button_event.button_index == MOUSE_BUTTON_LEFT:
+			_is_dragging_scene3d = mouse_button_event.pressed
+			return true
+		if mouse_button_event.pressed:
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_zoom_scene3d_camera(-scene3d_zoom_step)
+				return true
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_scene3d_camera(scene3d_zoom_step)
+				return true
+	var mouse_motion_event := event as InputEventMouseMotion
+	if mouse_motion_event != null and _is_dragging_scene3d:
+		_rotate_scene3d_from_drag(mouse_motion_event.relative)
+		return true
+	return false
+
 func _rotate_globe_from_drag(relative_motion: Vector2) -> void:
 	if globe_mesh == null:
 		return
@@ -4610,6 +4683,47 @@ func _update_globe_texture() -> void:
 		globe_material.roughness = 1.0
 	globe_mesh.material_override = globe_material
 	globe_material.albedo_texture = viewport_texture
+
+func _update_scene3d_texture() -> void:
+	if scene3d_mesh == null or map_viewport == null:
+		return
+	var viewport_texture := map_viewport.get_texture()
+	if viewport_texture == null:
+		return
+	var scene3d_material := scene3d_mesh.material_override as ShaderMaterial
+	if scene3d_material == null:
+		return
+	scene3d_material.set_shader_parameter("map_texture", viewport_texture)
+	scene3d_material.set_shader_parameter("height_scale", scene3d_height_scale)
+
+func _configure_scene3d_mesh() -> void:
+	if scene3d_mesh == null:
+		return
+	var plane_mesh := scene3d_mesh.mesh as PlaneMesh
+	if plane_mesh == null:
+		return
+	if map_size.y <= 0:
+		return
+	var aspect := float(map_size.x) / float(map_size.y)
+	plane_mesh.size = Vector2(maxf(2.0, 4.0 * aspect), 4.0)
+
+func _rotate_scene3d_from_drag(relative_motion: Vector2) -> void:
+	if scene3d_mesh == null:
+		return
+	scene3d_mesh.rotate_y(-relative_motion.x * scene3d_drag_sensitivity)
+	scene3d_mesh.rotate_object_local(Vector3.RIGHT, -relative_motion.y * scene3d_drag_sensitivity)
+
+func _zoom_scene3d_camera(distance_delta: float) -> void:
+	if scene3d_camera == null:
+		return
+	var camera_origin := scene3d_camera.transform.origin
+	var current_distance := camera_origin.length()
+	if current_distance <= 0.0001:
+		return
+	var target_distance := clampf(current_distance + distance_delta, scene3d_min_camera_distance, scene3d_max_camera_distance)
+	if is_equal_approx(target_distance, current_distance):
+		return
+	scene3d_camera.transform.origin = camera_origin.normalized() * target_distance
 
 func _rotate_globe(delta: float) -> void:
 	if globe_mesh == null or globe_rotation_speed == 0.0 or _is_dragging_globe:
@@ -4865,7 +4979,7 @@ func _temperature_to_color(temperature: float) -> Color:
 func _update_temperature_overlay_visibility() -> void:
 	if temperature_overlay == null:
 		return
-	temperature_overlay.visible = _temperature_overlay_enabled and not _is_globe_view
+	temperature_overlay.visible = _temperature_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
 
 func _update_elevation_overlay() -> void:
 	if elevation_overlay == null:
@@ -4914,7 +5028,7 @@ func _elevation_to_color(height: float) -> Color:
 func _update_elevation_overlay_visibility() -> void:
 	if elevation_overlay == null:
 		return
-	elevation_overlay.visible = _elevation_overlay_enabled and not _is_globe_view
+	elevation_overlay.visible = _elevation_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
 
 func _update_moisture_overlay() -> void:
 	if moisture_overlay == null:
@@ -4945,7 +5059,7 @@ func _moisture_to_color(moisture: float) -> Color:
 func _update_moisture_overlay_visibility() -> void:
 	if moisture_overlay == null:
 		return
-	moisture_overlay.visible = _moisture_overlay_enabled and not _is_globe_view
+	moisture_overlay.visible = _moisture_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
 
 func _update_biome_overlay() -> void:
 	if biome_overlay == null:
@@ -4988,7 +5102,7 @@ func _update_culture_overlay() -> void:
 func _update_culture_overlay_visibility() -> void:
 	if culture_overlay == null:
 		return
-	culture_overlay.visible = _culture_overlay_enabled and not _is_globe_view
+	culture_overlay.visible = _culture_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
 
 func _biome_to_overlay_color(biome: String) -> Color:
 	var alpha := 0.45
@@ -5018,7 +5132,7 @@ func _biome_to_overlay_color(biome: String) -> Color:
 func _update_biome_overlay_visibility() -> void:
 	if biome_overlay == null:
 		return
-	biome_overlay.visible = _biome_overlay_enabled and not _is_globe_view
+	biome_overlay.visible = _biome_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
 
 func _get_layout_generation_preset(layout_label: String) -> Dictionary:
 	var layout_presets := {

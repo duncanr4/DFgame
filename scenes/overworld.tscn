@@ -11,6 +11,18 @@ height = 3.2
 radial_segments = 64
 rings = 32
 
+[sub_resource type="PlaneMesh" id="PlaneMesh_3d8lm"]
+size = Vector2(4, 4)
+subdivide_width = 192
+subdivide_depth = 192
+
+[sub_resource type="Shader" id="Shader_jv1a2"]
+code = "shader_type spatial;\nrender_mode cull_disabled;\n\nuniform sampler2D map_texture : source_color, filter_linear_mipmap, repeat_disable;\nuniform float height_scale : hint_range(0.0, 6.0) = 1.6;\n\nvoid vertex() {\n\tfloat elevation = dot(texture(map_texture, UV).rgb, vec3(0.299, 0.587, 0.114));\n\tVERTEX.y += (elevation - 0.35) * height_scale;\n}\n\nvoid fragment() {\n\tvec3 color = texture(map_texture, UV).rgb;\n\tALBEDO = color;\n\tROUGHNESS = 1.0;\n}\n"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_am8ig"]
+render_priority = 0
+shader = SubResource("Shader_jv1a2")
+
 [sub_resource type="Environment" id="Environment_tr2ve"]
 background_mode = 1
 background_color = Color(0.02, 0.02, 0.04, 1)
@@ -110,6 +122,23 @@ light_energy = 1.2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 mesh = SubResource("SphereMesh_5ukes")
 
+[node name="Scene3DView" type="Node3D" parent="."]
+visible = false
+
+[node name="Scene3DEnvironment" type="WorldEnvironment" parent="Scene3DView"]
+environment = SubResource("Environment_tr2ve")
+
+[node name="Scene3DCamera" type="Camera3D" parent="Scene3DView"]
+transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, 0, 3.4, 6.2)
+
+[node name="Scene3DLight" type="DirectionalLight3D" parent="Scene3DView"]
+transform = Transform3D(0.173648, -0.336824, 0.925417, 0, 0.939693, 0.34202, -0.984808, -0.0593912, 0.163176, 0, 0, 0)
+light_energy = 1.45
+
+[node name="Scene3DMesh" type="MeshInstance3D" parent="Scene3DView"]
+material_override = SubResource("ShaderMaterial_am8ig")
+mesh = SubResource("PlaneMesh_3d8lm")
+
 [node name="MapUi" type="CanvasLayer" parent="."]
 
 [node name="TopBar" type="MarginContainer" parent="MapUi"]
@@ -132,6 +161,11 @@ text = "Regenerate Map"
 layout_mode = 2
 toggle_mode = true
 text = "Globe View"
+
+[node name="Scene3DViewButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
+layout_mode = 2
+toggle_mode = true
+text = "3D Scene"
 
 [node name="TemperatureMapButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
 layout_mode = 2
