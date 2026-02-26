@@ -26148,7 +26148,7 @@ function createWorld(seedString) {
 
     if (cityCandidates.length > 0) {
       cityCandidates.sort((a, b) => b.score - a.score);
-      const baseTarget = Math.max(1, Math.round(cityCandidates.length / 1650));
+      const baseTarget = Math.max(1, Math.round(cityCandidates.length / 3300));
       const maxCities = computeStructurePlacementLimit(baseTarget, 18, lizardmenSettlementMultiplier);
       const minDistanceBase = 18;
       const minDistance = adjustMinDistance(minDistanceBase, lizardmenSettlementFrequencyNormalized);
