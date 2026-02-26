@@ -166,10 +166,6 @@ texture_normal = ExtResource("5_h52vu")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="DwarfHoldGeneratorButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1524398407]
-custom_minimum_size = Vector2(344, 56)
-layout_mode = 2
-text = "Dwarf Hold Generator"
 
 [node name="ReturnButton" type="TextureButton" parent="CenterContainer/VBoxContainer" unique_id=1053349442]
 custom_minimum_size = Vector2(344, 72)
@@ -180,5 +176,4 @@ stretch_mode = 5
 
 [connection signal="pressed" from="CenterContainer/VBoxContainer/StartButton" to="." method="_on_start_button_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/OptionsButton" to="." method="_on_options_button_pressed"]
-[connection signal="pressed" from="CenterContainer/VBoxContainer/DwarfHoldGeneratorButton" to="." method="_on_dwarf_hold_generator_button_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/ReturnButton" to="." method="_on_return_button_pressed"]
