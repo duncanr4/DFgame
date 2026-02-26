@@ -566,7 +566,7 @@ func _on_start_as_player_pressed() -> void:
 	if _player_sprite == null:
 		return
 	_player_control_enabled = true
-	start_as_player_button.text = "Player Active"
+	start_as_player_button.text = "✅ Player Active"
 	city_summary.text = "Player control enabled. Use arrow keys to move through the hold."
 	player_light.visible = true
 	player_light.position = _player_sprite.position
@@ -1602,7 +1602,7 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_npc_states.clear()
 	_player_sprite = null
 	_player_control_enabled = false
-	start_as_player_button.text = "Start as Player Character"
+	start_as_player_button.text = "▶ Start as Player Character"
 	_walkable_cells = _collect_walkable_cells(grid)
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
 		return
