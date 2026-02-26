@@ -91,6 +91,7 @@ const COLLISION_LAYER_WORLD := 1
 
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
+@onready var start_as_player_button: Button = %StartAsPlayerButton
 @onready var overlay_toggle: CheckButton = %OverlayToggle
 @onready var city_summary: Label = %CitySummary
 @onready var city_panel: PanelContainer = %CityPanel
@@ -149,6 +150,7 @@ var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
 var _player_facing_row := 0
+var _player_control_enabled := false
 var _npc_states: Array[Dictionary] = []
 
 const TAVERN_SPRITE_COLUMNS := 12
@@ -454,6 +456,7 @@ func _ready() -> void:
 		_tavern_character_texture = _create_placeholder_tavern_character_texture()
 	_placeholder_actor_texture = _create_placeholder_actor_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
+	start_as_player_button.pressed.connect(_on_start_as_player_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
 	chest_popup_take_all_button.pressed.connect(_on_loot_chest_button_pressed)
@@ -558,6 +561,18 @@ func _is_passable_cell_for_actor(cell: Vector2i) -> bool:
 
 func _on_generate_pressed() -> void:
 	_generate_city()
+
+func _on_start_as_player_pressed() -> void:
+	if _player_sprite == null:
+		return
+	_player_control_enabled = true
+	start_as_player_button.text = "Player Active"
+	city_summary.text = "Player control enabled. Use arrow keys to move through the hold."
+	player_light.visible = true
+	player_light.position = _player_sprite.position
+	_reveal_fog_chunks_around_cell(_player_cell)
+	if not _latest_grid.is_empty():
+		_refresh_lighting(_latest_grid)
 
 func _generate_city() -> void:
 	var seed_text := seed_input.text.strip_edges()
@@ -1586,6 +1601,8 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 		child.queue_free()
 	_npc_states.clear()
 	_player_sprite = null
+	_player_control_enabled = false
+	start_as_player_button.text = "Start as Player Character"
 	_walkable_cells = _collect_walkable_cells(grid)
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
 		return
@@ -1593,11 +1610,11 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
 	_player_facing_row = 0
 	_player_sprite = _create_tavern_character_sprite(0)
+	_player_sprite.modulate = Color(0.98, 0.95, 0.70, 1.0)
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
 	actor_layer.add_child(_player_sprite)
-	player_light.visible = true
+	player_light.visible = false
 	player_light.position = _player_sprite.position
-	_reveal_fog_chunks_around_cell(_player_cell)
 
 	for i in tavern_npc_count:
 		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
@@ -1662,7 +1679,7 @@ func _placeholder_actor_color(character_slot: int) -> Color:
 	return palette[index]
 
 func _update_player_movement(delta: float) -> void:
-	if _player_sprite == null:
+	if _player_sprite == null or not _player_control_enabled:
 		return
 	var input_direction := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if input_direction.length_squared() > 0.0:
