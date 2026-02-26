@@ -154,6 +154,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Generate New Hold"
 
+[node name="StartAsPlayerButton" type="Button" parent="Margin/Layout/Controls" unique_id=203445906]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start as Player Character"
+
 [node name="OverlayToggle" type="CheckButton" parent="Margin/Layout/Controls" unique_id=195430028]
 unique_name_in_owner = true
 layout_mode = 2
