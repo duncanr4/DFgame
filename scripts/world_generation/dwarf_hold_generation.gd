@@ -1960,7 +1960,7 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 
 	if _is_corridor_cell(cell):
 		if _rng.randf() < 0.015:
-			var corridor_tile: String = String(["target", "sign", "keg", "water_bucket"][_rng.randi_range(0, 3)])
+			var corridor_tile: String = String(["sign", "water_bucket"][_rng.randi_range(0, 1)])
 			if _is_furniture_tile(corridor_tile) and base_tile != "floor":
 				return ""
 			return corridor_tile
