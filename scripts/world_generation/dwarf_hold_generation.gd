@@ -144,6 +144,7 @@ var _torch_sprite_texture: Texture2D
 var _fog_image: Image
 var _fog_texture: ImageTexture
 var _tavern_character_texture: Texture2D
+var _placeholder_actor_texture: Texture2D
 var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
@@ -451,6 +452,7 @@ func _ready() -> void:
 	_tavern_character_texture = load(tavern_vehicle_sprite_path) as Texture2D
 	if _tavern_character_texture == null:
 		_tavern_character_texture = _create_placeholder_tavern_character_texture()
+	_placeholder_actor_texture = _create_placeholder_actor_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
@@ -1633,11 +1635,31 @@ func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
 
 func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
 	var sprite := Sprite2D.new()
-	sprite.texture = _tavern_character_texture
-	sprite.region_enabled = true
+	sprite.texture = _placeholder_actor_texture
+	sprite.region_enabled = false
 	sprite.centered = true
-	_update_character_frame(sprite, character_slot, 1, 0)
+	sprite.modulate = _placeholder_actor_color(character_slot)
+	sprite.scale = Vector2(float(tile_size.x), float(tile_size.y)) * 0.45
 	return sprite
+
+func _create_placeholder_actor_texture() -> Texture2D:
+	var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+	return ImageTexture.create_from_image(image)
+
+func _placeholder_actor_color(character_slot: int) -> Color:
+	var palette := [
+		Color(0.92, 0.82, 0.55, 1.0),
+		Color(0.75, 0.34, 0.30, 1.0),
+		Color(0.31, 0.61, 0.84, 1.0),
+		Color(0.38, 0.72, 0.44, 1.0),
+		Color(0.74, 0.49, 0.84, 1.0),
+		Color(0.90, 0.66, 0.26, 1.0),
+		Color(0.41, 0.75, 0.74, 1.0),
+		Color(0.62, 0.62, 0.67, 1.0)
+	]
+	var index := posmod(character_slot, palette.size())
+	return palette[index]
 
 func _update_player_movement(delta: float) -> void:
 	if _player_sprite == null:
@@ -1776,6 +1798,8 @@ func _facing_row_from_direction(direction: Vector2) -> int:
 	return 3 if direction.y < 0.0 else 0
 
 func _update_character_frame(sprite: Sprite2D, character_slot: int, frame_column: int, facing_row: int) -> void:
+	if not sprite.region_enabled:
+		return
 	if sprite.texture == null:
 		return
 	var source_size := sprite.texture.get_size()
