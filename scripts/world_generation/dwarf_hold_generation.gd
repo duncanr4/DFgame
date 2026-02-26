@@ -91,6 +91,7 @@ const COLLISION_LAYER_WORLD := 1
 
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
+@onready var start_as_player_button: Button = %StartAsPlayerButton
 @onready var overlay_toggle: CheckButton = %OverlayToggle
 @onready var city_summary: Label = %CitySummary
 @onready var city_panel: PanelContainer = %CityPanel
@@ -454,6 +455,7 @@ func _ready() -> void:
 		_tavern_character_texture = _create_placeholder_tavern_character_texture()
 	_placeholder_actor_texture = _create_placeholder_actor_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
+	start_as_player_button.pressed.connect(_on_start_as_player_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
 	chest_popup_take_all_button.pressed.connect(_on_loot_chest_button_pressed)
@@ -558,6 +560,9 @@ func _is_passable_cell_for_actor(cell: Vector2i) -> bool:
 
 func _on_generate_pressed() -> void:
 	_generate_city()
+
+func _on_start_as_player_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/character_creator.tscn")
 
 func _generate_city() -> void:
 	var seed_text := seed_input.text.strip_edges()
