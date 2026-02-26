@@ -93,6 +93,7 @@ const COLLISION_LAYER_WORLD := 1
 @onready var generate_button: Button = %GenerateButton
 @onready var start_as_player_button: Button = %StartAsPlayerButton
 @onready var overlay_toggle: CheckButton = %OverlayToggle
+@onready var lighting_toggle: CheckButton = %LightingToggle
 @onready var city_summary: Label = %CitySummary
 @onready var city_panel: PanelContainer = %CityPanel
 @onready var city_layer: TileMapLayer = %CityTileLayer
@@ -126,6 +127,7 @@ var _latest_grid: Dictionary = {}
 var _latest_civic_buildings_by_id: Dictionary = {}
 var _latest_civic_building_type_map: Dictionary = {}
 var _show_zone_overlay := false
+var _lighting_enabled := true
 var _chest_inventories: Dictionary = {}
 var _selected_chest_cell := Vector2i(2147483647, 2147483647)
 var _chest_slot_panels: Array[PanelContainer] = []
@@ -458,6 +460,7 @@ func _ready() -> void:
 	generate_button.pressed.connect(_on_generate_pressed)
 	start_as_player_button.pressed.connect(_on_start_as_player_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
+	lighting_toggle.toggled.connect(_on_lighting_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
 	chest_popup_take_all_button.pressed.connect(_on_loot_chest_button_pressed)
 	chest_popup_close_button.pressed.connect(_on_chest_popup_close_button_pressed)
@@ -467,6 +470,8 @@ func _ready() -> void:
 		_generate_city()
 	)
 	_update_zone_legend()
+	_lighting_enabled = lighting_toggle.button_pressed
+	_apply_lighting_state()
 	_clear_chest_selection()
 	_generate_city()
 
@@ -882,6 +887,15 @@ func _on_overlay_toggle_toggled(toggled_on: bool) -> void:
 	_show_zone_overlay = toggled_on
 	_update_zone_overlay()
 
+func _on_lighting_toggle_toggled(toggled_on: bool) -> void:
+	_lighting_enabled = toggled_on
+	_apply_lighting_state()
+	if not _latest_grid.is_empty():
+		_refresh_lighting(_latest_grid)
+
+func _apply_lighting_state() -> void:
+	lighting_layer.visible = _lighting_enabled
+
 func _update_zone_overlay() -> void:
 	if zone_overlay.has_method("set_overlay_state"):
 		zone_overlay.call("set_overlay_state", _latest_grid, tile_size, _zoom_level, city_layer.position, ZONE_OVERLAY_COLORS, _show_zone_overlay)
@@ -1169,6 +1183,9 @@ func _create_torch_sprite_texture() -> Texture2D:
 func _refresh_lighting(grid: Dictionary) -> void:
 	for child in torch_lights.get_children():
 		child.queue_free()
+	if not _lighting_enabled:
+		player_light.visible = false
+		return
 	if _torch_light_texture == null:
 		return
 	if _player_sprite != null:
