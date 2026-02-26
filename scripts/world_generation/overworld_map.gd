@@ -959,6 +959,10 @@ var _context_menu_tile := Vector2i(-1, -1)
 
 const CONTEXT_MENU_BEGIN_JOURNEY_ID := 0
 const CONTEXT_MENU_MORE_INFORMATION_ID := 1
+const DWARFHOLD_GENERATION_SCENE_PATH := "res://scenes/dwarf_hold_generation.tscn"
+const DWARFHOLD_SCENE_SEED_KEY := "dwarfhold_scene_seed"
+const DWARFHOLD_SCENE_TILE_KEY := "dwarfhold_scene_tile"
+const DWARFHOLD_SCENE_NAME_KEY := "dwarfhold_scene_name"
 const MORE_INFO_IMAGE_FOLDER := "res://resources/images/overworld/more_info"
 
 var _more_info_image_paths: Array[String] = []
@@ -1124,9 +1128,48 @@ func _on_structure_context_menu_id_pressed(action_id: int) -> void:
 
 	match action_id:
 		CONTEXT_MENU_BEGIN_JOURNEY_ID:
-			print("Begin your journey here at %s" % clicked_tile)
+			_begin_journey_from_tile(clicked_tile)
 		CONTEXT_MENU_MORE_INFORMATION_ID:
 			_open_structure_details_from_context_menu(clicked_tile)
+
+func _begin_journey_from_tile(tile_coord: Vector2i) -> void:
+	var details := _tile_data.get(tile_coord, {}) as Dictionary
+	if details.is_empty():
+		return
+	if not _is_dwarfhold_structure(details):
+		print("Begin journey is currently available for dwarfholds only: %s" % tile_coord)
+		return
+
+	var dwarfhold_seed := _dwarfhold_scene_seed_for_tile(tile_coord, details)
+	if dwarfhold_seed.is_empty():
+		print("Unable to resolve dwarfhold scene seed for %s" % tile_coord)
+		return
+
+	_store_selected_dwarfhold_scene_context(dwarfhold_seed, tile_coord, details)
+	get_tree().change_scene_to_file(DWARFHOLD_GENERATION_SCENE_PATH)
+
+func _store_selected_dwarfhold_scene_context(seed_text: String, tile_coord: Vector2i, details: Dictionary) -> void:
+	var game_session := get_node_or_null("/root/GameSession")
+	if game_session == null:
+		return
+	if not game_session.has_method("get_world_settings") or not game_session.has_method("set_world_settings"):
+		return
+	var settings: Dictionary = game_session.call("get_world_settings")
+	settings[DWARFHOLD_SCENE_SEED_KEY] = seed_text
+	settings[DWARFHOLD_SCENE_TILE_KEY] = {"x": tile_coord.x, "y": tile_coord.y}
+	settings[DWARFHOLD_SCENE_NAME_KEY] = String(details.get("region_name", "")).strip_edges()
+	game_session.call("set_world_settings", settings)
+
+func _dwarfhold_scene_seed_for_tile(tile_coord: Vector2i, details: Dictionary) -> String:
+	var existing_seed := String(details.get(DWARFHOLD_SCENE_SEED_KEY, "")).strip_edges()
+	if not existing_seed.is_empty():
+		return existing_seed
+
+	var settlement_name := String(details.get("region_name", "Unknown Dwarfhold")).strip_edges()
+	if settlement_name.is_empty():
+		settlement_name = "Unknown Dwarfhold"
+	var seed_basis := "%s|%d|%d|%d" % [settlement_name, tile_coord.x, tile_coord.y, map_seed]
+	return str(seed_basis.hash())
 
 func _open_structure_details_from_context_menu(tile_coord: Vector2i) -> void:
 	var details := _tile_data.get(tile_coord, {}) as Dictionary
@@ -2776,6 +2819,7 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			tile_info["settlement_type"] = settlement_type
 			if settlement_type == "dwarfhold":
 				tile_info.merge(_generate_dwarfhold_details(settlement_name, chosen, tile, rng), true)
+				tile_info[DWARFHOLD_SCENE_SEED_KEY] = _dwarfhold_scene_seed_for_tile(chosen, tile_info)
 			else:
 				var founded_years_ago := _founded_years_ago_for_settlement_type(settlement_type, rng)
 				tile_info["founded_years_ago"] = founded_years_ago

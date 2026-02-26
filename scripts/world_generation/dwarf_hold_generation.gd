@@ -209,6 +209,9 @@ const CHEST_SLOT_COLUMNS := 8
 const CHEST_SLOT_ROWS := 4
 const BACKPACK_SLOT_ROWS := 3
 
+
+const DWARFHOLD_SCENE_SEED_KEY := "dwarfhold_scene_seed"
+
 const CHEST_LOOT_TABLE := [
 	{"name": "Iron Ingot", "min": 1, "max": 5},
 	{"name": "Gold Nugget", "min": 1, "max": 3},
@@ -443,6 +446,7 @@ const CIVIC_BUILDING_TYPES := {
 }
 
 func _ready() -> void:
+	_apply_cached_dwarfhold_scene_seed()
 	_configure_tile_layer()
 	_torch_light_texture = _create_torch_light_texture()
 	_torch_sprite_texture = _create_torch_sprite_texture()
@@ -563,6 +567,16 @@ func _is_passable_cell_for_actor(cell: Vector2i) -> bool:
 	if decor_layer.get_cell_source_id(cell) < 0:
 		return true
 	return _is_passable_atlas_tile(decor_layer.get_cell_atlas_coords(cell))
+
+func _apply_cached_dwarfhold_scene_seed() -> void:
+	var game_session := get_node_or_null("/root/GameSession")
+	if game_session == null or not game_session.has_method("get_world_settings"):
+		return
+	var settings: Dictionary = game_session.call("get_world_settings")
+	var scene_seed := String(settings.get(DWARFHOLD_SCENE_SEED_KEY, "")).strip_edges()
+	if scene_seed.is_empty():
+		return
+	seed_input.text = scene_seed
 
 func _on_generate_pressed() -> void:
 	_generate_city()
