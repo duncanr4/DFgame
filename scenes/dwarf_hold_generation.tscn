@@ -132,6 +132,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "Dwarf Hold Generator"
 
+[node name="StartAsPlayerButton" type="Button" parent="Margin/Layout/Controls" unique_id=203445906]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "▶ Start as Player Character"
+
 [node name="Description" type="Label" parent="Margin/Layout/Controls" unique_id=2013604842]
 layout_mode = 2
 text = "Generate a procedurally carved dwarven hold with halls, houses, and buildings."
