@@ -2153,7 +2153,10 @@ func _resolve_river_tile(
 				mask |= bit
 				touches_ocean = true
 	var suffix := String(RIVER_MASK_SUFFIX_LOOKUP.get(mask, "NSWE"))
-	var tile_key := "RIVER_MAJOR_%s" % suffix if strength >= 3 else "RIVER_%s" % suffix
+	var base_key := "RIVER_%s" % suffix
+	var major_key := "RIVER_MAJOR_%s" % suffix
+	var use_major := strength >= 3 and RIVER_TILES.has(major_key)
+	var tile_key := major_key if use_major else base_key
 	if suffix.length() == 1 and suffix != "0" and not touches_ocean:
 		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
 			var def := def_variant as Dictionary
@@ -2164,11 +2167,13 @@ func _resolve_river_tile(
 				break
 			if String(base_biome_map.get(neighbor, "")) != BIOME_WATER:
 				break
-			var mouth_prefix := "RIVER_MAJOR_MOUTH_NARROW_" if strength >= 3 else "RIVER_MOUTH_NARROW_"
+			var mouth_prefix := "RIVER_MAJOR_MOUTH_NARROW_" if use_major else "RIVER_MOUTH_NARROW_"
 			var mouth_key := "%s%s" % [mouth_prefix, suffix]
 			if RIVER_TILES.has(mouth_key):
 				tile_key = mouth_key
 			break
+	if not RIVER_TILES.has(tile_key):
+		tile_key = "RIVER_NSWE"
 	return RIVER_TILES.get(tile_key, Vector2i(-1, -1)) as Vector2i
 
 func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dictionary) -> void:
