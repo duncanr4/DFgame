@@ -460,16 +460,16 @@ func _assign_political_regions(
 	var current_cost := 0
 	var max_cost := maxi(180, int((width + height) * 1.6))
 
-	for seed: Dictionary in seeds:
-		var coord := Vector2i(int(seed.get("x", -1)), int(seed.get("y", -1)))
+	for political_seed: Dictionary in seeds:
+		var coord := Vector2i(int(political_seed.get("x", -1)), int(political_seed.get("y", -1)))
 		if coord.x < 0 or coord.y < 0 or coord.x >= width or coord.y >= height:
 			continue
 		if not _is_land_tile(coord, tiles, is_land_base_tile_fn):
 			continue
-		owners[coord] = seed.get("key", "")
+		owners[coord] = political_seed.get("key", "")
 		costs[coord] = 0
 		var origin_bucket: Array = buckets.get(0, []) as Array
-		origin_bucket.append({"coord": coord, "seed": seed})
+		origin_bucket.append({"coord": coord, "seed": political_seed})
 		buckets[0] = origin_bucket
 
 	while true:
@@ -486,7 +486,7 @@ func _assign_political_regions(
 		var node := bucket.pop_back() as Dictionary
 		buckets[current_cost] = bucket
 		var coord := node.get("coord", Vector2i.ZERO) as Vector2i
-		var seed := node.get("seed", {}) as Dictionary
+		var political_seed := node.get("seed", {}) as Dictionary
 		if int(costs.get(coord, 1_000_000)) != current_cost:
 			continue
 		for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
@@ -495,7 +495,7 @@ func _assign_political_regions(
 				continue
 			if not _is_land_tile(next, tiles, is_land_base_tile_fn):
 				continue
-			var step_cost := _political_step_cost(seed, next, tiles, seed_number)
+			var step_cost := _political_step_cost(political_seed, next, tiles, seed_number)
 			var new_cost := current_cost + step_cost
 			if new_cost > max_cost:
 				continue
@@ -503,9 +503,9 @@ func _assign_political_regions(
 			if new_cost >= old_cost:
 				continue
 			costs[next] = new_cost
-			owners[next] = seed.get("key", "")
+			owners[next] = political_seed.get("key", "")
 			var destination_bucket: Array = buckets.get(new_cost, []) as Array
-			destination_bucket.append({"coord": next, "seed": seed})
+			destination_bucket.append({"coord": next, "seed": political_seed})
 			buckets[new_cost] = destination_bucket
 
 	for y in range(height):
@@ -561,7 +561,7 @@ func _is_land_tile(coord: Vector2i, tiles: Dictionary, is_land_base_tile_fn: Cal
 		return bool(is_land_base_tile_fn.call(coord, tile))
 	return String(tile.get("base_biome", tile.get("base", ""))).to_lower() != "water"
 
-func _political_step_cost(seed: Dictionary, coord: Vector2i, tiles: Dictionary, seed_number: int) -> int:
+func _political_step_cost(political_seed: Dictionary, coord: Vector2i, tiles: Dictionary, seed_number: int) -> int:
 	var tile := tiles.get(coord, {}) as Dictionary
 	var biome := String(tile.get("biome_type", tile.get("base_biome", tile.get("base", "")))).to_lower()
 	var base := String(tile.get("base_biome", tile.get("base", biome))).to_lower()
@@ -571,7 +571,7 @@ func _political_step_cost(seed: Dictionary, coord: Vector2i, tiles: Dictionary, 
 	if influence_value is Dictionary:
 		influence = influence_value as Dictionary
 	var dominant_key := String(influence.get("key", "")).to_lower()
-	var owner_key := String(seed.get("key", "")).to_lower()
+	var owner_key := String(political_seed.get("key", "")).to_lower()
 
 	var cost := 10
 	if dominant_key == owner_key:
