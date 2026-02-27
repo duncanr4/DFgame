@@ -13,6 +13,48 @@ const JUNGLE_TREE_TILE := Vector2i(0, 3)
 const CUT_TREES_TILE := Vector2i(1, 5)
 const AMBIENT_LUMBER_MILL_TILE := Vector2i(0, 5)
 const WATER_TILE := Vector2i(4, 1)
+const RIVER_TILES := {
+	"RIVER_NS": Vector2i(0, 4),
+	"RIVER_WE": Vector2i(1, 4),
+	"RIVER_SE": Vector2i(2, 4),
+	"RIVER_SW": Vector2i(3, 4),
+	"RIVER_NE": Vector2i(4, 4),
+	"RIVER_NW": Vector2i(5, 4),
+	"RIVER_NSE": Vector2i(6, 4),
+	"RIVER_SWE": Vector2i(7, 4),
+	"RIVER_NWE": Vector2i(8, 4),
+	"RIVER_NSW": Vector2i(9, 4),
+	"RIVER_NSWE": Vector2i(10, 4),
+	"RIVER_0": Vector2i(11, 4),
+	"RIVER_N": Vector2i(12, 4),
+	"RIVER_S": Vector2i(13, 4),
+	"RIVER_W": Vector2i(14, 4),
+	"RIVER_E": Vector2i(15, 4),
+	"RIVER_MAJOR_NS": Vector2i(0, 5),
+	"RIVER_MAJOR_WE": Vector2i(1, 5),
+	"RIVER_MAJOR_SE": Vector2i(2, 5),
+	"RIVER_MAJOR_SW": Vector2i(3, 5),
+	"RIVER_MAJOR_NE": Vector2i(4, 5),
+	"RIVER_MAJOR_NW": Vector2i(5, 5),
+	"RIVER_MAJOR_NSE": Vector2i(6, 5),
+	"RIVER_MAJOR_SWE": Vector2i(7, 5),
+	"RIVER_MAJOR_NWE": Vector2i(8, 5),
+	"RIVER_MAJOR_NSW": Vector2i(9, 5),
+	"RIVER_MAJOR_NSWE": Vector2i(10, 5),
+	"RIVER_MAJOR_0": Vector2i(11, 5),
+	"RIVER_MAJOR_N": Vector2i(12, 5),
+	"RIVER_MAJOR_S": Vector2i(13, 5),
+	"RIVER_MAJOR_W": Vector2i(14, 5),
+	"RIVER_MAJOR_E": Vector2i(15, 5),
+	"RIVER_MOUTH_NARROW_N": Vector2i(12, 7),
+	"RIVER_MOUTH_NARROW_S": Vector2i(13, 7),
+	"RIVER_MOUTH_NARROW_W": Vector2i(14, 7),
+	"RIVER_MOUTH_NARROW_E": Vector2i(15, 7),
+	"RIVER_MAJOR_MOUTH_NARROW_N": Vector2i(12, 8),
+	"RIVER_MAJOR_MOUTH_NARROW_S": Vector2i(13, 8),
+	"RIVER_MAJOR_MOUTH_NARROW_W": Vector2i(14, 8),
+	"RIVER_MAJOR_MOUTH_NARROW_E": Vector2i(15, 8)
+}
 const MOUNTAIN_TILE := Vector2i(3, 0)
 const MOUNTAIN_TOP_A_TILE := Vector2i(4, 0)
 const MOUNTAIN_TOP_B_TILE := Vector2i(5, 0)
