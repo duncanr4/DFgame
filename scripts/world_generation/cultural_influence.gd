@@ -4,6 +4,61 @@ extends RefCounted
 const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
 const MIN_RADIUS := 2
 const MIN_SCORE := 0.0001
+const STATE_FORMS: Array[String] = [
+	"Duchy",
+	"Grand Duchy",
+	"Principality",
+	"Kingdom",
+	"Empire",
+	"Republic",
+	"Federation",
+	"Trade Company",
+	"Most Serene Republic",
+	"Oligarchy",
+	"Tetrarchy",
+	"Triumvirate",
+	"Diarchy",
+	"Junta",
+	"Union",
+	"League",
+	"Confederation",
+	"United Kingdom",
+	"United Republic",
+	"United Provinces",
+	"Commonwealth",
+	"Heptarchy",
+	"Theocracy",
+	"Brotherhood",
+	"Thearchy",
+	"See",
+	"Holy State",
+	"Free Territory",
+	"Council",
+	"Commune",
+	"Community",
+	"Marches",
+	"Dominion",
+	"Protectorate",
+	"Khanate",
+	"Beylik",
+	"Tsardom",
+	"Khaganate",
+	"Shogunate",
+	"Caliphate",
+	"Emirate",
+	"Despotate",
+	"Ulus",
+	"Horde",
+	"Satrapy",
+	"Free City",
+	"City-state",
+	"Diocese",
+	"Bishopric",
+	"Eparchy",
+	"Exarchate",
+	"Patriarchate",
+	"Imamah"
+]
 
 var _sources: Array[Dictionary] = []
 
@@ -463,7 +518,7 @@ func _assign_political_regions(
 	is_land_base_tile_fn: Callable,
 	seed_number: int
 ) -> void:
-	var seeds := _build_political_seeds(settlements, factions, tiles)
+	var seeds := _build_political_seeds(settlements, factions, tiles, seed_number)
 	if seeds.is_empty():
 		return
 
@@ -479,7 +534,7 @@ func _assign_political_regions(
 			continue
 		if not _is_land_tile(coord, tiles, is_land_base_tile_fn):
 			continue
-		owners[coord] = political_seed.get("key", "")
+		owners[coord] = political_seed
 		costs[coord] = 0
 		var origin_bucket: Array = buckets.get(0, []) as Array
 		origin_bucket.append({"coord": coord, "seed": political_seed})
@@ -516,7 +571,7 @@ func _assign_political_regions(
 			if new_cost >= old_cost:
 				continue
 			costs[next] = new_cost
-			owners[next] = political_seed.get("key", "")
+			owners[next] = political_seed
 			var destination_bucket: Array = buckets.get(new_cost, []) as Array
 			destination_bucket.append({"coord": next, "seed": political_seed})
 			buckets[new_cost] = destination_bucket
@@ -527,10 +582,12 @@ func _assign_political_regions(
 			var tile := tiles.get(coord, {}) as Dictionary
 			if tile.is_empty():
 				continue
-			tile["political_owner"] = String(owners.get(coord, "")).strip_edges().to_lower()
+			var political_seed: Dictionary = owners.get(coord, {}) as Dictionary
+			tile["political_owner"] = String(political_seed.get("key", "")).strip_edges().to_lower()
+			tile["political_state"] = String(political_seed.get("state_name", "")).strip_edges()
 			tiles[coord] = tile
 
-func _build_political_seeds(settlements: Array[Dictionary], factions: Array[Dictionary], tiles: Dictionary) -> Array[Dictionary]:
+func _build_political_seeds(settlements: Array[Dictionary], factions: Array[Dictionary], tiles: Dictionary, seed_number: int) -> Array[Dictionary]:
 	var seeds: Array[Dictionary] = []
 	var occupied := {}
 	for faction: Dictionary in factions:
@@ -542,7 +599,13 @@ func _build_political_seeds(settlements: Array[Dictionary], factions: Array[Dict
 		var key := normalise_culture_key(String(faction.get("key", "")), String(faction.get("label", "")))
 		var coord := Vector2i(x, y)
 		occupied[coord] = true
-		seeds.append({"x": x, "y": y, "key": key, "weight": 3})
+		seeds.append({
+			"x": x,
+			"y": y,
+			"key": key,
+			"weight": 3,
+			"state_name": _generate_state_name(key, x, y, seed_number)
+		})
 
 	for settlement: Dictionary in settlements:
 		var x := int(settlement.get("x", -1))
@@ -560,7 +623,14 @@ func _build_political_seeds(settlements: Array[Dictionary], factions: Array[Dict
 		var key := String(influence.get("key", "humans")).strip_edges()
 		if key.is_empty():
 			key = "humans"
-		seeds.append({"x": x, "y": y, "key": normalise_culture_key(key, "humans"), "weight": 1})
+		var normalized_key := normalise_culture_key(key, "humans")
+		seeds.append({
+			"x": x,
+			"y": y,
+			"key": normalized_key,
+			"weight": 1,
+			"state_name": _generate_state_name(normalized_key, x, y, seed_number)
+		})
 
 	return seeds
 
@@ -608,6 +678,17 @@ func _political_step_cost(political_seed: Dictionary, coord: Vector2i, tiles: Di
 
 	var jitter := int(_hash_u32(seed_number, coord.x, coord.y, 977) % 4)
 	return maxi(3, cost + jitter)
+
+func _generate_state_name(culture_key: String, x: int, y: int, seed_number: int) -> String:
+	var normalized_key := normalise_culture_key(culture_key, "humans")
+	var culture_label := format_culture_label(normalized_key)
+	if STATE_FORMS.is_empty():
+		return culture_label
+	var index := int(_hash_u32(seed_number, x, y, normalized_key.hash()) % STATE_FORMS.size())
+	var form := STATE_FORMS[index]
+	if form in ["Empire", "Khaganate", "Shogunate", "Caliphate", "Oligarchy", "Union", "Confederation", "League"]:
+		return "%s %s" % [culture_label, form]
+	return "%s of %s" % [form, culture_label]
 
 func _entries_for_settlement(settlement: Dictionary, settlement_type: String) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
