@@ -2854,7 +2854,10 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			ratio = 0.5
 		if ratio <= 0.0:
 			continue
-		var count: int = maxi(1, int(round(base_count * ratio)))
+		var adjusted_ratio := ratio
+		if civilization == "lizardmen":
+			adjusted_ratio *= 0.5
+		var count: int = maxi(1, int(round(base_count * adjusted_ratio)))
 		for _i in range(count):
 			var available := _filter_settlement_candidates(candidates, occupied, min_distance)
 			if available.is_empty():
