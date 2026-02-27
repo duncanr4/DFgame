@@ -30,6 +30,7 @@ extends Node2D
 @export var scene3d_min_camera_distance: float = 2.4
 @export var scene3d_max_camera_distance: float = 9.5
 @export var scene3d_height_scale: float = 1.6
+@export var scene3d_mountain_compression: float = 0.2
 @export var route_overlay_line_color: Color = Color(0.82, 0.68, 0.48, 0.9)
 @export_range(1.0, 8.0, 0.1) var route_overlay_line_width: float = 2.2
 @export_range(1, 5, 1) var route_overlay_target_connections: int = 2
@@ -937,6 +938,7 @@ var _rainfall_noise: FastNoiseLite
 var _vegetation_noise: FastNoiseLite
 var _tile_data: Dictionary = {}
 var _height_map: Dictionary = {}
+var _height_texture: ImageTexture = null
 var _temperature_map: Dictionary = {}
 var _moisture_map: Dictionary = {}
 var _biome_map: Dictionary = {}
@@ -1716,6 +1718,7 @@ func _generate_map() -> void:
 	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_log_generation_stage("settlements and culture", generation_started_ms)
 	_height_map = height_map.duplicate()
+	_update_height_texture()
 	_temperature_map = temperature_map.duplicate()
 	_moisture_map = moisture_map.duplicate()
 	_biome_map = biome_map.duplicate()
@@ -4696,12 +4699,16 @@ func _update_globe_texture() -> void:
 	var viewport_texture := map_viewport.get_texture()
 	if viewport_texture == null:
 		return
-	var globe_material := globe_mesh.material_override as StandardMaterial3D
+	var globe_material := globe_mesh.material_override as ShaderMaterial
 	if globe_material == null:
-		globe_material = StandardMaterial3D.new()
-		globe_material.roughness = 1.0
+		return
 	globe_mesh.material_override = globe_material
-	globe_material.albedo_texture = viewport_texture
+	globe_material.set_shader_parameter("map_texture", viewport_texture)
+	globe_material.set_shader_parameter("height_texture", _height_texture)
+	globe_material.set_shader_parameter("water_level", water_level)
+	globe_material.set_shader_parameter("mountain_level", mountain_level)
+	globe_material.set_shader_parameter("mountain_compression", scene3d_mountain_compression)
+	globe_material.set_shader_parameter("height_scale", scene3d_height_scale)
 
 func _update_scene3d_texture() -> void:
 	if scene3d_mesh == null or map_viewport == null:
@@ -4713,7 +4720,26 @@ func _update_scene3d_texture() -> void:
 	if scene3d_material == null:
 		return
 	scene3d_material.set_shader_parameter("map_texture", viewport_texture)
+	scene3d_material.set_shader_parameter("height_texture", _height_texture)
+	scene3d_material.set_shader_parameter("water_level", water_level)
+	scene3d_material.set_shader_parameter("mountain_level", mountain_level)
+	scene3d_material.set_shader_parameter("mountain_compression", scene3d_mountain_compression)
 	scene3d_material.set_shader_parameter("height_scale", scene3d_height_scale)
+
+func _update_height_texture() -> void:
+	if map_size.x <= 0 or map_size.y <= 0:
+		_height_texture = null
+		return
+	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RF)
+	if _height_map.is_empty():
+		image.fill(Color(water_level, 0.0, 0.0, 1.0))
+	else:
+		for y in range(map_size.y):
+			for x in range(map_size.x):
+				var coord := Vector2i(x, y)
+				var h := clampf(float(_height_map.get(coord, water_level)), 0.0, 1.0)
+				image.set_pixel(x, y, Color(h, 0.0, 0.0, 1.0))
+	_height_texture = ImageTexture.create_from_image(image)
 
 func _configure_scene3d_mesh() -> void:
 	if scene3d_mesh == null:

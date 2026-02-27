@@ -17,7 +17,14 @@ subdivide_width = 192
 subdivide_depth = 192
 
 [sub_resource type="Shader" id="Shader_jv1a2"]
-code = "shader_type spatial;\nrender_mode cull_disabled;\n\nuniform sampler2D map_texture : source_color, filter_linear_mipmap, repeat_disable;\nuniform float height_scale : hint_range(0.0, 6.0) = 1.6;\n\nvoid vertex() {\n\tfloat elevation = dot(texture(map_texture, UV).rgb, vec3(0.299, 0.587, 0.114));\n\tVERTEX.y += (elevation - 0.35) * height_scale;\n}\n\nvoid fragment() {\n\tvec3 color = texture(map_texture, UV).rgb;\n\tALBEDO = color;\n\tROUGHNESS = 1.0;\n}\n"
+code = "shader_type spatial;\nrender_mode cull_disabled;\n\nuniform sampler2D map_texture : source_color, filter_linear_mipmap, repeat_disable;\nuniform sampler2D height_texture : hint_default_black, filter_linear_mipmap, repeat_disable;\nuniform float water_level : hint_range(0.0, 1.0) = 0.45;\nuniform float mountain_level : hint_range(0.0, 1.0) = 0.82;\nuniform float mountain_compression : hint_range(0.05, 1.0) = 0.2;\nuniform float height_scale : hint_range(0.0, 6.0) = 1.6;\n\nfloat terrain_elevation(vec2 uv) {\n\tfloat e = texture(height_texture, uv).r;\n\tif (e <= water_level) {\n\t\treturn water_level;\n\t}\n\tif (e <= mountain_level) {\n\t\treturn e;\n\t}\n\tfloat high = (e - mountain_level) / max(1.0 - mountain_level, 0.001);\n\treturn mountain_level + high * mountain_compression * (1.0 - mountain_level);\n}\n\nvoid vertex() {\n\tfloat elevation = terrain_elevation(UV);\n\tVERTEX.y += (elevation - water_level) * height_scale;\n}\n\nvoid fragment() {\n\tvec3 color = texture(map_texture, UV).rgb;\n\tALBEDO = color;\n\tROUGHNESS = 1.0;\n}\n"
+
+[sub_resource type="Shader" id="Shader_26n6x"]
+code = "shader_type spatial;\nrender_mode cull_disabled;\n\nuniform sampler2D map_texture : source_color, filter_linear_mipmap, repeat_disable;\nuniform sampler2D height_texture : hint_default_black, filter_linear_mipmap, repeat_disable;\nuniform float water_level : hint_range(0.0, 1.0) = 0.45;\nuniform float mountain_level : hint_range(0.0, 1.0) = 0.82;\nuniform float mountain_compression : hint_range(0.05, 1.0) = 0.2;\nuniform float height_scale : hint_range(0.0, 6.0) = 1.6;\n\nfloat terrain_elevation(vec2 uv) {\n\tfloat e = texture(height_texture, uv).r;\n\tif (e <= water_level) {\n\t\treturn water_level;\n\t}\n\tif (e <= mountain_level) {\n\t\treturn e;\n\t}\n\tfloat high = (e - mountain_level) / max(1.0 - mountain_level, 0.001);\n\treturn mountain_level + high * mountain_compression * (1.0 - mountain_level);\n}\n\nvoid vertex() {\n\tfloat elevation = terrain_elevation(UV);\n\tVERTEX += NORMAL * ((elevation - water_level) * height_scale);\n}\n\nvoid fragment() {\n\tvec3 color = texture(map_texture, UV).rgb;\n\tALBEDO = color;\n\tROUGHNESS = 1.0;\n}\n"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_c8ip2"]
+render_priority = 0
+shader = SubResource("Shader_26n6x")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_am8ig"]
 render_priority = 0
@@ -124,6 +131,7 @@ light_energy = 1.2
 
 [node name="GlobeMesh" type="MeshInstance3D" parent="GlobeView"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+material_override = SubResource("ShaderMaterial_c8ip2")
 mesh = SubResource("SphereMesh_5ukes")
 
 [node name="Scene3DView" type="Node3D" parent="."]
