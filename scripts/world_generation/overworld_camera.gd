@@ -2,6 +2,8 @@ extends Camera2D
 
 class_name OverworldCamera
 
+signal zoom_changed(zoom_level: float)
+
 @export var zoom_step: float = 0.1
 @export var min_zoom: float = 0.2
 @export var max_zoom: float = 4.0
@@ -74,6 +76,7 @@ func adjust_zoom(delta: float) -> void:
 	var mouse_world_after := get_global_mouse_position()
 	global_position += mouse_world_before - mouse_world_after
 	_clamp_to_world_bounds()
+	zoom_changed.emit(next_zoom)
 
 func set_world_bounds(bounds: Rect2) -> void:
 	_world_bounds = bounds

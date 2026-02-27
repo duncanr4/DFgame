@@ -20,6 +20,7 @@ extends Node2D
 @export var rainfall_frequency: float = 1.7
 @export var map_seed: int = 0
 @export var tile_size: int = 32
+@export_range(0.1, 500.0, 0.1) var kilometers_per_tile: float = 8.0
 @export var globe_rotation_speed: float = 0.02
 @export var globe_drag_sensitivity: float = 0.008
 @export var globe_zoom_step: float = 0.35
@@ -886,6 +887,9 @@ const CIVILIZATION_LABELS := {
 @onready var culture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/CultureMapButton")
 @onready var political_boundaries_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/PoliticalBoundariesButton")
 @onready var routes_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/RoutesMapButton")
+@onready var scale_bar_container: Control = get_node_or_null("MapUi/ScaleBarContainer")
+@onready var scale_bar_label: Label = get_node_or_null("MapUi/ScaleBarContainer/ScaleBarMargin/ScaleBarVBox/ScaleBarDistanceLabel")
+@onready var scale_bar_visual: Control = get_node_or_null("MapUi/ScaleBarContainer/ScaleBarMargin/ScaleBarVBox/ScaleBarVisual")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 @onready var structure_context_menu: PopupMenu = get_node_or_null("MapUi/StructureContextMenu")
 @onready var structure_details_dialog: AcceptDialog = get_node_or_null("MapUi/StructureDetailsDialog")
@@ -1039,6 +1043,9 @@ func _ready() -> void:
 	if routes_map_button != null:
 		routes_map_button.toggled.connect(_on_routes_map_toggled)
 		routes_map_button.button_pressed = false
+	if overworld_camera != null:
+		overworld_camera.zoom_changed.connect(_on_overworld_camera_zoom_changed)
+	_refresh_scale_bar()
 	_cache_map_layer_parent()
 	_cache_tree_layer_parent()
 	_cache_highland_layer_parent()
@@ -1051,6 +1058,26 @@ func _ready() -> void:
 	_set_scene3d_view(false)
 	call_deferred("_cache_more_info_image_paths")
 	_configure_structure_context_menu()
+
+func _on_overworld_camera_zoom_changed(_zoom_level: float) -> void:
+	_refresh_scale_bar()
+
+func _refresh_scale_bar() -> void:
+	if scale_bar_container == null or scale_bar_visual == null or scale_bar_label == null:
+		return
+	if _is_globe_view or _is_scene3d_view:
+		scale_bar_container.visible = false
+		return
+	if overworld_camera == null:
+		scale_bar_container.visible = false
+		return
+	var safe_zoom := maxf(overworld_camera.zoom.x, 0.001)
+	var pixels_per_km := (float(tile_size) / safe_zoom) / maxf(kilometers_per_tile, 0.001)
+	if scale_bar_visual.has_method("set_scale_display"):
+		scale_bar_visual.call("set_scale_display", pixels_per_km)
+	if scale_bar_visual.has_method("get_distance_label"):
+		scale_bar_label.text = str(scale_bar_visual.call("get_distance_label"))
+	scale_bar_container.visible = true
 
 func _show_loading_screen() -> void:
 	if loading_screen != null:
@@ -4302,6 +4329,7 @@ func _configure_overworld_camera_bounds() -> void:
 		return
 	var world_rect := _get_world_rect()
 	overworld_camera.set_world_bounds(world_rect)
+	_refresh_scale_bar()
 
 func _get_world_rect() -> Rect2:
 	var world_width := maxf(0.0, float(map_size.x * tile_size))
@@ -4334,6 +4362,7 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_routes_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
+	_refresh_scale_bar()
 
 func _set_scene3d_view(enabled: bool) -> void:
 	_is_scene3d_view = enabled
@@ -4361,6 +4390,7 @@ func _set_scene3d_view(enabled: bool) -> void:
 	_update_routes_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
+	_refresh_scale_bar()
 
 func _move_map_layer_to_viewport() -> void:
 	if map_layer == null or map_viewport_root == null:
