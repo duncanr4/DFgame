@@ -1,6 +1,9 @@
 extends Control
 
 
+var state_toggle_enabled: bool = false
+
+
 func _on_back_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/mainmenu.tscn")
 
@@ -44,3 +47,7 @@ func _on_vsync_toggled(toggled_on: bool) -> void:
 	DisplayServer.window_set_vsync_mode(
 		DisplayServer.VSYNC_ENABLED if toggled_on else DisplayServer.VSYNC_DISABLED
 	)
+
+
+func _on_state_toggle_toggled(toggled_on: bool) -> void:
+	state_toggle_enabled = toggled_on
