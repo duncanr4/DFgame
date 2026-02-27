@@ -1075,14 +1075,16 @@ func _on_regenerate_pressed() -> void:
 	await _regenerate_map()
 
 func _on_globe_view_toggled(is_pressed: bool) -> void:
-	if is_pressed and scene3d_view_button != null and scene3d_view_button.button_pressed:
-		scene3d_view_button.set_pressed_no_signal(false)
+	if is_pressed:
+		if scene3d_view_button != null:
+			scene3d_view_button.set_pressed_no_signal(false)
 		_set_scene3d_view(false)
 	_set_globe_view(is_pressed)
 
 func _on_scene3d_view_toggled(is_pressed: bool) -> void:
-	if is_pressed and globe_view_button != null and globe_view_button.button_pressed:
-		globe_view_button.set_pressed_no_signal(false)
+	if is_pressed:
+		if globe_view_button != null:
+			globe_view_button.set_pressed_no_signal(false)
 		_set_globe_view(false)
 	_set_scene3d_view(is_pressed)
 
