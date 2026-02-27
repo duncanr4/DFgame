@@ -1361,6 +1361,16 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 	var settlement_type := String(details.get("settlement_classification", "")).strip_edges()
 	if settlement_type.is_empty():
 		settlement_type = String(details.get("settlement_type", "Settlement")).strip_edges().capitalize()
+	if _is_dwarfhold_structure(details):
+		var dwarfhold_access := String(details.get("dwarfhold_access", "")).strip_edges()
+		var dwarfhold_depth := String(details.get("dwarfhold_depth", "")).strip_edges()
+		var status_parts: Array[String] = []
+		if not dwarfhold_access.is_empty():
+			status_parts.append(dwarfhold_access)
+		if not dwarfhold_depth.is_empty():
+			status_parts.append(dwarfhold_depth)
+		if not status_parts.is_empty():
+			settlement_type = "%s (%s)" % [settlement_type, ", ".join(status_parts)]
 
 	structure_details_dialog.title = "Structure Details — %s" % settlement_name
 	if structure_details_tabs != null:
@@ -4427,6 +4437,18 @@ func _dwarfhold_classification_for_tile(tile: Vector2i) -> Dictionary:
 		"population_range": Vector2i(900, 4800)
 	}
 
+func _dwarfhold_access_status_for_classification(classification_key: String, rng: RandomNumberGenerator) -> String:
+	if classification_key == "abandoned":
+		return "Closed"
+	if rng.randf() < 0.12:
+		return "Closed"
+	return "Open"
+
+func _dwarfhold_depth_for_classification(classification_key: String) -> String:
+	if classification_key == "dark":
+		return "Underdark"
+	return "Overworld"
+
 func _generate_dwarfhold_details(
 	settlement_name: String,
 	settlement_coord: Vector2i,
@@ -4435,9 +4457,13 @@ func _generate_dwarfhold_details(
 ) -> Dictionary:
 	var classification := _dwarfhold_classification_for_tile(settlement_tile)
 	var classification_key := String(classification.get("key", ""))
+	var hold_access := _dwarfhold_access_status_for_classification(classification_key, rng)
+	var hold_depth := _dwarfhold_depth_for_classification(classification_key)
 	var details := {
 		"settlement_classification": classification["label"],
 		"settlement_classification_key": classification_key,
+		"dwarfhold_access": hold_access,
+		"dwarfhold_depth": hold_depth,
 		"population_label": "Population",
 		"population_descriptor": "residents"
 	}
@@ -4846,7 +4872,17 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		var classification_label := _variant_to_clean_string(data.get("settlement_classification", "Dwarfhold"))
 		if classification_label.is_empty():
 			classification_label = "Dwarfhold"
-		_set_tooltip_label(tooltip_settlement, classification_label, true)
+		var dwarfhold_access := _variant_to_clean_string(data.get("dwarfhold_access", ""))
+		var dwarfhold_depth := _variant_to_clean_string(data.get("dwarfhold_depth", ""))
+		var type_parts: Array[String] = [classification_label]
+		if not dwarfhold_access.is_empty() or not dwarfhold_depth.is_empty():
+			var access_and_depth: Array[String] = []
+			if not dwarfhold_access.is_empty():
+				access_and_depth.append(dwarfhold_access)
+			if not dwarfhold_depth.is_empty():
+				access_and_depth.append(dwarfhold_depth)
+			type_parts.append("(%s)" % ", ".join(access_and_depth))
+		_set_tooltip_label(tooltip_settlement, " ".join(type_parts), true)
 
 		var population_value: Variant = data.get("population", null)
 		var population_text := ""
