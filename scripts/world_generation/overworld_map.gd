@@ -30,6 +30,10 @@ extends Node2D
 @export var scene3d_min_camera_distance: float = 2.4
 @export var scene3d_max_camera_distance: float = 9.5
 @export var scene3d_height_scale: float = 1.6
+@export var route_overlay_line_color: Color = Color(0.82, 0.68, 0.48, 0.9)
+@export_range(1.0, 8.0, 0.1) var route_overlay_line_width: float = 2.2
+@export_range(1, 5, 1) var route_overlay_target_connections: int = 2
+@export_range(0.05, 0.6, 0.01) var route_overlay_max_distance_ratio: float = 0.2
 @export_range(0.0, 1.0, 0.01) var iceberg_temperature_threshold: float = 0.32
 @export_range(0.0, 1.0, 0.01) var iceberg_density: float = 0.12
 @export var iceberg_tile_options: Array[Vector2i] = [Vector2i(4, 3), Vector2i(5, 3)]
@@ -859,6 +863,7 @@ const CIVILIZATION_LABELS := {
 @onready var biome_overlay: Sprite2D = get_node_or_null("MapOverlays/BiomeOverlay")
 @onready var terrain_shading_overlay: Sprite2D = get_node_or_null("MapOverlays/TerrainShadingOverlay")
 @onready var culture_overlay: Sprite2D = get_node_or_null("MapOverlays/CultureOverlay")
+@onready var routes_overlay: Node2D = get_node_or_null("MapOverlays/RoutesOverlay")
 @onready var overworld_camera: OverworldCamera = get_node_or_null("OverworldCamera")
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
 @onready var globe_camera: Camera3D = get_node_or_null("GlobeView/GlobeCamera")
@@ -876,6 +881,7 @@ const CIVILIZATION_LABELS := {
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
 @onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
 @onready var culture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/CultureMapButton")
+@onready var routes_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/RoutesMapButton")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 @onready var structure_context_menu: PopupMenu = get_node_or_null("MapUi/StructureContextMenu")
 @onready var structure_details_dialog: AcceptDialog = get_node_or_null("MapUi/StructureDetailsDialog")
@@ -958,6 +964,8 @@ var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
 var _biome_overlay_enabled := false
 var _culture_overlay_enabled := false
+var _routes_overlay_enabled := false
+var _route_segments: Array = []
 var _overlay_dirty := {
 	"elevation": true,
 	"temperature": true,
@@ -1015,6 +1023,9 @@ func _ready() -> void:
 	if culture_map_button != null:
 		culture_map_button.toggled.connect(_on_culture_map_toggled)
 		culture_map_button.button_pressed = false
+	if routes_map_button != null:
+		routes_map_button.toggled.connect(_on_routes_map_toggled)
+		routes_map_button.button_pressed = false
 	_cache_map_layer_parent()
 	_cache_tree_layer_parent()
 	_cache_highland_layer_parent()
@@ -1099,6 +1110,10 @@ func _on_culture_map_toggled(is_pressed: bool) -> void:
 	if is_pressed:
 		_ensure_overlay_texture("culture")
 	_update_culture_overlay_visibility()
+
+func _on_routes_map_toggled(is_pressed: bool) -> void:
+	_routes_overlay_enabled = is_pressed
+	_update_routes_overlay_visibility()
 
 func _configure_structure_context_menu() -> void:
 	if structure_context_menu == null:
@@ -1697,6 +1712,7 @@ func _generate_map() -> void:
 	generation_started_ms = Time.get_ticks_msec()
 	_place_settlements(biome_map, rng)
 	_place_github_style_structures(biome_map, height_map, moisture_map, rng)
+	_build_routes_overlay_from_settlements()
 	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_log_generation_stage("settlements and culture", generation_started_ms)
 	_height_map = height_map.duplicate()
@@ -1713,6 +1729,7 @@ func _generate_map() -> void:
 		_ensure_overlay_texture("biome")
 	if _culture_overlay_enabled:
 		_ensure_overlay_texture("culture")
+	_update_routes_overlay_visibility()
 	_update_terrain_shading_overlay(base_biome_map)
 	_configure_globe_viewport()
 	_configure_overworld_camera_bounds()
@@ -4273,6 +4290,7 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_moisture_overlay_visibility()
 	_update_biome_overlay_visibility()
 	_update_culture_overlay_visibility()
+	_update_routes_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
 
@@ -4298,6 +4316,7 @@ func _set_scene3d_view(enabled: bool) -> void:
 	_update_moisture_overlay_visibility()
 	_update_biome_overlay_visibility()
 	_update_culture_overlay_visibility()
+	_update_routes_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
 
@@ -5103,6 +5122,108 @@ func _update_culture_overlay_visibility() -> void:
 	if culture_overlay == null:
 		return
 	culture_overlay.visible = _culture_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
+
+func _update_routes_overlay_visibility() -> void:
+	if routes_overlay == null:
+		return
+	routes_overlay.visible = _routes_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
+
+func _build_routes_overlay_from_settlements() -> void:
+	_route_segments.clear()
+	if routes_overlay == null:
+		return
+
+	var settlement_cells: Array[Vector2i] = []
+	for coord_variant: Variant in _tile_data.keys():
+		var coord := coord_variant as Vector2i
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		if String(tile_info.get("settlement_type", "")).strip_edges().is_empty():
+			continue
+		settlement_cells.append(coord)
+
+	if settlement_cells.size() < 2:
+		_refresh_routes_overlay_lines()
+		return
+
+	var max_distance := maxf(8.0, float(mini(map_size.x, map_size.y)) * route_overlay_max_distance_ratio)
+	var desired_connections := maxi(1, route_overlay_target_connections)
+	var edge_set: Dictionary = {}
+
+	var connected: Dictionary = {}
+	connected[settlement_cells[0]] = true
+	while connected.size() < settlement_cells.size():
+		var best_from := Vector2i(-1, -1)
+		var best_to := Vector2i(-1, -1)
+		var best_distance := INF
+		for from_coord_variant: Variant in connected.keys():
+			var from_coord := from_coord_variant as Vector2i
+			for candidate_coord: Vector2i in settlement_cells:
+				if connected.has(candidate_coord):
+					continue
+				var dist := from_coord.distance_to(candidate_coord)
+				if dist < best_distance:
+					best_distance = dist
+					best_from = from_coord
+					best_to = candidate_coord
+		if best_to == Vector2i(-1, -1):
+			break
+		_add_route_edge(best_from, best_to, edge_set)
+		connected[best_to] = true
+
+	for from_coord: Vector2i in settlement_cells:
+		var nearby: Array[Dictionary] = []
+		for to_coord: Vector2i in settlement_cells:
+			if to_coord == from_coord:
+				continue
+			var dist := from_coord.distance_to(to_coord)
+			if dist > max_distance:
+				continue
+			nearby.append({"coord": to_coord, "distance": dist})
+		nearby.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return float(a.get("distance", INF)) < float(b.get("distance", INF))
+		)
+		for i in range(mini(desired_connections, nearby.size())):
+			var entry := nearby[i] as Dictionary
+			_add_route_edge(from_coord, entry.get("coord", from_coord) as Vector2i, edge_set)
+
+	_refresh_routes_overlay_lines()
+
+func _add_route_edge(a: Vector2i, b: Vector2i, edge_set: Dictionary) -> void:
+	if a == b:
+		return
+	var key_a := "%d,%d" % [a.x, a.y]
+	var key_b := "%d,%d" % [b.x, b.y]
+	var ordered_key := "%s|%s" % [key_a, key_b] if key_a < key_b else "%s|%s" % [key_b, key_a]
+	if edge_set.has(ordered_key):
+		return
+	edge_set[ordered_key] = true
+	var start := _map_cell_center(a)
+	var end := _map_cell_center(b)
+	_route_segments.append(PackedVector2Array([start, end]))
+
+func _map_cell_center(coord: Vector2i) -> Vector2:
+	return (Vector2(coord) + Vector2(0.5, 0.5)) * float(tile_size)
+
+func _refresh_routes_overlay_lines() -> void:
+	if routes_overlay == null:
+		return
+	for child in routes_overlay.get_children():
+		child.queue_free()
+	for segment_variant: Variant in _route_segments:
+		var segment := segment_variant as PackedVector2Array
+		if segment.size() < 2:
+			continue
+		var line := Line2D.new()
+		line.default_color = route_overlay_line_color
+		line.width = maxf(1.0, route_overlay_line_width)
+		line.joint_mode = Line2D.LINE_JOINT_ROUND
+		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		line.antialiased = true
+		line.add_point(segment[0])
+		line.add_point(segment[1])
+		routes_overlay.add_child(line)
+	_update_routes_overlay_visibility()
 
 func _biome_to_overlay_color(biome: String) -> Color:
 	var alpha := 0.45
