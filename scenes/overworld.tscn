@@ -110,6 +110,9 @@ z_index = 9
 [node name="RiversOverlay" type="Node2D" parent="MapOverlays"]
 z_index = 2
 
+[node name="LabelsOverlay" type="Node2D" parent="MapOverlays"]
+z_index = 10
+
 [node name="TerrainShadingOverlay" type="Sprite2D" parent="MapOverlays"]
 z_index = 1
 centered = false
@@ -222,6 +225,12 @@ text = "Political Boundaries"
 layout_mode = 2
 toggle_mode = true
 text = "Routes"
+
+[node name="LabelsMapButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Labels"
 
 [node name="ScaleBarButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
 layout_mode = 2

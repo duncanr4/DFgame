@@ -38,6 +38,14 @@ extends Node2D
 @export_range(1.0, 8.0, 0.1) var route_overlay_line_width: float = 2.2
 @export_range(1, 5, 1) var route_overlay_target_connections: int = 2
 @export_range(0.05, 0.6, 0.01) var route_overlay_max_distance_ratio: float = 0.2
+@export var labels_overlay_primary_color: Color = Color(0.93, 0.89, 0.76, 0.96)
+@export var labels_overlay_secondary_color: Color = Color(0.85, 0.82, 0.7, 0.92)
+@export var labels_overlay_outline_color: Color = Color(0.07, 0.06, 0.04, 0.9)
+@export_range(0.0, 4.0, 0.1) var labels_overlay_outline_size: float = 1.0
+@export var labels_overlay_rescale_on_zoom: bool = true
+@export var labels_overlay_auto_visibility: bool = true
+@export_range(4.0, 40.0, 0.5) var labels_overlay_min_screen_size: float = 7.0
+@export_range(12.0, 120.0, 1.0) var labels_overlay_max_screen_size: float = 50.0
 @export var river_overlay_line_color: Color = Color(0.3, 0.65, 0.9, 0.82)
 @export_range(0.5, 6.0, 0.1) var river_overlay_base_width: float = 1.3
 @export_range(5.0, 250.0, 1.0) var river_min_flux_to_draw: float = 44.0
@@ -874,6 +882,7 @@ const CIVILIZATION_LABELS := {
 @onready var political_boundaries_overlay: Sprite2D = get_node_or_null("MapOverlays/PoliticalBoundariesOverlay")
 @onready var routes_overlay: Node2D = get_node_or_null("MapOverlays/RoutesOverlay")
 @onready var rivers_overlay: Node2D = get_node_or_null("MapOverlays/RiversOverlay")
+@onready var labels_overlay: Node2D = get_node_or_null("MapOverlays/LabelsOverlay")
 @onready var overworld_camera: OverworldCamera = get_node_or_null("OverworldCamera")
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
 @onready var globe_camera: Camera3D = get_node_or_null("GlobeView/GlobeCamera")
@@ -893,6 +902,7 @@ const CIVILIZATION_LABELS := {
 @onready var culture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/CultureMapButton")
 @onready var political_boundaries_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/PoliticalBoundariesButton")
 @onready var routes_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/RoutesMapButton")
+@onready var labels_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/LabelsMapButton")
 @onready var scale_bar_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/ScaleBarButton")
 @onready var scale_bar_container: Control = get_node_or_null("MapUi/ScaleBarContainer")
 @onready var scale_bar_label: Label = get_node_or_null("MapUi/ScaleBarContainer/ScaleBarMargin/ScaleBarVBox/ScaleBarDistanceLabel")
@@ -982,6 +992,7 @@ var _biome_overlay_enabled := false
 var _culture_overlay_enabled := false
 var _political_boundaries_overlay_enabled := false
 var _routes_overlay_enabled := false
+var _labels_overlay_enabled := true
 var _scale_bar_enabled := true
 var _route_segments: Array = []
 var _overlay_dirty := {
@@ -1051,6 +1062,9 @@ func _ready() -> void:
 	if routes_map_button != null:
 		routes_map_button.toggled.connect(_on_routes_map_toggled)
 		routes_map_button.button_pressed = false
+	if labels_map_button != null:
+		labels_map_button.toggled.connect(_on_labels_map_toggled)
+		labels_map_button.button_pressed = _labels_overlay_enabled
 	if scale_bar_button != null:
 		scale_bar_button.toggled.connect(_on_scale_bar_toggled)
 		scale_bar_button.button_pressed = _scale_bar_enabled
@@ -1072,6 +1086,7 @@ func _ready() -> void:
 
 func _on_overworld_camera_zoom_changed(_zoom_level: float) -> void:
 	_refresh_scale_bar()
+	_update_labels_overlay_zoom_behavior()
 
 func _refresh_scale_bar() -> void:
 	if scale_bar_container == null or scale_bar_visual == null or scale_bar_label == null:
@@ -1176,6 +1191,10 @@ func _on_political_boundaries_toggled(is_pressed: bool) -> void:
 func _on_routes_map_toggled(is_pressed: bool) -> void:
 	_routes_overlay_enabled = is_pressed
 	_update_routes_overlay_visibility()
+
+func _on_labels_map_toggled(is_pressed: bool) -> void:
+	_labels_overlay_enabled = is_pressed
+	_update_labels_overlay_visibility()
 
 func _on_scale_bar_toggled(is_pressed: bool) -> void:
 	_scale_bar_enabled = is_pressed
@@ -1790,6 +1809,7 @@ func _generate_map() -> void:
 	_place_settlements(biome_map, rng)
 	_place_github_style_structures(biome_map, height_map, moisture_map, rng)
 	_build_routes_overlay_from_settlements()
+	_rebuild_labels_overlay()
 	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_log_generation_stage("settlements and culture", generation_started_ms)
 	_height_map = height_map.duplicate()
@@ -4572,6 +4592,7 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_political_boundaries_overlay_visibility()
 	_update_routes_overlay_visibility()
 	_update_rivers_overlay_visibility()
+	_update_labels_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
 	_refresh_scale_bar()
@@ -4601,6 +4622,7 @@ func _set_scene3d_view(enabled: bool) -> void:
 	_update_political_boundaries_overlay_visibility()
 	_update_routes_overlay_visibility()
 	_update_rivers_overlay_visibility()
+	_update_labels_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
 	_refresh_scale_bar()
@@ -5463,6 +5485,146 @@ func _update_rivers_overlay_visibility() -> void:
 	if rivers_overlay == null:
 		return
 	rivers_overlay.visible = not (_is_globe_view or _is_scene3d_view)
+
+func _update_labels_overlay_visibility() -> void:
+	if labels_overlay == null:
+		return
+	labels_overlay.visible = _labels_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
+	if labels_overlay.visible:
+		_update_labels_overlay_zoom_behavior()
+
+func _rebuild_labels_overlay() -> void:
+	if labels_overlay == null:
+		return
+	for child in labels_overlay.get_children():
+		child.queue_free()
+
+	var grouped_settlements := {
+		"major": Node2D.new(),
+		"minor": Node2D.new()
+	}
+	for group_name in grouped_settlements.keys():
+		var group := grouped_settlements[group_name] as Node2D
+		group.name = "%sLabels" % group_name.capitalize()
+		labels_overlay.add_child(group)
+
+	var entries: Array[Dictionary] = []
+	for coord_variant: Variant in _tile_data.keys():
+		var coord := coord_variant as Vector2i
+		var tile_info := _tile_data.get(coord, {}) as Dictionary
+		var settlement_type := String(tile_info.get("settlement_type", "")).strip_edges().to_lower()
+		if settlement_type.is_empty():
+			continue
+		var region_name := String(tile_info.get("region_name", "")).strip_edges()
+		if region_name.is_empty():
+			continue
+		var base_font_size := _label_font_size_for_settlement(settlement_type)
+		var priority := _label_priority_for_settlement(settlement_type)
+		var population := int(tile_info.get("population", 0))
+		entries.append({
+			"coord": coord,
+			"name": region_name,
+			"type": settlement_type,
+			"font_size": base_font_size,
+			"priority": priority,
+			"population": population
+		})
+
+	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var a_priority := int(a.get("priority", 0))
+		var b_priority := int(b.get("priority", 0))
+		if a_priority == b_priority:
+			return int(a.get("population", 0)) > int(b.get("population", 0))
+		return a_priority > b_priority
+	)
+
+	var occupied_rects: Array[Rect2] = []
+	for entry: Dictionary in entries:
+		var font_size := int(entry.get("font_size", 12))
+		var text := String(entry.get("name", ""))
+		var center := _map_cell_center(entry.get("coord", Vector2i.ZERO) as Vector2i)
+		var estimated_width := maxf(22.0, text.length() * float(font_size) * 0.52)
+		var estimated_height := float(font_size) * 1.2
+		var candidate_rect := Rect2(
+			center + Vector2(-estimated_width * 0.5, -float(tile_size) * 0.72 - estimated_height),
+			Vector2(estimated_width, estimated_height)
+		)
+		if _rect_overlaps_any(candidate_rect, occupied_rects):
+			continue
+		occupied_rects.append(candidate_rect)
+
+		var label := Label.new()
+		label.text = text
+		label.position = candidate_rect.position
+		label.size = candidate_rect.size
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.clip_text = true
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_theme_font_size_override("font_size", font_size)
+		label.add_theme_color_override("font_color", labels_overlay_primary_color if int(entry.get("priority", 0)) >= 2 else labels_overlay_secondary_color)
+		label.add_theme_color_override("font_outline_color", labels_overlay_outline_color)
+		label.add_theme_constant_override("outline_size", int(round(labels_overlay_outline_size)))
+		label.set_meta("base_font_size", font_size)
+
+		var group_key := "major" if int(entry.get("priority", 0)) >= 2 else "minor"
+		var target_group := grouped_settlements[group_key] as Node2D
+		target_group.add_child(label)
+
+	_update_labels_overlay_zoom_behavior()
+	_update_labels_overlay_visibility()
+
+func _update_labels_overlay_zoom_behavior() -> void:
+	if labels_overlay == null:
+		return
+	if overworld_camera == null:
+		return
+
+	var zoom_factor := maxf(overworld_camera.zoom.x, 0.001)
+	for group in labels_overlay.get_children():
+		for child in group.get_children():
+			var label := child as Label
+			if label == null:
+				continue
+			var base_font_size := float(label.get_meta("base_font_size", 12.0))
+			var scaled_font_size := base_font_size
+			if labels_overlay_rescale_on_zoom:
+				scaled_font_size = maxf(8.0, (base_font_size + (base_font_size * zoom_factor)) * 0.5)
+			label.add_theme_font_size_override("font_size", int(round(scaled_font_size)))
+
+			if labels_overlay_auto_visibility:
+				var screen_size := scaled_font_size / zoom_factor
+				label.visible = screen_size >= labels_overlay_min_screen_size and screen_size <= labels_overlay_max_screen_size
+			else:
+				label.visible = true
+
+func _label_font_size_for_settlement(settlement_type: String) -> int:
+	match settlement_type:
+		"great_dwarfhold", "dark_dwarfhold", "abandoned_dwarfhold", "dwarfhold":
+			return 15
+		"city", "wood_elf_grove", "lizardmen_city":
+			return 13
+		"town", "wizard_tower":
+			return 12
+		_:
+			return 11
+
+func _label_priority_for_settlement(settlement_type: String) -> int:
+	match settlement_type:
+		"great_dwarfhold", "dark_dwarfhold", "abandoned_dwarfhold", "dwarfhold":
+			return 3
+		"city", "wood_elf_grove", "lizardmen_city":
+			return 2
+		"town", "wizard_tower":
+			return 2
+		_:
+			return 1
+
+func _rect_overlaps_any(candidate: Rect2, rects: Array[Rect2]) -> bool:
+	for rect in rects:
+		if candidate.intersects(rect):
+			return true
+	return false
 
 func _build_routes_overlay_from_settlements() -> void:
 	_route_segments.clear()
