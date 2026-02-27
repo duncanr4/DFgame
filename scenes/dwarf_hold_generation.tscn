@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://dxmy7es4xf4sm"]
 
 [ext_resource type="Script" uid="uid://c2qflakubfv3i" path="res://scripts/world_generation/dwarf_hold_generation.gd" id="1_8mfx7"]
-[ext_resource type="Script" path="res://scripts/world_generation/zone_overlay_layer.gd" id="3_wd6by"]
 [ext_resource type="Texture2D" uid="uid://cwixo3v65o0po" path="res://resources/images/dwarfhold/map.png" id="2_c8dd5"]
+[ext_resource type="Script" uid="uid://b5i1lqmpjx0au" path="res://scripts/world_generation/zone_overlay_layer.gd" id="3_wd6by"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1prb4"]
 bg_color = Color(0.0745098, 0.0588235, 0.054902, 1)
@@ -59,59 +59,54 @@ theme_override_constants/separation = 16
 
 [node name="CityPanel" type="PanelContainer" parent="Margin/Layout" unique_id=470817688]
 unique_name_in_owner = true
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_1prb4")
-clip_contents = true
 
-[node name="CityTileLayer" type="TileMapLayer" parent="Margin/Layout/CityPanel"]
+[node name="CityTileLayer" type="TileMapLayer" parent="Margin/Layout/CityPanel" unique_id=151351120]
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
-[node name="DecorTileLayer" type="TileMapLayer" parent="Margin/Layout/CityPanel"]
+[node name="DecorTileLayer" type="TileMapLayer" parent="Margin/Layout/CityPanel" unique_id=703697700]
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
-[node name="LightingLayer" type="Node2D" parent="Margin/Layout/CityPanel"]
+[node name="LightingLayer" type="Node2D" parent="Margin/Layout/CityPanel" unique_id=2078856892]
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
-[node name="GlobalDarkness" type="CanvasModulate" parent="Margin/Layout/CityPanel/LightingLayer"]
+[node name="GlobalDarkness" type="CanvasModulate" parent="Margin/Layout/CityPanel/LightingLayer" unique_id=1617555623]
 unique_name_in_owner = true
-color = Color(0.20, 0.20, 0.24, 1)
+color = Color(0.2, 0.2, 0.24, 1)
 
-[node name="TorchLights" type="Node2D" parent="Margin/Layout/CityPanel/LightingLayer"]
+[node name="TorchLights" type="Node2D" parent="Margin/Layout/CityPanel/LightingLayer" unique_id=1613704201]
 unique_name_in_owner = true
 
-[node name="PlayerLight" type="PointLight2D" parent="Margin/Layout/CityPanel/LightingLayer"]
+[node name="PlayerLight" type="PointLight2D" parent="Margin/Layout/CityPanel/LightingLayer" unique_id=740158831]
 unique_name_in_owner = true
 visible = false
 
-[node name="FogOfWar" type="Sprite2D" parent="Margin/Layout/CityPanel/LightingLayer"]
+[node name="FogOfWar" type="Sprite2D" parent="Margin/Layout/CityPanel/LightingLayer" unique_id=930498142]
 unique_name_in_owner = true
-centered = false
 modulate = Color(0.02, 0.02, 0.03, 0.78)
+centered = false
 
-[node name="ActorLayer" type="Node2D" parent="Margin/Layout/CityPanel"]
+[node name="ActorLayer" type="Node2D" parent="Margin/Layout/CityPanel" unique_id=493696719]
 unique_name_in_owner = true
 position = Vector2(16, 16)
 
 [node name="ZoneOverlay" type="Control" parent="Margin/Layout/CityPanel" unique_id=816640221]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
 mouse_filter = 2
 script = ExtResource("3_wd6by")
 
 [node name="TileHoverTooltip" type="PanelContainer" parent="Margin/Layout/CityPanel" unique_id=206020702]
 unique_name_in_owner = true
 visible = false
-layout_mode = 0
+layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1prb4")
 
@@ -119,7 +114,6 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_1prb4")
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = ""
 
 [node name="Controls" type="VBoxContainer" parent="Margin/Layout" unique_id=715080455]
 custom_minimum_size = Vector2(260, 0)
@@ -154,7 +148,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Generate New Hold"
 
-[node name="StartAsPlayerButton" type="Button" parent="Margin/Layout/Controls" unique_id=203445906]
+[node name="StartAsPlayerButton2" type="Button" parent="Margin/Layout/Controls" unique_id=72650572]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Start as Player Character"
@@ -192,9 +186,8 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 bbcode_enabled = true
-fit_content = true
-scroll_active = true
 text = "Click a chest tile to inspect its contents."
+fit_content = true
 
 [node name="LootChestButton" type="Button" parent="Margin/Layout/Controls/ChestInventorySection" unique_id=1255507888]
 unique_name_in_owner = true
@@ -210,7 +203,7 @@ text = "Awaiting generation"
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="ChestPopup" type="PanelContainer" parent="." unique_id=765229013]
+[node name="ChestPopup" type="PanelContainer" parent="." unique_id=1508123063]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -227,7 +220,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1prb4")
 
-[node name="Content" type="VBoxContainer" parent="ChestPopup" unique_id=1132940581]
+[node name="Content" type="VBoxContainer" parent="ChestPopup" unique_id=245478585]
 layout_mode = 2
 theme_override_constants/separation = 10
 
@@ -235,7 +228,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="ChestPopupTitle" type="Label" parent="ChestPopup/Content/Header" unique_id=185531805]
+[node name="ChestPopupTitle" type="Label" parent="ChestPopup/Content/Header" unique_id=152842586]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
