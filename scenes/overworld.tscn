@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/world_generation/overworld_map.gd" id="1_1r0ns"]
 [ext_resource type="Script" path="res://scripts/world_generation/overworld_camera.gd" id="2_o0pfi"]
+[ext_resource type="Script" path="res://scripts/ui/overworld_scale_bar.gd" id="3_k8s2k"]
 [ext_resource type="Script" path="res://scripts/ui/population_pie_chart.gd" id="4_5b2fg"]
 [ext_resource type="Script" path="res://scripts/ui/population_history_chart.gd" id="5_qcr4g"]
 
@@ -218,6 +219,36 @@ text = "Political Boundaries"
 layout_mode = 2
 toggle_mode = true
 text = "Routes"
+
+[node name="ScaleBarContainer" type="PanelContainer" parent="MapUi"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -86.0
+offset_right = 250.0
+offset_bottom = -16.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_6v0i6")
+
+[node name="ScaleBarMargin" type="MarginContainer" parent="MapUi/ScaleBarContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="ScaleBarVBox" type="VBoxContainer" parent="MapUi/ScaleBarContainer/ScaleBarMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ScaleBarDistanceLabel" type="Label" parent="MapUi/ScaleBarContainer/ScaleBarMargin/ScaleBarVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "100 km"
+
+[node name="ScaleBarVisual" type="Control" parent="MapUi/ScaleBarContainer/ScaleBarMargin/ScaleBarVBox"]
+custom_minimum_size = Vector2(210, 30)
+layout_mode = 2
+script = ExtResource("3_k8s2k")
 
 [node name="MapTooltip" type="PanelContainer" parent="MapUi"]
 visible = false
