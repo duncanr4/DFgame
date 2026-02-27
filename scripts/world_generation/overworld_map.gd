@@ -16,7 +16,6 @@ extends Node2D
 @export_range(0.0, 0.5, 0.01) var edge_ocean_strength: float = 0.2
 @export_range(0.05, 1.0, 0.01) var edge_ocean_falloff: float = 0.32
 @export_range(0.5, 4.0, 0.1) var edge_ocean_curve: float = 1.6
-@export_enum("classic", "continents", "archipelago", "pangea", "random") var landmass_template: String = "continents"
 @export var temperature_frequency: float = 1.2
 @export var rainfall_frequency: float = 1.7
 @export var map_seed: int = 0
@@ -1676,9 +1675,6 @@ func _generate_map() -> void:
 			height_map[coord] = height
 		if y > 0 and y % GENERATION_YIELD_ROW_INTERVAL == 0:
 			await _yield_generation_wave()
-
-	if landmass_template != "classic":
-		TERRAIN_GENERATOR.apply_fmg_landmass_template(height_map, map_size, water_level, map_seed, landmass_template)
 
 	_smooth_height_map(height_map, 1, 0.35)
 	_ensure_landmass_presence(height_map)
