@@ -1998,7 +1998,8 @@ func _build_river_map(
 			var lowest_score := current_base_value
 			var lowest_base_value := current_base_value
 			var current_ocean_distance := float(ocean_distance.get(coord, map_size.x + map_size.y))
-			for def in RIVER_NEIGHBOR_DEFINITIONS:
+			for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
+				var def := def_variant as Dictionary
 				var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
 				if not _is_valid_map_coord(neighbor):
 					continue
@@ -2046,7 +2047,8 @@ func _build_ocean_distance_map(base_biome_map: Dictionary) -> Dictionary:
 		var current := queue[head]
 		head += 1
 		var base_distance := float(ocean_distance.get(current, 0.0))
-		for def in RIVER_NEIGHBOR_DEFINITIONS:
+		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
+			var def := def_variant as Dictionary
 			var neighbor := current + (def.get("offset", Vector2i.ZERO) as Vector2i)
 			if not _is_valid_map_coord(neighbor):
 				continue
@@ -2060,14 +2062,14 @@ func _compute_edge_connected_water_mask(base_biome_map: Dictionary) -> Dictionar
 	var mask: Dictionary = {}
 	var queue: Array[Vector2i] = []
 	for x in range(map_size.x):
-		for y in [0, map_size.y - 1]:
+		for y: int in [0, map_size.y - 1]:
 			var coord := Vector2i(x, y)
 			if String(base_biome_map.get(coord, "")) != BIOME_WATER or mask.has(coord):
 				continue
 			mask[coord] = true
 			queue.append(coord)
 	for y in range(1, map_size.y - 1):
-		for x in [0, map_size.x - 1]:
+		for x: int in [0, map_size.x - 1]:
 			var coord := Vector2i(x, y)
 			if String(base_biome_map.get(coord, "")) != BIOME_WATER or mask.has(coord):
 				continue
@@ -2077,7 +2079,8 @@ func _compute_edge_connected_water_mask(base_biome_map: Dictionary) -> Dictionar
 	while head < queue.size():
 		var current := queue[head]
 		head += 1
-		for def in RIVER_NEIGHBOR_DEFINITIONS:
+		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
+			var def := def_variant as Dictionary
 			var neighbor := current + (def.get("offset", Vector2i.ZERO) as Vector2i)
 			if not _is_valid_map_coord(neighbor):
 				continue
@@ -2128,7 +2131,8 @@ func _resolve_river_tile(
 		return Vector2i(-1, -1)
 	var mask := 0
 	var river_neighbor_count := 0
-	for def in RIVER_NEIGHBOR_DEFINITIONS:
+	for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
+		var def := def_variant as Dictionary
 		var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
 		if not _is_valid_map_coord(neighbor):
 			continue
@@ -2137,7 +2141,8 @@ func _resolve_river_tile(
 			river_neighbor_count += 1
 	var touches_ocean := false
 	if river_neighbor_count == 1:
-		for def in RIVER_NEIGHBOR_DEFINITIONS:
+		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
+			var def := def_variant as Dictionary
 			var bit := int(def.get("bit", 0))
 			if (mask & bit) != 0:
 				continue
@@ -2150,7 +2155,8 @@ func _resolve_river_tile(
 	var suffix := String(RIVER_MASK_SUFFIX_LOOKUP.get(mask, "NSWE"))
 	var tile_key := "RIVER_MAJOR_%s" % suffix if strength >= 3 else "RIVER_%s" % suffix
 	if suffix.length() == 1 and suffix != "0" and not touches_ocean:
-		for def in RIVER_NEIGHBOR_DEFINITIONS:
+		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
+			var def := def_variant as Dictionary
 			if String(def.get("key", "")) != suffix:
 				continue
 			var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
@@ -5587,7 +5593,8 @@ func _rebuild_labels_overlay() -> void:
 		"major": Node2D.new(),
 		"minor": Node2D.new()
 	}
-	for group_name in grouped_settlements.keys():
+	for group_name_variant: Variant in grouped_settlements.keys():
+		var group_name := String(group_name_variant)
 		var group := grouped_settlements[group_name] as Node2D
 		group.name = "%sLabels" % group_name.capitalize()
 		labels_overlay.add_child(group)
