@@ -985,9 +985,12 @@ const DWARFHOLD_SCENE_SEED_KEY := "dwarfhold_scene_seed"
 const DWARFHOLD_SCENE_TILE_KEY := "dwarfhold_scene_tile"
 const DWARFHOLD_SCENE_NAME_KEY := "dwarfhold_scene_name"
 const MORE_INFO_IMAGE_FOLDER := "res://resources/images/overworld/more_info"
+const GENERATION_YIELD_ROW_INTERVAL := 32
+const GENERATION_YIELD_CELL_INTERVAL := 1024
 
 var _more_info_image_paths: Array[String] = []
 var _more_info_texture_cache: Dictionary = {}
+var _more_info_cache_initialized := false
 var _landmass_masks: Dictionary = {}
 
 func _ready() -> void:
@@ -1038,7 +1041,7 @@ func _ready() -> void:
 	_configure_scene3d_mesh()
 	_set_globe_view(false)
 	_set_scene3d_view(false)
-	_cache_more_info_image_paths()
+	call_deferred("_cache_more_info_image_paths")
 	_configure_structure_context_menu()
 
 func _show_loading_screen() -> void:
@@ -1332,10 +1335,13 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 	structure_details_dialog.popup_centered(Vector2i(700, 480))
 
 func _cache_more_info_image_paths() -> void:
+	if _more_info_cache_initialized:
+		return
 	_more_info_image_paths.clear()
 	_more_info_texture_cache.clear()
 	var directory := DirAccess.open(MORE_INFO_IMAGE_FOLDER)
 	if directory == null:
+		_more_info_cache_initialized = true
 		return
 
 	directory.list_dir_begin()
@@ -1350,14 +1356,14 @@ func _cache_more_info_image_paths() -> void:
 		if lower_entry.ends_with(".png") or lower_entry.ends_with(".webp") or lower_entry.ends_with(".jpg") or lower_entry.ends_with(".jpeg"):
 			var path := "%s/%s" % [MORE_INFO_IMAGE_FOLDER, entry]
 			_more_info_image_paths.append(path)
-			var texture := load(path) as Texture2D
-			if texture != null:
-				_more_info_texture_cache[path] = texture
 	directory.list_dir_end()
+	_more_info_cache_initialized = true
 
 func _set_structure_details_random_image() -> void:
 	if structure_details_main_image == null:
 		return
+	if _more_info_image_paths.is_empty() and not _more_info_cache_initialized:
+		_cache_more_info_image_paths()
 
 	if _more_info_image_paths.is_empty():
 		structure_details_main_image.texture = null
@@ -1648,6 +1654,8 @@ func _generate_map() -> void:
 			var height := _sample_height(continent_noise, detail_noise, ridge_noise, x, y)
 			var coord := Vector2i(x, y)
 			height_map[coord] = height
+		if y > 0 and y % GENERATION_YIELD_ROW_INTERVAL == 0:
+			await _yield_generation_wave()
 
 	_smooth_height_map(height_map, 1, 0.35)
 	_ensure_landmass_presence(height_map)
@@ -1663,6 +1671,8 @@ func _generate_map() -> void:
 			moisture_map[coord] = moisture
 			vegetation_map[coord] = vegetation
 			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
+		if y > 0 and y % GENERATION_YIELD_ROW_INTERVAL == 0:
+			await _yield_generation_wave()
 
 	_guarantee_minimum_landmass(height_map, temperature_map, moisture_map, base_biome_map)
 	_landmass_masks = _generate_landmass_masks_from_biome_map(base_biome_map)
@@ -1686,12 +1696,12 @@ func _generate_map() -> void:
 		biome_map[coord] = highland_map[coord]
 
 	var generation_started_ms := Time.get_ticks_msec()
-	_apply_base_tiles(base_biome_map)
+	await _apply_base_tiles(base_biome_map)
 	_log_generation_stage("base tiles", generation_started_ms)
 	await _yield_generation_wave()
 
 	generation_started_ms = Time.get_ticks_msec()
-	_apply_tree_tiles(tree_map, base_biome_map)
+	await _apply_tree_tiles(tree_map, base_biome_map)
 	_apply_overlays_and_metadata(
 		base_biome_map,
 		biome_map,
@@ -1748,6 +1758,8 @@ func _apply_base_tiles(base_biome_map: Dictionary) -> void:
 			var base_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
 			var tile_coords := _biome_to_tile(base_biome)
 			map_layer.set_cell(coord, _atlas_source_id, tile_coords)
+		if y > 0 and y % GENERATION_YIELD_ROW_INTERVAL == 0:
+			await _yield_generation_wave()
 
 func _apply_overlays_and_metadata(
 	base_biome_map: Dictionary,
@@ -2590,6 +2602,7 @@ func _apply_tree_overlays(
 func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void:
 	if map_layer == null or tree_layer == null:
 		return
+	var processed_cells := 0
 	for coord: Vector2i in tree_map.keys():
 		if map_layer.get_cell_source_id(coord) == -1:
 			var fallback_biome := base_biome_map.get(coord, BIOME_GRASSLAND) as String
@@ -2614,6 +2627,9 @@ func _apply_tree_tiles(tree_map: Dictionary, base_biome_map: Dictionary) -> void
 		elif base_biome == BIOME_TUNDRA:
 			tile_coords = TREE_SNOW_TILE
 		tree_layer.set_cell(coord, _atlas_source_id, tile_coords)
+		processed_cells += 1
+		if processed_cells % GENERATION_YIELD_CELL_INTERVAL == 0:
+			await _yield_generation_wave()
 
 
 func _has_tree_neighbor(coord: Vector2i, biome_map: Dictionary) -> bool:
