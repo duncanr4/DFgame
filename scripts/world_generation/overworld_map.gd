@@ -38,10 +38,6 @@ extends Node2D
 @export_range(1.0, 8.0, 0.1) var route_overlay_line_width: float = 2.2
 @export_range(1, 5, 1) var route_overlay_target_connections: int = 2
 @export_range(0.05, 0.6, 0.01) var route_overlay_max_distance_ratio: float = 0.2
-@export var river_overlay_line_color: Color = Color(0.3, 0.65, 0.9, 0.82)
-@export_range(0.5, 6.0, 0.1) var river_overlay_base_width: float = 1.3
-@export_range(5.0, 250.0, 1.0) var river_min_flux_to_draw: float = 44.0
-@export_range(1, 128, 1) var river_max_count: int = 28
 @export_range(0.0, 1.0, 0.01) var iceberg_temperature_threshold: float = 0.32
 @export_range(0.0, 1.0, 0.01) var iceberg_density: float = 0.12
 @export var iceberg_tile_options: Array[Vector2i] = [Vector2i(4, 3), Vector2i(5, 3)]
@@ -873,7 +869,6 @@ const CIVILIZATION_LABELS := {
 @onready var culture_overlay: Sprite2D = get_node_or_null("MapOverlays/CultureOverlay")
 @onready var political_boundaries_overlay: Sprite2D = get_node_or_null("MapOverlays/PoliticalBoundariesOverlay")
 @onready var routes_overlay: Node2D = get_node_or_null("MapOverlays/RoutesOverlay")
-@onready var rivers_overlay: Node2D = get_node_or_null("MapOverlays/RiversOverlay")
 @onready var overworld_camera: OverworldCamera = get_node_or_null("OverworldCamera")
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
 @onready var globe_camera: Camera3D = get_node_or_null("GlobeView/GlobeCamera")
@@ -1771,7 +1766,6 @@ func _generate_map() -> void:
 		biome_map,
 		tree_map,
 		highland_map,
-		_generate_river_data(height_map, base_biome_map, moisture_map),
 		height_map,
 		temperature_map,
 		moisture_map,
@@ -1833,7 +1827,6 @@ func _apply_overlays_and_metadata(
 	biome_map: Dictionary,
 	tree_map: Dictionary,
 	highland_map: Dictionary,
-	river_data: Dictionary,
 	height_map: Dictionary,
 	temperature_map: Dictionary,
 	moisture_map: Dictionary,
@@ -1846,8 +1839,6 @@ func _apply_overlays_and_metadata(
 	var forest_proximity_map := _build_proximity_map(tree_coverage_map, [BIOME_FOREST, BIOME_JUNGLE], 6)
 	var context_size := maxi(map_size.x, map_size.y)
 	var region_names := _build_region_name_map(biome_map, name_rng, context_size)
-	var river_cells := river_data.get("cells", {}) as Dictionary
-	_refresh_rivers_overlay_lines(river_data)
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
@@ -1874,7 +1865,7 @@ func _apply_overlays_and_metadata(
 				"base_biome": base_biome,
 				"overlay": overlay_label,
 				"hill_overlay": highland_map.get(coord, ""),
-				"river": river_cells.has(coord),
+				"river": false,
 				"structure": "",
 				"structure_details": null,
 				"cultural_influence": null,
@@ -1891,195 +1882,6 @@ func _apply_overlays_and_metadata(
 				"resources": _resources_for_biome(biome),
 				"region_name": region_name
 			}
-
-
-func _generate_river_data(height_map: Dictionary, base_biome_map: Dictionary, moisture_map: Dictionary) -> Dictionary:
-	var river_cells := {}
-	var river_paths: Array = []
-
-	var flow_accumulation := {}
-	var downhill_map := {}
-	var land_cells: Array[Vector2i] = []
-
-	for y in range(map_size.y):
-		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			var biome := String(base_biome_map.get(coord, BIOME_WATER))
-			if biome == BIOME_WATER:
-				continue
-			land_cells.append(coord)
-			flow_accumulation[coord] = 0.0
-
-	land_cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return float(height_map.get(a, 0.0)) > float(height_map.get(b, 0.0))
-	)
-
-	for coord: Vector2i in land_cells:
-		var local_rain := 1.0 + clampf(float(moisture_map.get(coord, 0.0)) * 2.4, 0.0, 2.4)
-		var local_relief := clampf(float(height_map.get(coord, water_level)) - water_level, 0.0, 1.0)
-		flow_accumulation[coord] = float(flow_accumulation.get(coord, 0.0)) + local_rain + local_relief * 1.6
-		var downhill := _lowest_downhill_neighbor(coord, height_map)
-		downhill_map[coord] = downhill
-		if downhill == Vector2i(-1, -1):
-			continue
-		if String(base_biome_map.get(downhill, BIOME_WATER)) != BIOME_WATER:
-			flow_accumulation[downhill] = float(flow_accumulation.get(downhill, 0.0)) + float(flow_accumulation[coord])
-
-	var source_candidates: Array[Dictionary] = []
-	for coord: Vector2i in land_cells:
-		var flux := float(flow_accumulation.get(coord, 0.0))
-		if flux < river_min_flux_to_draw:
-			continue
-		if float(height_map.get(coord, 0.0)) < hill_level:
-			continue
-		if _has_stronger_uphill_neighbor(coord, flux, height_map, flow_accumulation):
-			continue
-		source_candidates.append({"coord": coord, "flux": flux})
-
-	source_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a.get("flux", 0.0)) > float(b.get("flux", 0.0))
-	)
-
-	var used_sources := 0
-	for candidate_variant: Variant in source_candidates:
-		if used_sources >= river_max_count:
-			break
-		var candidate := candidate_variant as Dictionary
-		var source := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
-		if source == Vector2i(-1, -1):
-			continue
-		var path := _trace_river_path(source, downhill_map, flow_accumulation, base_biome_map, river_cells)
-		if path.size() < 3:
-			continue
-		river_paths.append({
-			"points": path,
-			"flux": float(candidate.get("flux", river_min_flux_to_draw)),
-			"width": _river_width_for_flux(float(candidate.get("flux", river_min_flux_to_draw)))
-		})
-		used_sources += 1
-
-	return {"cells": river_cells, "paths": river_paths}
-
-
-func _lowest_downhill_neighbor(coord: Vector2i, height_map: Dictionary) -> Vector2i:
-	var current_height := float(height_map.get(coord, 0.0))
-	var best := Vector2i(-1, -1)
-	var best_height := current_height
-	for offset: Vector2i in [
-		Vector2i.LEFT,
-		Vector2i.RIGHT,
-		Vector2i.UP,
-		Vector2i.DOWN,
-		Vector2i(-1, -1),
-		Vector2i(1, -1),
-		Vector2i(-1, 1),
-		Vector2i(1, 1)
-	]:
-		var neighbor := coord + offset
-		if not _is_valid_map_coord(neighbor):
-			continue
-		var neighbor_height := float(height_map.get(neighbor, current_height))
-		if neighbor_height < best_height:
-			best_height = neighbor_height
-			best = neighbor
-	return best
-
-
-func _has_stronger_uphill_neighbor(
-	coord: Vector2i,
-	flux: float,
-	height_map: Dictionary,
-	flow_accumulation: Dictionary
-) -> bool:
-	var current_height := float(height_map.get(coord, 0.0))
-	for offset: Vector2i in [
-		Vector2i.LEFT,
-		Vector2i.RIGHT,
-		Vector2i.UP,
-		Vector2i.DOWN,
-		Vector2i(-1, -1),
-		Vector2i(1, -1),
-		Vector2i(-1, 1),
-		Vector2i(1, 1)
-	]:
-		var neighbor := coord + offset
-		if not _is_valid_map_coord(neighbor):
-			continue
-		var neighbor_height := float(height_map.get(neighbor, current_height))
-		if neighbor_height <= current_height:
-			continue
-		if float(flow_accumulation.get(neighbor, 0.0)) > flux:
-			return true
-	return false
-
-
-func _trace_river_path(
-	source: Vector2i,
-	downhill_map: Dictionary,
-	flow_accumulation: Dictionary,
-	base_biome_map: Dictionary,
-	river_cells: Dictionary
-) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	var visited := {}
-	var current := source
-	var max_steps := maxi(12, map_size.x + map_size.y)
-	var step := 0
-	while step < max_steps and _is_valid_map_coord(current):
-		step += 1
-		if visited.has(current):
-			break
-		visited[current] = true
-		if String(base_biome_map.get(current, BIOME_WATER)) == BIOME_WATER:
-			break
-		var flux := float(flow_accumulation.get(current, 0.0))
-		if flux < river_min_flux_to_draw * 0.65 and step > 3:
-			break
-
-		river_cells[current] = true
-		points.append(_map_cell_center(current))
-
-		var next := downhill_map.get(current, Vector2i(-1, -1)) as Vector2i
-		if next == Vector2i(-1, -1):
-			break
-		if String(base_biome_map.get(next, BIOME_WATER)) == BIOME_WATER:
-			points.append(_map_cell_center(next))
-			break
-		if river_cells.has(next):
-			points.append(_map_cell_center(next))
-			break
-		current = next
-	return points
-
-
-func _river_width_for_flux(flux: float) -> float:
-	var normalized := clampf((flux - river_min_flux_to_draw) / maxf(river_min_flux_to_draw, 1.0), 0.0, 2.6)
-	return river_overlay_base_width + pow(normalized, 0.7)
-
-
-func _refresh_rivers_overlay_lines(river_data: Dictionary) -> void:
-	if rivers_overlay == null:
-		return
-	for child in rivers_overlay.get_children():
-		child.queue_free()
-
-	var paths := river_data.get("paths", []) as Array
-	for river_variant: Variant in paths:
-		var river := river_variant as Dictionary
-		var points := river.get("points", PackedVector2Array()) as PackedVector2Array
-		if points.size() < 2:
-			continue
-		var line := Line2D.new()
-		line.default_color = river_overlay_line_color
-		line.width = maxf(0.8, float(river.get("width", river_overlay_base_width)))
-		line.joint_mode = Line2D.LINE_JOINT_ROUND
-		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
-		line.end_cap_mode = Line2D.LINE_CAP_ROUND
-		line.antialiased = true
-		line.points = points
-		rivers_overlay.add_child(line)
-
-	_update_rivers_overlay_visibility()
 
 
 func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dictionary) -> void:
@@ -4571,7 +4373,6 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_culture_overlay_visibility()
 	_update_political_boundaries_overlay_visibility()
 	_update_routes_overlay_visibility()
-	_update_rivers_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
 	_refresh_scale_bar()
@@ -4600,7 +4401,6 @@ func _set_scene3d_view(enabled: bool) -> void:
 	_update_culture_overlay_visibility()
 	_update_political_boundaries_overlay_visibility()
 	_update_routes_overlay_visibility()
-	_update_rivers_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
 	_refresh_scale_bar()
@@ -5458,11 +5258,6 @@ func _update_routes_overlay_visibility() -> void:
 	if routes_overlay == null:
 		return
 	routes_overlay.visible = _routes_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
-
-func _update_rivers_overlay_visibility() -> void:
-	if rivers_overlay == null:
-		return
-	rivers_overlay.visible = not (_is_globe_view or _is_scene3d_view)
 
 func _build_routes_overlay_from_settlements() -> void:
 	_route_segments.clear()
