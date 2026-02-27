@@ -1065,6 +1065,7 @@ func _ready() -> void:
 	if labels_map_button != null:
 		labels_map_button.toggled.connect(_on_labels_map_toggled)
 		labels_map_button.button_pressed = _labels_overlay_enabled
+		labels_map_button.tooltip_text = "Toggle settlement labels overlay"
 	if scale_bar_button != null:
 		scale_bar_button.toggled.connect(_on_scale_bar_toggled)
 		scale_bar_button.button_pressed = _scale_bar_enabled
@@ -1081,6 +1082,7 @@ func _ready() -> void:
 	_configure_scene3d_mesh()
 	_set_globe_view(false)
 	_set_scene3d_view(false)
+	_update_labels_overlay_visibility()
 	call_deferred("_cache_more_info_image_paths")
 	_configure_structure_context_menu()
 
