@@ -865,6 +865,7 @@ const CIVILIZATION_LABELS := {
 @onready var biome_overlay: Sprite2D = get_node_or_null("MapOverlays/BiomeOverlay")
 @onready var terrain_shading_overlay: Sprite2D = get_node_or_null("MapOverlays/TerrainShadingOverlay")
 @onready var culture_overlay: Sprite2D = get_node_or_null("MapOverlays/CultureOverlay")
+@onready var political_boundaries_overlay: Sprite2D = get_node_or_null("MapOverlays/PoliticalBoundariesOverlay")
 @onready var routes_overlay: Node2D = get_node_or_null("MapOverlays/RoutesOverlay")
 @onready var overworld_camera: OverworldCamera = get_node_or_null("OverworldCamera")
 @onready var globe_view: Node3D = get_node_or_null("GlobeView")
@@ -883,6 +884,7 @@ const CIVILIZATION_LABELS := {
 @onready var moisture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/MoistureMapButton")
 @onready var biome_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/BiomeMapButton")
 @onready var culture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/CultureMapButton")
+@onready var political_boundaries_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/PoliticalBoundariesButton")
 @onready var routes_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/RoutesMapButton")
 @onready var loading_screen: Control = get_node_or_null("MapUi/LoadingScreen")
 @onready var structure_context_menu: PopupMenu = get_node_or_null("MapUi/StructureContextMenu")
@@ -967,6 +969,7 @@ var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
 var _biome_overlay_enabled := false
 var _culture_overlay_enabled := false
+var _political_boundaries_overlay_enabled := false
 var _routes_overlay_enabled := false
 var _route_segments: Array = []
 var _overlay_dirty := {
@@ -974,7 +977,8 @@ var _overlay_dirty := {
 	"temperature": true,
 	"moisture": true,
 	"biome": true,
-	"culture": true
+	"culture": true,
+	"political_boundaries": true
 }
 var _hovered_tile := Vector2i(-999, -999)
 var _context_menu_tile := Vector2i(-1, -1)
@@ -1029,6 +1033,9 @@ func _ready() -> void:
 	if culture_map_button != null:
 		culture_map_button.toggled.connect(_on_culture_map_toggled)
 		culture_map_button.button_pressed = false
+	if political_boundaries_button != null:
+		political_boundaries_button.toggled.connect(_on_political_boundaries_toggled)
+		political_boundaries_button.button_pressed = false
 	if routes_map_button != null:
 		routes_map_button.toggled.connect(_on_routes_map_toggled)
 		routes_map_button.button_pressed = false
@@ -1118,6 +1125,12 @@ func _on_culture_map_toggled(is_pressed: bool) -> void:
 	if is_pressed:
 		_ensure_overlay_texture("culture")
 	_update_culture_overlay_visibility()
+
+func _on_political_boundaries_toggled(is_pressed: bool) -> void:
+	_political_boundaries_overlay_enabled = is_pressed
+	if is_pressed:
+		_ensure_overlay_texture("political_boundaries")
+	_update_political_boundaries_overlay_visibility()
 
 func _on_routes_map_toggled(is_pressed: bool) -> void:
 	_routes_overlay_enabled = is_pressed
@@ -1548,6 +1561,7 @@ func _mark_all_overlays_dirty() -> void:
 	_overlay_dirty["moisture"] = true
 	_overlay_dirty["biome"] = true
 	_overlay_dirty["culture"] = true
+	_overlay_dirty["political_boundaries"] = true
 
 func _ensure_overlay_texture(overlay_key: String) -> void:
 	if not bool(_overlay_dirty.get(overlay_key, false)):
@@ -1563,6 +1577,8 @@ func _ensure_overlay_texture(overlay_key: String) -> void:
 			_update_biome_overlay()
 		"culture":
 			_update_culture_overlay()
+		"political_boundaries":
+			_update_political_boundaries_overlay()
 
 func _generate_map() -> void:
 	if map_layer == null:
@@ -1745,6 +1761,8 @@ func _generate_map() -> void:
 		_ensure_overlay_texture("biome")
 	if _culture_overlay_enabled:
 		_ensure_overlay_texture("culture")
+	if _political_boundaries_overlay_enabled:
+		_ensure_overlay_texture("political_boundaries")
 	_update_routes_overlay_visibility()
 	_update_terrain_shading_overlay(base_biome_map)
 	_configure_globe_viewport()
@@ -4312,6 +4330,7 @@ func _set_globe_view(enabled: bool) -> void:
 	_update_moisture_overlay_visibility()
 	_update_biome_overlay_visibility()
 	_update_culture_overlay_visibility()
+	_update_political_boundaries_overlay_visibility()
 	_update_routes_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
@@ -4338,6 +4357,7 @@ func _set_scene3d_view(enabled: bool) -> void:
 	_update_moisture_overlay_visibility()
 	_update_biome_overlay_visibility()
 	_update_culture_overlay_visibility()
+	_update_political_boundaries_overlay_visibility()
 	_update_routes_overlay_visibility()
 	if enabled:
 		_hide_map_tooltip()
@@ -5169,6 +5189,27 @@ func _update_culture_overlay_visibility() -> void:
 	if culture_overlay == null:
 		return
 	culture_overlay.visible = _culture_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
+
+func _update_political_boundaries_overlay() -> void:
+	if political_boundaries_overlay == null:
+		return
+	if _tile_data.is_empty():
+		political_boundaries_overlay.texture = null
+		_overlay_dirty["political_boundaries"] = false
+		return
+	var image := _culture_pipeline.build_political_boundaries_overlay_image(map_size.x, map_size.y, _tile_data)
+	var texture := ImageTexture.create_from_image(image)
+	political_boundaries_overlay.texture = texture
+	_overlay_dirty["political_boundaries"] = false
+	political_boundaries_overlay.centered = false
+	political_boundaries_overlay.scale = Vector2(tile_size, tile_size)
+	political_boundaries_overlay.position = Vector2.ZERO
+	_update_political_boundaries_overlay_visibility()
+
+func _update_political_boundaries_overlay_visibility() -> void:
+	if political_boundaries_overlay == null:
+		return
+	political_boundaries_overlay.visible = _political_boundaries_overlay_enabled and not (_is_globe_view or _is_scene3d_view)
 
 func _update_routes_overlay_visibility() -> void:
 	if routes_overlay == null:

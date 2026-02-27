@@ -158,11 +158,9 @@ func build_culture_overlay_image(
 	height: int,
 	tiles: Dictionary,
 	base_alpha: float = 0.08,
-	scale: float = 0.58,
-	border_color: Color = Color(0.05, 0.03, 0.02, 0.9)
+	scale: float = 0.58
 ) -> Image:
 	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
-	var culture_keys := {}
 	for y in range(height):
 		for x in range(width):
 			var coord := Vector2i(x, y)
@@ -172,30 +170,41 @@ func build_culture_overlay_image(
 			if influence_value is Dictionary:
 				influence = influence_value as Dictionary
 			if influence.is_empty():
-				culture_keys[coord] = ""
 				image.set_pixel(x, y, Color(0, 0, 0, 0))
 				continue
-			culture_keys[coord] = String(influence.get("key", "")).strip_edges().to_lower()
 			var strength := clampf(float(influence.get("strength", 0.0)), 0.0, 1.0)
 			var color := resolve_culture_color(influence.get("color", Color.GRAY), String(influence.get("key", "")))
 			color.a = clampf(base_alpha + strength * scale, 0.0, 0.78)
 			image.set_pixel(x, y, color)
 
+	return image
+
+func build_political_boundaries_overlay_image(
+	width: int,
+	height: int,
+	tiles: Dictionary,
+	border_color: Color = Color(0.05, 0.03, 0.02, 0.95)
+) -> Image:
+	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	for y in range(height):
+		for x in range(width):
+			image.set_pixel(x, y, Color(0, 0, 0, 0))
+
 	for y in range(height):
 		for x in range(width):
 			var coord := Vector2i(x, y)
-			var current_key := String((tiles.get(coord, {}) as Dictionary).get("political_owner", culture_keys.get(coord, ""))).strip_edges().to_lower()
+			var current_key := String((tiles.get(coord, {}) as Dictionary).get("political_owner", "")).strip_edges().to_lower()
 			if current_key.is_empty():
 				continue
 			if x + 1 < width:
 				var right_coord := Vector2i(x + 1, y)
-				var right_key := String((tiles.get(right_coord, {}) as Dictionary).get("political_owner", culture_keys.get(right_coord, ""))).strip_edges().to_lower()
+				var right_key := String((tiles.get(right_coord, {}) as Dictionary).get("political_owner", "")).strip_edges().to_lower()
 				if not right_key.is_empty() and right_key != current_key:
 					image.set_pixel(x, y, border_color)
 					image.set_pixel(x + 1, y, border_color)
 			if y + 1 < height:
 				var down_coord := Vector2i(x, y + 1)
-				var down_key := String((tiles.get(down_coord, {}) as Dictionary).get("political_owner", culture_keys.get(down_coord, ""))).strip_edges().to_lower()
+				var down_key := String((tiles.get(down_coord, {}) as Dictionary).get("political_owner", "")).strip_edges().to_lower()
 				if not down_key.is_empty() and down_key != current_key:
 					image.set_pixel(x, y, border_color)
 					image.set_pixel(x, y + 1, border_color)
