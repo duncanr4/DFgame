@@ -234,20 +234,20 @@ static func _add_to_all(height_map: Dictionary, amount: float) -> void:
 
 static func _raster_line(start: Vector2i, end: Vector2i) -> Array[Vector2i]:
 	var points: Array[Vector2i] = []
-	var x0: int = start.x
-	var y0: int = start.y
-	var x1: int = end.x
-	var y1: int = end.y
-	var dx: int = absi(x1 - x0)
-	var sx: int = 1 if x0 < x1 else -1
-	var dy: int = -absi(y1 - y0)
-	var sy: int = 1 if y0 < y1 else -1
-	var err: int = dx + dy
+	var x0 := start.x
+	var y0 := start.y
+	var x1 := end.x
+	var y1 := end.y
+	var dx := abs(x1 - x0)
+	var sx := 1 if x0 < x1 else -1
+	var dy := -abs(y1 - y0)
+	var sy := 1 if y0 < y1 else -1
+	var err := dx + dy
 	while true:
 		points.append(Vector2i(x0, y0))
 		if x0 == x1 and y0 == y1:
 			break
-		var e2: int = err * 2
+		var e2 := err * 2
 		if e2 >= dy:
 			err += dy
 			x0 += sx
