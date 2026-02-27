@@ -27,13 +27,13 @@ const DEFAULT_WORLD_SETTINGS := {
 		"humans": 50,
 		"dwarves": 50,
 		"wood_elves": 50,
-		"lizardmen": 50
+		"lizardmen": 25
 	},
 	"settlement_ratios": {
 		"humans": 0.5,
 		"dwarves": 0.5,
 		"wood_elves": 0.5,
-		"lizardmen": 0.5
+		"lizardmen": 0.25
 	}
 }
 

@@ -274,8 +274,8 @@ func _store_world_settings() -> void:
 		},
 		"terrain": {"forest": 50, "mountain": 50, "river": 50},
 		"terrain_ratios": {"forest": 0.5, "mountain": 0.5, "river": 0.5},
-		"settlements": {"humans": 50, "dwarves": 50, "wood_elves": 50, "lizardmen": 50},
-		"settlement_ratios": {"humans": 0.5, "dwarves": 0.5, "wood_elves": 0.5, "lizardmen": 0.5}
+		"settlements": {"humans": 50, "dwarves": 50, "wood_elves": 50, "lizardmen": 25},
+		"settlement_ratios": {"humans": 0.5, "dwarves": 0.5, "wood_elves": 0.5, "lizardmen": 0.25}
 	}
 	var game_session := get_node_or_null("/root/GameSession")
 	if game_session && game_session.has_method("set_world_settings"):
