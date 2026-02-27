@@ -220,6 +220,12 @@ layout_mode = 2
 toggle_mode = true
 text = "Routes"
 
+[node name="ScaleBarButton" type="Button" parent="MapUi/TopBar/TopBarLayout"]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Scale Bar"
+
 [node name="ScaleBarContainer" type="PanelContainer" parent="MapUi"]
 anchor_top = 1.0
 anchor_bottom = 1.0

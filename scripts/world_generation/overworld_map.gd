@@ -887,6 +887,7 @@ const CIVILIZATION_LABELS := {
 @onready var culture_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/CultureMapButton")
 @onready var political_boundaries_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/PoliticalBoundariesButton")
 @onready var routes_map_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/RoutesMapButton")
+@onready var scale_bar_button: Button = get_node_or_null("MapUi/TopBar/TopBarLayout/ScaleBarButton")
 @onready var scale_bar_container: Control = get_node_or_null("MapUi/ScaleBarContainer")
 @onready var scale_bar_label: Label = get_node_or_null("MapUi/ScaleBarContainer/ScaleBarMargin/ScaleBarVBox/ScaleBarDistanceLabel")
 @onready var scale_bar_visual: Control = get_node_or_null("MapUi/ScaleBarContainer/ScaleBarMargin/ScaleBarVBox/ScaleBarVisual")
@@ -975,6 +976,7 @@ var _biome_overlay_enabled := false
 var _culture_overlay_enabled := false
 var _political_boundaries_overlay_enabled := false
 var _routes_overlay_enabled := false
+var _scale_bar_enabled := true
 var _route_segments: Array = []
 var _overlay_dirty := {
 	"elevation": true,
@@ -1043,6 +1045,9 @@ func _ready() -> void:
 	if routes_map_button != null:
 		routes_map_button.toggled.connect(_on_routes_map_toggled)
 		routes_map_button.button_pressed = false
+	if scale_bar_button != null:
+		scale_bar_button.toggled.connect(_on_scale_bar_toggled)
+		scale_bar_button.button_pressed = _scale_bar_enabled
 	if overworld_camera != null:
 		overworld_camera.zoom_changed.connect(_on_overworld_camera_zoom_changed)
 	_refresh_scale_bar()
@@ -1064,6 +1069,9 @@ func _on_overworld_camera_zoom_changed(_zoom_level: float) -> void:
 
 func _refresh_scale_bar() -> void:
 	if scale_bar_container == null or scale_bar_visual == null or scale_bar_label == null:
+		return
+	if not _scale_bar_enabled:
+		scale_bar_container.visible = false
 		return
 	if _is_globe_view or _is_scene3d_view:
 		scale_bar_container.visible = false
@@ -1162,6 +1170,10 @@ func _on_political_boundaries_toggled(is_pressed: bool) -> void:
 func _on_routes_map_toggled(is_pressed: bool) -> void:
 	_routes_overlay_enabled = is_pressed
 	_update_routes_overlay_visibility()
+
+func _on_scale_bar_toggled(is_pressed: bool) -> void:
+	_scale_bar_enabled = is_pressed
+	_refresh_scale_bar()
 
 func _configure_structure_context_menu() -> void:
 	if structure_context_menu == null:
