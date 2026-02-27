@@ -8,6 +8,7 @@ signal zoom_changed(zoom_level: float)
 @export var min_zoom: float = 0.2
 @export var max_zoom: float = 4.0
 @export var move_speed: float = 600.0
+@export var auto_fit_world_on_bounds_set: bool = true
 
 const PAN_THRESHOLD: float = 3.0
 
@@ -82,7 +83,26 @@ func set_world_bounds(bounds: Rect2) -> void:
 	_world_bounds = bounds
 	_has_world_bounds = true
 	_update_camera_limits()
+	if auto_fit_world_on_bounds_set:
+		_fit_to_world_bounds()
+	else:
+		_clamp_to_world_bounds()
+
+func _fit_to_world_bounds() -> void:
+	if not _has_world_bounds:
+		return
+	var viewport_size := get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return
+	if _world_bounds.size.x <= 0.0 or _world_bounds.size.y <= 0.0:
+		return
+	var fit_zoom_x := viewport_size.x / _world_bounds.size.x
+	var fit_zoom_y := viewport_size.y / _world_bounds.size.y
+	var next_zoom := maxf(0.001, minf(fit_zoom_x, fit_zoom_y))
+	zoom = Vector2(next_zoom, next_zoom)
+	global_position = _world_bounds.position + (_world_bounds.size * 0.5)
 	_clamp_to_world_bounds()
+	zoom_changed.emit(next_zoom)
 
 func _update_camera_limits() -> void:
 	if not _has_world_bounds:
