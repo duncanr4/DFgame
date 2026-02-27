@@ -3495,7 +3495,7 @@ func _collect_faction_sources() -> Array[Dictionary]:
 			"key": faction_key,
 			"label": String(CIVILIZATION_LABELS.get(faction_key, faction_key.capitalize())),
 			"color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS.get(faction_key, Color.GRAY),
-			"capital": {"x": coord.x, "y": coord.y},
+			"capital": {"x": coord.x, "y": coord.y, "type": settlement_type},
 			"claim_radius": 12
 		})
 	return factions

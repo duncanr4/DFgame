@@ -246,12 +246,16 @@ func _build_faction_sources(factions: Array[Dictionary]) -> void:
 			continue
 		var radius := maxi(8, int(faction.get("claim_radius", 12)))
 		var key := normalise_culture_key(String(faction.get("key", "humans")), String(faction.get("label", "Humans")))
+		var capital_type := String(capital.get("type", "settlement")).strip_edges().to_lower()
+		var tile_filter := func(_coord: Vector2i, tile: Dictionary) -> bool:
+			return _faction_type_matches_tile(capital_type, tile)
 		add_cultural_source(
 			x,
 			y,
 			radius,
 			[{"key": key, "label": format_culture_label(key), "color": resolve_culture_color(faction.get("color", null), key), "share": 1.0}],
-			1.28
+			1.28,
+			tile_filter
 		)
 
 func _build_ambient_sources(width: int, height: int, tiles: Dictionary, seed_number: int, wood_elf_territory_info: Dictionary) -> void:
@@ -732,3 +736,55 @@ func _culture_matches_tile_biome(culture_key: String, tile: Dictionary) -> bool:
 		if String(allowed).to_lower() == biome:
 			return true
 	return false
+
+
+func _faction_type_matches_tile(faction_type: String, tile: Dictionary) -> bool:
+	var resolved_type := faction_type.strip_edges().to_lower()
+	if resolved_type.is_empty():
+		resolved_type = "settlement"
+	var base := String(tile.get("base_biome", tile.get("base", tile.get("biome_type", "")))).to_lower()
+	var biome := String(tile.get("biome_type", base)).to_lower()
+	var overlay := String(tile.get("overlay", "")).to_lower()
+	var hill_overlay := String(tile.get("hill_overlay", tile.get("hillOverlay", ""))).to_lower()
+	var structure := String(tile.get("structure", "")).to_lower()
+
+	var has_mountain_overlay := overlay.find("mountain") >= 0 or hill_overlay.find("mountain") >= 0
+	var has_hill_overlay := overlay.find("hill") >= 0 or hill_overlay.find("hill") >= 0
+	var has_tree_overlay := overlay.find("tree") >= 0 or hill_overlay.find("tree") >= 0 or overlay.find("forest") >= 0
+	var has_jungle_overlay := overlay.find("jungle") >= 0 or hill_overlay.find("jungle") >= 0
+
+	match resolved_type:
+		"dwarfhold", "hillhold":
+			if structure.find("dwarfhold") >= 0 or structure.find("hillhold") >= 0:
+				return true
+			if biome == "mountain" or biome == "hills":
+				return true
+			return has_mountain_overlay or has_hill_overlay
+		"woodelfgrove", "wood_elf_grove":
+			if structure.find("wood_elf") >= 0:
+				return true
+			return biome == "forest" or biome == "jungle" or has_tree_overlay
+		"lizardmencity", "lizardmen_city":
+			if base == "water":
+				return false
+			if structure.find("lizardmen") >= 0:
+				return true
+			if biome == "jungle" or has_jungle_overlay:
+				return true
+			return biome == "marsh"
+		"tower", "evilwizardtower", "evil_wizard_tower":
+			if base == "water":
+				return false
+			if has_mountain_overlay:
+				return false
+			return true
+		"village":
+			if base == "water" or has_mountain_overlay:
+				return false
+			return true
+		"town", "city":
+			if base == "water":
+				return false
+			return not has_mountain_overlay
+		_:
+			return base != "water"
