@@ -107,6 +107,9 @@ centered = false
 visible = false
 z_index = 9
 
+[node name="RiversOverlay" type="Node2D" parent="MapOverlays"]
+z_index = 2
+
 [node name="TerrainShadingOverlay" type="Sprite2D" parent="MapOverlays"]
 z_index = 1
 centered = false
