@@ -72,13 +72,13 @@ const CARDINAL_OFFSETS: Array[Vector2i] = [
 @export_tool_button("Generate Tilemap", "Callable") var build_tilemap := recreate_tilemap.emit
 
 @export_group(&"Continents")
-@export_range(0.1, 5.0, 0.1) var continental_frequency := 1.4
+@export_range(0.1, 10.0, 0.1) var continental_frequency := 3.8
 @export_range(0.0, 1.0, 0.01) var coast_width := 0.06
 @export_range(0.0, 1.0, 0.01) var mountain_linearity := 0.5
 @export_range(0.0, 1.0, 0.01) var edge_water_strength := 0.28
 @export_range(0.01, 1.0, 0.01) var edge_water_falloff := 0.22
-@export_range(0.0, 1.0, 0.01) var continental_fragmentation := 0.42
-@export_range(0.1, 8.0, 0.1) var fragmentation_frequency := 2.8
+@export_range(0.0, 1.0, 0.01) var continental_fragmentation := 0.78
+@export_range(0.1, 16.0, 0.1) var fragmentation_frequency := 7.2
 
 @export_group(&"Climate")
 @export_range(0.1, 5.0, 0.1) var temperature_frequency := 1.2
@@ -144,18 +144,18 @@ func _setup_secondary_noise() -> void:
 	_height_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	_height_noise.frequency = continental_frequency / maxf(1.0, float(size.x))
 	_height_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	_height_noise.fractal_octaves = 5
-	_height_noise.fractal_gain = 0.5
-	_height_noise.fractal_lacunarity = 2.1
+	_height_noise.fractal_octaves = 9
+	_height_noise.fractal_gain = 0.62
+	_height_noise.fractal_lacunarity = 2.45
 
 	_continental_breakup_noise = FastNoiseLite.new()
 	_continental_breakup_noise.seed = curr_seed + 53
 	_continental_breakup_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	_continental_breakup_noise.frequency = fragmentation_frequency / maxf(1.0, float(size.x))
 	_continental_breakup_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	_continental_breakup_noise.fractal_octaves = 4
-	_continental_breakup_noise.fractal_gain = 0.57
-	_continental_breakup_noise.fractal_lacunarity = 2.35
+	_continental_breakup_noise.fractal_octaves = 8
+	_continental_breakup_noise.fractal_gain = 0.68
+	_continental_breakup_noise.fractal_lacunarity = 2.7
 
 	_temperature_noise = FastNoiseLite.new()
 	_temperature_noise.seed = curr_seed + 101
@@ -201,22 +201,22 @@ func _get_elevation(coord: Vector2i, curr_size: Vector2i) -> float:
 		_rainfall_noise.get_noise_2dv(Vector2(coord) * 0.8)
 	) * warp_strength
 	var warped_coord := Vector2(coord) + warp
-	var continent := _to_normalized(_height_noise.get_noise_2dv(warped_coord * 0.45))
-	var cluster := _to_normalized(_height_noise.get_noise_2dv(warped_coord * 0.18))
+	var continent := _to_normalized(_height_noise.get_noise_2dv(warped_coord * 0.72))
+	var cluster := _to_normalized(_height_noise.get_noise_2dv(warped_coord * 0.34))
 	var detail := _to_normalized(_height_noise.get_noise_2dv(warped_coord * 1.6))
 	var ridges := 1.0 - absf(_height_noise.get_noise_2dv(warped_coord * 2.4))
 	var micro_detail := _height_noise.get_noise_2dv(warped_coord * 4.8) * 0.12
-	var breakup := _height_noise.get_noise_2dv(warped_coord * 0.28) * 0.08
-	var continental_split := _to_normalized(_continental_breakup_noise.get_noise_2dv(warped_coord * 0.52))
-	var ocean_channels := _to_normalized(_continental_breakup_noise.get_noise_2dv(warped_coord * 1.45))
-	var split_carve := maxf(0.0, (0.6 - continental_split) * 1.4) * continental_fragmentation
-	var channel_carve := maxf(0.0, (0.48 - ocean_channels) * 1.8) * continental_fragmentation * 0.85
+	var breakup := _height_noise.get_noise_2dv(warped_coord * 0.42) * 0.12
+	var continental_split := _to_normalized(_continental_breakup_noise.get_noise_2dv(warped_coord * 0.85))
+	var ocean_channels := _to_normalized(_continental_breakup_noise.get_noise_2dv(warped_coord * 2.15))
+	var split_carve := maxf(0.0, (0.7 - continental_split) * 1.9) * continental_fragmentation
+	var channel_carve := maxf(0.0, (0.58 - ocean_channels) * 2.25) * continental_fragmentation
 	var tectonic_uplift := lerpf(continent, detail, 0.35)
 	tectonic_uplift = lerpf(tectonic_uplift, cluster, 0.25)
 	tectonic_uplift = lerpf(tectonic_uplift, maxf(tectonic_uplift, ridges), mountain_linearity * 0.6)
 	var coast_variation := _height_noise.get_noise_2dv(warped_coord * 3.2) * coast_width
-	var macro_fractal := _height_noise.get_noise_2dv(warped_coord * 0.9) * 0.09
-	var fine_fractal := _height_noise.get_noise_2dv(warped_coord * 6.2) * 0.05
+	var macro_fractal := _height_noise.get_noise_2dv(warped_coord * 1.6) * 0.11
+	var fine_fractal := _height_noise.get_noise_2dv(warped_coord * 8.8) * 0.08
 	var elevation := tectonic_uplift + coast_variation + micro_detail + breakup + macro_fractal + fine_fractal
 	elevation -= split_carve + channel_carve
 	elevation -= edge_weight * edge_water_strength
