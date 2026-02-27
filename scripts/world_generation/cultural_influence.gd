@@ -24,6 +24,7 @@ func apply_cultural_influence(
 	_build_ambient_sources(width, height, tiles, seed_number, wood_elf_territory_info)
 	_apply_sources(width, height, tiles, is_land_base_tile_fn)
 	_resolve_scores(width, height, tiles)
+	_assign_political_regions(width, height, tiles, settlements, factions, is_land_base_tile_fn, seed_number)
 
 func add_cultural_source(
 	x: int,
@@ -152,22 +153,52 @@ func spawn_ambient_structures(
 			tile["ambient_structure"] = option
 			tiles[coord] = tile
 
-func build_culture_overlay_image(width: int, height: int, tiles: Dictionary, base_alpha: float = 0.08, scale: float = 0.58) -> Image:
+func build_culture_overlay_image(
+	width: int,
+	height: int,
+	tiles: Dictionary,
+	base_alpha: float = 0.08,
+	scale: float = 0.58,
+	border_color: Color = Color(0.05, 0.03, 0.02, 0.9)
+) -> Image:
 	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var culture_keys := {}
 	for y in range(height):
 		for x in range(width):
-			var tile: Dictionary = tiles.get(Vector2i(x, y), {}) as Dictionary
+			var coord := Vector2i(x, y)
+			var tile: Dictionary = tiles.get(coord, {}) as Dictionary
 			var influence_value: Variant = tile.get("cultural_influence", {})
 			var influence: Dictionary = {}
 			if influence_value is Dictionary:
 				influence = influence_value as Dictionary
 			if influence.is_empty():
+				culture_keys[coord] = ""
 				image.set_pixel(x, y, Color(0, 0, 0, 0))
 				continue
+			culture_keys[coord] = String(influence.get("key", "")).strip_edges().to_lower()
 			var strength := clampf(float(influence.get("strength", 0.0)), 0.0, 1.0)
 			var color := resolve_culture_color(influence.get("color", Color.GRAY), String(influence.get("key", "")))
 			color.a = clampf(base_alpha + strength * scale, 0.0, 0.78)
 			image.set_pixel(x, y, color)
+
+	for y in range(height):
+		for x in range(width):
+			var coord := Vector2i(x, y)
+			var current_key := String((tiles.get(coord, {}) as Dictionary).get("political_owner", culture_keys.get(coord, ""))).strip_edges().to_lower()
+			if current_key.is_empty():
+				continue
+			if x + 1 < width:
+				var right_coord := Vector2i(x + 1, y)
+				var right_key := String((tiles.get(right_coord, {}) as Dictionary).get("political_owner", culture_keys.get(right_coord, ""))).strip_edges().to_lower()
+				if not right_key.is_empty() and right_key != current_key:
+					image.set_pixel(x, y, border_color)
+					image.set_pixel(x + 1, y, border_color)
+			if y + 1 < height:
+				var down_coord := Vector2i(x, y + 1)
+				var down_key := String((tiles.get(down_coord, {}) as Dictionary).get("political_owner", culture_keys.get(down_coord, ""))).strip_edges().to_lower()
+				if not down_key.is_empty() and down_key != current_key:
+					image.set_pixel(x, y, border_color)
+					image.set_pixel(x, y + 1, border_color)
 	return image
 
 func _clear_existing_influence(tiles: Dictionary) -> void:
@@ -175,6 +206,7 @@ func _clear_existing_influence(tiles: Dictionary) -> void:
 		var tile := tiles.get(coord, {}) as Dictionary
 		tile["cultural_influence"] = null
 		tile["cultural_influence_scores"] = null
+		tile["political_owner"] = null
 		tile["ambient_structure"] = null
 		tiles[coord] = tile
 
@@ -407,6 +439,162 @@ func _resolve_scores(width: int, height: int, tiles: Dictionary) -> void:
 			}
 			tile["cultural_influence_scores"] = null
 			tiles[coord] = tile
+
+
+func _assign_political_regions(
+	width: int,
+	height: int,
+	tiles: Dictionary,
+	settlements: Array[Dictionary],
+	factions: Array[Dictionary],
+	is_land_base_tile_fn: Callable,
+	seed_number: int
+) -> void:
+	var seeds := _build_political_seeds(settlements, factions, tiles)
+	if seeds.is_empty():
+		return
+
+	var costs := {}
+	var owners := {}
+	var buckets := {}
+	var current_cost := 0
+	var max_cost := maxi(180, int((width + height) * 1.6))
+
+	for seed: Dictionary in seeds:
+		var coord := Vector2i(int(seed.get("x", -1)), int(seed.get("y", -1)))
+		if coord.x < 0 or coord.y < 0 or coord.x >= width or coord.y >= height:
+			continue
+		if not _is_land_tile(coord, tiles, is_land_base_tile_fn):
+			continue
+		owners[coord] = seed.get("key", "")
+		costs[coord] = 0
+		var origin_bucket: Array = buckets.get(0, []) as Array
+		origin_bucket.append({"coord": coord, "seed": seed})
+		buckets[0] = origin_bucket
+
+	while true:
+		while true:
+			if current_cost > max_cost:
+				break
+			var existing: Variant = buckets.get(current_cost, null)
+			if existing is Array and not (existing as Array).is_empty():
+				break
+			current_cost += 1
+		if current_cost > max_cost:
+			break
+		var bucket := buckets.get(current_cost, []) as Array
+		var node := bucket.pop_back() as Dictionary
+		buckets[current_cost] = bucket
+		var coord := node.get("coord", Vector2i.ZERO) as Vector2i
+		var seed := node.get("seed", {}) as Dictionary
+		if int(costs.get(coord, 1_000_000)) != current_cost:
+			continue
+		for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next := coord + offset
+			if next.x < 0 or next.y < 0 or next.x >= width or next.y >= height:
+				continue
+			if not _is_land_tile(next, tiles, is_land_base_tile_fn):
+				continue
+			var step_cost := _political_step_cost(seed, next, tiles, seed_number)
+			var new_cost := current_cost + step_cost
+			if new_cost > max_cost:
+				continue
+			var old_cost := int(costs.get(next, 1_000_000))
+			if new_cost >= old_cost:
+				continue
+			costs[next] = new_cost
+			owners[next] = seed.get("key", "")
+			var destination_bucket: Array = buckets.get(new_cost, []) as Array
+			destination_bucket.append({"coord": next, "seed": seed})
+			buckets[new_cost] = destination_bucket
+
+	for y in range(height):
+		for x in range(width):
+			var coord := Vector2i(x, y)
+			var tile := tiles.get(coord, {}) as Dictionary
+			if tile.is_empty():
+				continue
+			tile["political_owner"] = String(owners.get(coord, "")).strip_edges().to_lower()
+			tiles[coord] = tile
+
+func _build_political_seeds(settlements: Array[Dictionary], factions: Array[Dictionary], tiles: Dictionary) -> Array[Dictionary]:
+	var seeds: Array[Dictionary] = []
+	var occupied := {}
+	for faction: Dictionary in factions:
+		var capital := faction.get("capital", {}) as Dictionary
+		var x := int(capital.get("x", -1))
+		var y := int(capital.get("y", -1))
+		if x < 0 or y < 0:
+			continue
+		var key := normalise_culture_key(String(faction.get("key", "")), String(faction.get("label", "")))
+		var coord := Vector2i(x, y)
+		occupied[coord] = true
+		seeds.append({"x": x, "y": y, "key": key, "weight": 3})
+
+	for settlement: Dictionary in settlements:
+		var x := int(settlement.get("x", -1))
+		var y := int(settlement.get("y", -1))
+		if x < 0 or y < 0:
+			continue
+		var coord := Vector2i(x, y)
+		if occupied.has(coord):
+			continue
+		var tile := tiles.get(coord, {}) as Dictionary
+		var influence_value: Variant = tile.get("cultural_influence", {})
+		var influence: Dictionary = {}
+		if influence_value is Dictionary:
+			influence = influence_value as Dictionary
+		var key := String(influence.get("key", "humans")).strip_edges()
+		if key.is_empty():
+			key = "humans"
+		seeds.append({"x": x, "y": y, "key": normalise_culture_key(key, "humans"), "weight": 1})
+
+	return seeds
+
+func _is_land_tile(coord: Vector2i, tiles: Dictionary, is_land_base_tile_fn: Callable) -> bool:
+	if not tiles.has(coord):
+		return false
+	var tile := tiles.get(coord, {}) as Dictionary
+	if tile.is_empty():
+		return false
+	if is_land_base_tile_fn.is_valid():
+		return bool(is_land_base_tile_fn.call(coord, tile))
+	return String(tile.get("base_biome", tile.get("base", ""))).to_lower() != "water"
+
+func _political_step_cost(seed: Dictionary, coord: Vector2i, tiles: Dictionary, seed_number: int) -> int:
+	var tile := tiles.get(coord, {}) as Dictionary
+	var biome := String(tile.get("biome_type", tile.get("base_biome", tile.get("base", "")))).to_lower()
+	var base := String(tile.get("base_biome", tile.get("base", biome))).to_lower()
+	var overlay := String(tile.get("hill_overlay", "")).to_lower()
+	var influence_value: Variant = tile.get("cultural_influence", {})
+	var influence: Dictionary = {}
+	if influence_value is Dictionary:
+		influence = influence_value as Dictionary
+	var dominant_key := String(influence.get("key", "")).to_lower()
+	var owner_key := String(seed.get("key", "")).to_lower()
+
+	var cost := 10
+	if dominant_key == owner_key:
+		cost -= 4
+	elif not dominant_key.is_empty():
+		cost += 8
+
+	if overlay == "mountain" or base == "mountain" or biome == "mountain":
+		cost += 24
+	elif overlay == "hills" or base == "hills" or biome == "hills":
+		cost += 9
+	elif base == "marsh" or biome == "marsh":
+		cost += 6
+
+	if owner_key == "dwarves" and (overlay == "mountain" or base == "mountain" or biome == "mountain"):
+		cost -= 10
+	elif owner_key == "wood_elves" and (biome == "forest" or biome == "jungle"):
+		cost -= 7
+	elif owner_key == "humans" and biome == "grassland":
+		cost -= 2
+
+	var jitter := int(_hash_u32(seed_number, coord.x, coord.y, 977) % 4)
+	return maxi(3, cost + jitter)
 
 func _entries_for_settlement(settlement: Dictionary, settlement_type: String) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
