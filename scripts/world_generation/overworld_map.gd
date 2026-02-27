@@ -29,8 +29,9 @@ extends Node2D
 @export var scene3d_zoom_step: float = 0.35
 @export var scene3d_min_camera_distance: float = 2.4
 @export var scene3d_max_camera_distance: float = 9.5
-@export var scene3d_height_scale: float = 1.6
-@export var scene3d_mountain_compression: float = 0.2
+@export var scene3d_height_scale: float = 1.05
+@export var scene3d_mountain_compression: float = 0.35
+@export var scene3d_land_blend_power: float = 1.75
 @export var route_overlay_line_color: Color = Color(0.82, 0.68, 0.48, 0.9)
 @export_range(1.0, 8.0, 0.1) var route_overlay_line_width: float = 2.2
 @export_range(1, 5, 1) var route_overlay_target_connections: int = 2
@@ -4726,6 +4727,7 @@ func _update_globe_texture() -> void:
 	globe_material.set_shader_parameter("water_level", water_level)
 	globe_material.set_shader_parameter("mountain_level", mountain_level)
 	globe_material.set_shader_parameter("mountain_compression", scene3d_mountain_compression)
+	globe_material.set_shader_parameter("land_blend_power", scene3d_land_blend_power)
 	globe_material.set_shader_parameter("height_scale", scene3d_height_scale)
 
 func _update_scene3d_texture() -> void:
@@ -4742,6 +4744,7 @@ func _update_scene3d_texture() -> void:
 	scene3d_material.set_shader_parameter("water_level", water_level)
 	scene3d_material.set_shader_parameter("mountain_level", mountain_level)
 	scene3d_material.set_shader_parameter("mountain_compression", scene3d_mountain_compression)
+	scene3d_material.set_shader_parameter("land_blend_power", scene3d_land_blend_power)
 	scene3d_material.set_shader_parameter("height_scale", scene3d_height_scale)
 
 func _update_height_texture() -> void:
