@@ -60,7 +60,7 @@ var tile_sheet: Texture2D
 var hero_sprite: Texture2D
 var map_tiles: Array[PackedInt32Array] = []
 var revealed: Array[PackedByteArray] = []
-var visible: Array[PackedByteArray] = []
+var visible_cells: Array[PackedByteArray] = []
 var player_cell := Vector2i.ZERO
 
 
@@ -87,7 +87,7 @@ func _on_back_button_pressed() -> void:
 func _generate_dungeon() -> void:
 	map_tiles.clear()
 	revealed.clear()
-	visible.clear()
+	visible_cells.clear()
 
 	for y in MAP_HEIGHT:
 		var tile_row := PackedInt32Array()
@@ -101,7 +101,7 @@ func _generate_dungeon() -> void:
 		vis_row.fill(0)
 		map_tiles.append(tile_row)
 		revealed.append(seen_row)
-		visible.append(vis_row)
+		visible_cells.append(vis_row)
 
 	var rooms: Array[Rect2i] = []
 	for _attempt in 80:
@@ -190,12 +190,12 @@ func _place_terrain_features(rooms: Array[Rect2i]) -> void:
 func _place_patch(room: Rect2i, tile_type: int, attempts: int) -> void:
 	if room.size.x <= 2 or room.size.y <= 2:
 		return
-	var seed := Vector2i(
+	var patch_origin := Vector2i(
 		rng.randi_range(room.position.x + 1, room.end.x - 2),
 		rng.randi_range(room.position.y + 1, room.end.y - 2)
 	)
 	for _i in attempts:
-		var pos := seed + Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
+		var pos := patch_origin + Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
 		if not _in_bounds(pos.x, pos.y):
 			continue
 		if map_tiles[pos.y][pos.x] == TILE_FLOOR and rng.randf() < 0.8:
@@ -268,7 +268,7 @@ func _on_dungeon_view_draw() -> void:
 			var tile := map_tiles[y][x]
 			var rect := Rect2(Vector2(x, y) * CELL_SIZE, Vector2.ONE * CELL_SIZE)
 			_draw_tile(tile, x, y, rect)
-			if visible[y][x] == 0:
+			if visible_cells[y][x] == 0:
 				dungeon_view.draw_rect(rect, Color(0, 0, 0, 0.6))
 
 	_draw_player()
@@ -307,7 +307,7 @@ func _draw_tile(tile: int, x: int, y: int, rect: Rect2) -> void:
 
 
 func _draw_player() -> void:
-	if visible[player_cell.y][player_cell.x] == 0:
+	if visible_cells[player_cell.y][player_cell.x] == 0:
 		return
 
 	var dst := Rect2(Vector2(player_cell) * CELL_SIZE, Vector2.ONE * CELL_SIZE)
@@ -366,7 +366,7 @@ func _is_walkable_tile(tile: int) -> bool:
 func _update_visibility() -> void:
 	for y in MAP_HEIGHT:
 		for x in MAP_WIDTH:
-			visible[y][x] = 0
+			visible_cells[y][x] = 0
 	for dy in range(-VISION_RADIUS, VISION_RADIUS + 1):
 		for dx in range(-VISION_RADIUS, VISION_RADIUS + 1):
 			var cell := player_cell + Vector2i(dx, dy)
@@ -374,7 +374,7 @@ func _update_visibility() -> void:
 				continue
 			if Vector2(dx, dy).length() > VISION_RADIUS + 0.25:
 				continue
-			visible[cell.y][cell.x] = 1
+			visible_cells[cell.y][cell.x] = 1
 			revealed[cell.y][cell.x] = 1
 
 
