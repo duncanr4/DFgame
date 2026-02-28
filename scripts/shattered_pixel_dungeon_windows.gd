@@ -1,25 +1,25 @@
 extends Control
 
+const TILE_EMPTY := -1
 const TILE_WALL := 0
 const TILE_FLOOR := 1
 const TILE_DOOR_CLOSED := 2
 const TILE_DOOR_OPEN := 3
 const TILE_WATER := 4
 const TILE_GRASS := 5
-const TILE_EMPTY := 6
-const TILE_BARREL := 7
-const TILE_CHEST := 8
+const TILE_BARREL := 6
+const TILE_CHEST := 7
 
-const MAP_WIDTH := 34
-const MAP_HEIGHT := 24
+const MAP_WIDTH := 36
+const MAP_HEIGHT := 26
 const CELL_SIZE := 16
 const SOURCE_TILE_SIZE := 16
-const VISION_RADIUS := 6
+const VISION_RADIUS := 7
 
 const TILE_SHEET_PATH := "res://resources/images/shattered_ui/tiles_sewers.png"
 const HERO_SPRITE_PATH := "res://resources/images/shattered_ui/warrior.png"
 
-# SPD-like tile buckets from the sewers sheet.
+# SPD-inspired tile buckets sampled from the sewers atlas.
 const FLOOR_VARIANTS := [
 	Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1), Vector2i(2, 1)
 ]
@@ -71,13 +71,13 @@ func _ready() -> void:
 	_generate_dungeon()
 	dungeon_view.draw.connect(_on_dungeon_view_draw)
 	dungeon_view.gui_input.connect(_on_dungeon_view_gui_input)
-	_update_status("Dungeon generated. Use WASD / arrows to move.")
+	_update_status("Dungeon generated. Dense rooms, corridors, and line-of-sight lighting enabled.")
 	dungeon_view.queue_redraw()
 
 
 func _on_regenerate_button_pressed() -> void:
 	_generate_dungeon()
-	_update_status("A new dungeon forms from the shadows.")
+	_update_status("A deeper sewer layout has been generated.")
 
 
 func _on_back_button_pressed() -> void:
@@ -85,71 +85,119 @@ func _on_back_button_pressed() -> void:
 
 
 func _generate_dungeon() -> void:
+	_initialize_maps()
+
+	var rooms: Array[Rect2i] = _generate_room_candidates()
+	if rooms.is_empty():
+		_generate_dungeon()
+		return
+
+	_connect_rooms(rooms)
+	_build_walls_from_floors()
+	_place_doors()
+	_place_terrain_features(rooms)
+	_place_decor(rooms)
+
+	player_cell = _room_center(rooms[0])
+	_ensure_player_on_floor()
+	_update_visibility()
+	dungeon_view.queue_redraw()
+
+
+func _initialize_maps() -> void:
 	map_tiles.clear()
 	revealed.clear()
 	visible_cells.clear()
 
-	for y in MAP_HEIGHT:
+	for _y in MAP_HEIGHT:
 		var tile_row := PackedInt32Array()
 		var seen_row := PackedByteArray()
 		var vis_row := PackedByteArray()
 		tile_row.resize(MAP_WIDTH)
 		seen_row.resize(MAP_WIDTH)
 		vis_row.resize(MAP_WIDTH)
-		tile_row.fill(TILE_WALL)
+		tile_row.fill(TILE_EMPTY)
 		seen_row.fill(0)
 		vis_row.fill(0)
 		map_tiles.append(tile_row)
 		revealed.append(seen_row)
 		visible_cells.append(vis_row)
 
+
+func _generate_room_candidates() -> Array[Rect2i]:
 	var rooms: Array[Rect2i] = []
-	for _attempt in 80:
-		var room_size := Vector2i(rng.randi_range(4, 9), rng.randi_range(4, 8))
+	for _attempt in 160:
+		var room_size := Vector2i(rng.randi_range(4, 10), rng.randi_range(4, 9))
 		var pos := Vector2i(
-			rng.randi_range(1, MAP_WIDTH - room_size.x - 2),
-			rng.randi_range(1, MAP_HEIGHT - room_size.y - 2)
+			rng.randi_range(2, MAP_WIDTH - room_size.x - 3),
+			rng.randi_range(2, MAP_HEIGHT - room_size.y - 3)
 		)
 		var candidate := Rect2i(pos, room_size)
 		var overlaps := false
 		for room: Rect2i in rooms:
-			if room.grow(1).intersects(candidate):
+			if room.grow(2).intersects(candidate):
 				overlaps = true
 				break
 		if overlaps:
 			continue
 		rooms.append(candidate)
 		_carve_room(candidate)
-		if rooms.size() >= 14:
+		if rooms.size() >= 18:
 			break
 
-	if rooms.is_empty():
-		_generate_dungeon()
+	return rooms
+
+
+func _connect_rooms(rooms: Array[Rect2i]) -> void:
+	if rooms.size() < 2:
 		return
 
-	rooms.sort_custom(func(a: Rect2i, b: Rect2i) -> bool: return a.position.x < b.position.x)
-	for i in rooms.size() - 1:
-		var from_center := _room_center(rooms[i])
-		var to_center := _room_center(rooms[i + 1])
-		if rng.randf() < 0.5:
-			_carve_h_tunnel(from_center.x, to_center.x, from_center.y)
-			_carve_v_tunnel(from_center.y, to_center.y, to_center.x)
-		else:
-			_carve_v_tunnel(from_center.y, to_center.y, from_center.x)
-			_carve_h_tunnel(from_center.x, to_center.x, to_center.y)
+	var connected: Array[int] = [0]
+	while connected.size() < rooms.size():
+		var best_a := -1
+		var best_b := -1
+		var best_dist := INF
 
-	_place_doors()
-	_place_terrain_features(rooms)
-	_place_decor(rooms)
-	player_cell = _room_center(rooms[0])
-	_update_visibility()
-	dungeon_view.queue_redraw()
+		for a_index: int in connected:
+			for b_index in rooms.size():
+				if connected.has(b_index):
+					continue
+				var a_center := _room_center(rooms[a_index])
+				var b_center := _room_center(rooms[b_index])
+				var dist := a_center.distance_squared_to(b_center)
+				if dist < best_dist:
+					best_dist = dist
+					best_a = a_index
+					best_b = b_index
+
+		if best_a == -1 or best_b == -1:
+			break
+		_carve_corridor(_room_center(rooms[best_a]), _room_center(rooms[best_b]))
+		connected.append(best_b)
+
+	# Add a few loops so the dungeon doesn't feel like a strict tree.
+	for _i in 4:
+		var room_a := rooms[rng.randi_range(0, rooms.size() - 1)]
+		var room_b := rooms[rng.randi_range(0, rooms.size() - 1)]
+		if room_a == room_b:
+			continue
+		if rng.randf() < 0.65:
+			_carve_corridor(_room_center(room_a), _room_center(room_b))
 
 
 func _carve_room(room: Rect2i) -> void:
 	for y in range(room.position.y, room.end.y):
 		for x in range(room.position.x, room.end.x):
 			map_tiles[y][x] = TILE_FLOOR
+
+
+func _carve_corridor(from_cell: Vector2i, to_cell: Vector2i) -> void:
+	if rng.randf() < 0.5:
+		_carve_h_tunnel(from_cell.x, to_cell.x, from_cell.y)
+		_carve_v_tunnel(from_cell.y, to_cell.y, to_cell.x)
+	else:
+		_carve_v_tunnel(from_cell.y, to_cell.y, from_cell.x)
+		_carve_h_tunnel(from_cell.x, to_cell.x, to_cell.y)
 
 
 func _carve_h_tunnel(x1: int, x2: int, y: int) -> void:
@@ -164,31 +212,46 @@ func _carve_v_tunnel(y1: int, y2: int, x: int) -> void:
 			map_tiles[y][x] = TILE_FLOOR
 
 
+func _build_walls_from_floors() -> void:
+	for y in MAP_HEIGHT:
+		for x in MAP_WIDTH:
+			if map_tiles[y][x] != TILE_FLOOR:
+				continue
+			for ny in range(y - 1, y + 2):
+				for nx in range(x - 1, x + 2):
+					if not _in_bounds(nx, ny):
+						continue
+					if map_tiles[ny][nx] == TILE_EMPTY:
+						map_tiles[ny][nx] = TILE_WALL
+
+
 func _place_doors() -> void:
 	for y in range(1, MAP_HEIGHT - 1):
 		for x in range(1, MAP_WIDTH - 1):
 			if map_tiles[y][x] != TILE_FLOOR:
 				continue
-			var left_floor := _is_walkable_tile(map_tiles[y][x - 1])
-			var right_floor := _is_walkable_tile(map_tiles[y][x + 1])
-			var up_floor := _is_walkable_tile(map_tiles[y - 1][x])
-			var down_floor := _is_walkable_tile(map_tiles[y + 1][x])
-			var vertical_door := up_floor and down_floor and not left_floor and not right_floor
-			var horizontal_door := left_floor and right_floor and not up_floor and not down_floor
-			if (vertical_door or horizontal_door) and rng.randf() < 0.2:
+
+			var left_wall := map_tiles[y][x - 1] == TILE_WALL
+			var right_wall := map_tiles[y][x + 1] == TILE_WALL
+			var up_wall := map_tiles[y - 1][x] == TILE_WALL
+			var down_wall := map_tiles[y + 1][x] == TILE_WALL
+
+			var vertical_door := up_wall and down_wall and not left_wall and not right_wall
+			var horizontal_door := left_wall and right_wall and not up_wall and not down_wall
+			if (vertical_door or horizontal_door) and rng.randf() < 0.12:
 				map_tiles[y][x] = TILE_DOOR_CLOSED
 
 
 func _place_terrain_features(rooms: Array[Rect2i]) -> void:
 	for room: Rect2i in rooms:
-		if rng.randf() < 0.5:
-			_place_patch(room, TILE_WATER, rng.randi_range(3, 7))
-		if rng.randf() < 0.7:
-			_place_patch(room, TILE_GRASS, rng.randi_range(4, 10))
+		if rng.randf() < 0.35:
+			_place_patch(room, TILE_WATER, rng.randi_range(3, 6), 0.65)
+		if rng.randf() < 0.45:
+			_place_patch(room, TILE_GRASS, rng.randi_range(4, 8), 0.75)
 
 
-func _place_patch(room: Rect2i, tile_type: int, attempts: int) -> void:
-	if room.size.x <= 2 or room.size.y <= 2:
+func _place_patch(room: Rect2i, tile_type: int, attempts: int, chance: float) -> void:
+	if room.size.x <= 3 or room.size.y <= 3:
 		return
 	var patch_origin := Vector2i(
 		rng.randi_range(room.position.x + 1, room.end.x - 2),
@@ -198,18 +261,43 @@ func _place_patch(room: Rect2i, tile_type: int, attempts: int) -> void:
 		var pos := patch_origin + Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
 		if not _in_bounds(pos.x, pos.y):
 			continue
-		if map_tiles[pos.y][pos.x] == TILE_FLOOR and rng.randf() < 0.8:
+		if map_tiles[pos.y][pos.x] == TILE_FLOOR and rng.randf() < chance:
 			map_tiles[pos.y][pos.x] = tile_type
 
 
 func _place_decor(rooms: Array[Rect2i]) -> void:
 	for room: Rect2i in rooms:
-		for _i in rng.randi_range(0, 3):
+		for _i in rng.randi_range(0, 2):
 			var x := rng.randi_range(room.position.x + 1, room.end.x - 2)
 			var y := rng.randi_range(room.position.y + 1, room.end.y - 2)
 			if map_tiles[y][x] != TILE_FLOOR:
 				continue
-			map_tiles[y][x] = TILE_BARREL if rng.randf() < 0.8 else TILE_CHEST
+			if _adjacent_wall_count(x, y) == 0 and rng.randf() < 0.75:
+				continue
+			map_tiles[y][x] = TILE_BARREL if rng.randf() < 0.85 else TILE_CHEST
+
+
+func _adjacent_wall_count(x: int, y: int) -> int:
+	var count := 0
+	if map_tiles[y - 1][x] == TILE_WALL:
+		count += 1
+	if map_tiles[y + 1][x] == TILE_WALL:
+		count += 1
+	if map_tiles[y][x - 1] == TILE_WALL:
+		count += 1
+	if map_tiles[y][x + 1] == TILE_WALL:
+		count += 1
+	return count
+
+
+func _ensure_player_on_floor() -> void:
+	if _is_walkable_tile(map_tiles[player_cell.y][player_cell.x]):
+		return
+	for y in MAP_HEIGHT:
+		for x in MAP_WIDTH:
+			if _is_walkable_tile(map_tiles[y][x]):
+				player_cell = Vector2i(x, y)
+				return
 
 
 func _on_dungeon_view_gui_input(event: InputEvent) -> void:
@@ -243,15 +331,17 @@ func _try_move(delta: Vector2i) -> void:
 
 	var tile := map_tiles[target.y][target.x]
 	if tile == TILE_WALL or tile == TILE_EMPTY:
-		_update_status("You bump into the dungeon wall.")
+		_update_status("You bump into solid masonry.")
 		return
 	if tile == TILE_DOOR_CLOSED:
 		map_tiles[target.y][target.x] = TILE_DOOR_OPEN
-		_update_status("You open the door and step through.")
+		_update_status("The old door creaks open.")
 	elif tile == TILE_WATER:
 		_update_status("Water ripples beneath your boots.")
+	elif tile == TILE_GRASS:
+		_update_status("Tall grass rustles quietly.")
 	else:
-		_update_status("You move silently through the corridor.")
+		_update_status("You advance deeper into the dungeon.")
 
 	if _is_walkable_tile(map_tiles[target.y][target.x]):
 		player_cell = target
@@ -269,7 +359,7 @@ func _on_dungeon_view_draw() -> void:
 			var rect := Rect2(Vector2(x, y) * CELL_SIZE, Vector2.ONE * CELL_SIZE)
 			_draw_tile(tile, x, y, rect)
 			if visible_cells[y][x] == 0:
-				dungeon_view.draw_rect(rect, Color(0, 0, 0, 0.6))
+				dungeon_view.draw_rect(rect, Color(0.02, 0.02, 0.02, 0.72))
 
 	_draw_player()
 	_draw_vignette()
@@ -299,11 +389,14 @@ func _draw_tile(tile: int, x: int, y: int, rect: Rect2) -> void:
 		TILE_CHEST:
 			atlas_coords = _pick_variant(CHEST_VARIANTS, x, y)
 		_:
-			atlas_coords = Vector2i(0, 0)
+			return
 
 	var atlas_origin := Vector2(atlas_coords) * SOURCE_TILE_SIZE
 	var source := Rect2(atlas_origin, Vector2.ONE * SOURCE_TILE_SIZE)
 	dungeon_view.draw_texture_rect_region(tile_sheet, rect, source)
+
+	if tile == TILE_WALL and _is_floorish(x, y + 1):
+		dungeon_view.draw_rect(Rect2(rect.position + Vector2(0, CELL_SIZE - 3), Vector2(CELL_SIZE, 3)), Color(0, 0, 0, 0.35))
 
 
 func _draw_player() -> void:
@@ -320,10 +413,10 @@ func _draw_player() -> void:
 
 func _draw_vignette() -> void:
 	var view_size := Vector2(MAP_WIDTH, MAP_HEIGHT) * CELL_SIZE
-	dungeon_view.draw_rect(Rect2(Vector2.ZERO, Vector2(view_size.x, 8)), Color(0, 0, 0, 0.7))
-	dungeon_view.draw_rect(Rect2(Vector2(0, view_size.y - 8), Vector2(view_size.x, 8)), Color(0, 0, 0, 0.7))
-	dungeon_view.draw_rect(Rect2(Vector2.ZERO, Vector2(8, view_size.y)), Color(0, 0, 0, 0.7))
-	dungeon_view.draw_rect(Rect2(Vector2(view_size.x - 8, 0), Vector2(8, view_size.y)), Color(0, 0, 0, 0.7))
+	dungeon_view.draw_rect(Rect2(Vector2.ZERO, Vector2(view_size.x, 10)), Color(0, 0, 0, 0.75))
+	dungeon_view.draw_rect(Rect2(Vector2(0, view_size.y - 10), Vector2(view_size.x, 10)), Color(0, 0, 0, 0.75))
+	dungeon_view.draw_rect(Rect2(Vector2.ZERO, Vector2(10, view_size.y)), Color(0, 0, 0, 0.75))
+	dungeon_view.draw_rect(Rect2(Vector2(view_size.x - 10, 0), Vector2(10, view_size.y)), Color(0, 0, 0, 0.75))
 
 
 func _wall_atlas(x: int, y: int) -> Vector2i:
@@ -344,6 +437,12 @@ func _is_wallish(x: int, y: int) -> bool:
 		return true
 	var tile := map_tiles[y][x]
 	return tile == TILE_WALL or tile == TILE_EMPTY
+
+
+func _is_floorish(x: int, y: int) -> bool:
+	if not _in_bounds(x, y):
+		return false
+	return map_tiles[y][x] in [TILE_FLOOR, TILE_DOOR_CLOSED, TILE_DOOR_OPEN, TILE_WATER, TILE_GRASS]
 
 
 func _pick_variant(variants: Array, x: int, y: int) -> Vector2i:
@@ -374,8 +473,37 @@ func _update_visibility() -> void:
 				continue
 			if Vector2(dx, dy).length() > VISION_RADIUS + 0.25:
 				continue
+			if not _has_line_of_sight(player_cell, cell):
+				continue
 			visible_cells[cell.y][cell.x] = 1
 			revealed[cell.y][cell.x] = 1
+
+
+func _has_line_of_sight(from_cell: Vector2i, to_cell: Vector2i) -> bool:
+	var x0 := from_cell.x
+	var y0 := from_cell.y
+	var x1 := to_cell.x
+	var y1 := to_cell.y
+	var dx := absi(x1 - x0)
+	var dy := -absi(y1 - y0)
+	var sx := 1 if x0 < x1 else -1
+	var sy := 1 if y0 < y1 else -1
+	var err := dx + dy
+
+	while true:
+		if x0 == x1 and y0 == y1:
+			return true
+		if Vector2i(x0, y0) != from_cell and map_tiles[y0][x0] == TILE_WALL:
+			return false
+		var e2 := 2 * err
+		if e2 >= dy:
+			err += dy
+			x0 += sx
+		if e2 <= dx:
+			err += dx
+			y0 += sy
+
+	return true
 
 
 func _update_status(text: String) -> void:

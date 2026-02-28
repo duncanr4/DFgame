@@ -61,7 +61,7 @@ text = ""
 vertical_alignment = 1
 
 [node name="DungeonView" type="Control" parent="Layout/Margin/Content"]
-custom_minimum_size = Vector2(544, 384)
+custom_minimum_size = Vector2(576, 416)
 layout_mode = 2
 size_flags_vertical = 3
 focus_mode = 2
