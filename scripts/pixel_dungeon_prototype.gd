@@ -15,13 +15,18 @@ const TERRAIN_HIGH_GRASS: int = 15
 const TERRAIN_WALL_DECO: int = 12
 
 const ENEMY_COUNT: int = 8
+const POTION_COUNT: int = 5
 const PLAYER_HP_MAX: int = 12
+const POTION_HEAL: int = 4
 const FOV_RADIUS: int = 8
 const ROOM_ATTEMPTS: int = 64
 const ROOM_TARGET_MIN: int = 8
 const ROOM_TARGET_MAX: int = 12
 
 const TILESET_TEXTURE_PATH: String = "res://Github Game/pixel-dungeon-master/pixel-dungeon-master/assets/tiles0.png"
+const PLAYER_TEXTURE_PATH: String = "res://Github Game/pixel-dungeon-master/pixel-dungeon-master/assets/warrior.png"
+const ENEMY_TEXTURE_PATH: String = "res://Github Game/pixel-dungeon-master/pixel-dungeon-master/assets/rat.png"
+const ITEMS_TEXTURE_PATH: String = "res://Github Game/pixel-dungeon-master/pixel-dungeon-master/assets/items.png"
 
 @onready var dungeon_layer: TileMapLayer = $DungeonLayer
 @onready var status_label: Label = $CanvasLayer/UI/MarginContainer/VBoxContainer/StatusLabel
@@ -36,6 +41,7 @@ var player_cell: Vector2i = Vector2i.ZERO
 var entrance_cell: Vector2i = Vector2i.ZERO
 var exit_cell: Vector2i = Vector2i.ZERO
 var enemy_cells: Array[Vector2i] = []
+var potion_cells: Array[Vector2i] = []
 var occupied: Dictionary = {}
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -43,11 +49,15 @@ var player_hp: int = PLAYER_HP_MAX
 var pending_message: String = ""
 var atlas_source_id: int = -1
 var atlas_columns: int = 1
+var player_texture: Texture2D
+var enemy_texture: Texture2D
+var items_texture: Texture2D
 
 
 func _ready() -> void:
 	rng.randomize()
 	_configure_tileset()
+	_load_actor_and_item_textures()
 	restart_run()
 
 
@@ -61,18 +71,35 @@ func _draw() -> void:
 			elif not _is_visible(cell):
 				draw_rect(rect, Color(0, 0, 0, 0.62), true)
 
+	for potion in potion_cells:
+		if _is_visible(potion):
+			draw_item(potion)
+
 	if _is_visible(player_cell):
-		draw_actor(player_cell, Color(0.33, 0.83, 1.0), "@")
+		draw_actor(player_cell, player_texture, Rect2(Vector2.ZERO, Vector2(TILE_SIZE, TILE_SIZE)), Color(1, 1, 1, 1), Color(0.33, 0.83, 1.0), "@")
 
 	for enemy in enemy_cells:
 		if _is_visible(enemy):
-			draw_actor(enemy, Color(1.0, 0.36, 0.36), "r")
+			draw_actor(enemy, enemy_texture, Rect2(Vector2.ZERO, Vector2(TILE_SIZE, TILE_SIZE)), Color(1, 1, 1, 1), Color(1.0, 0.36, 0.36), "r")
 
 
-func draw_actor(cell: Vector2i, color: Color, glyph: String) -> void:
-	var center := Vector2(cell.x * TILE_SIZE + TILE_SIZE / 2, cell.y * TILE_SIZE + TILE_SIZE / 2)
-	draw_circle(center, 5.0, color)
+func draw_actor(cell: Vector2i, texture: Texture2D, region: Rect2, tint: Color, fallback_color: Color, glyph: String) -> void:
+	var tile_position := Vector2(cell * TILE_SIZE)
+	if texture != null:
+		draw_texture_rect_region(texture, Rect2(tile_position, Vector2(TILE_SIZE, TILE_SIZE)), region, tint)
+		return
+	var center := tile_position + Vector2(TILE_SIZE / 2, TILE_SIZE / 2)
+	draw_circle(center, 5.0, fallback_color)
 	draw_string(ThemeDB.fallback_font, center + Vector2(-4, 4), glyph, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0, 0, 0))
+
+
+func draw_item(cell: Vector2i) -> void:
+	var tile_position := Vector2(cell * TILE_SIZE)
+	if items_texture != null:
+		draw_texture_rect_region(items_texture, Rect2(tile_position, Vector2(TILE_SIZE, TILE_SIZE)), Rect2(Vector2(0, 16), Vector2(TILE_SIZE, TILE_SIZE)), Color(1, 1, 1, 1))
+		return
+	var center := tile_position + Vector2(TILE_SIZE / 2, TILE_SIZE / 2)
+	draw_circle(center, 4.5, Color(0.42, 1.0, 0.52))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -165,6 +192,7 @@ func generate_dungeon() -> void:
 
 func spawn_player_and_enemies() -> void:
 	enemy_cells.clear()
+	potion_cells.clear()
 	occupied.clear()
 	player_hp = PLAYER_HP_MAX
 	pending_message = ""
@@ -177,6 +205,12 @@ func spawn_player_and_enemies() -> void:
 			enemy_cell = random_floor_cell()
 		enemy_cells.append(enemy_cell)
 		occupied[enemy_cell] = true
+
+	for _potion_index in range(POTION_COUNT):
+		var potion_cell: Vector2i = random_floor_cell()
+		while occupied.has(potion_cell) or potion_cell == exit_cell or potion_cells.has(potion_cell):
+			potion_cell = random_floor_cell()
+		potion_cells.append(potion_cell)
 
 
 func take_turn(direction: Vector2i) -> void:
@@ -200,6 +234,10 @@ func take_turn(direction: Vector2i) -> void:
 		occupied.erase(player_cell)
 		player_cell = target
 		occupied[player_cell] = true
+		if potion_cells.has(player_cell):
+			potion_cells.erase(player_cell)
+			player_hp = mini(PLAYER_HP_MAX, player_hp + POTION_HEAL)
+			pending_message = "You quaff a potion and recover %d HP." % POTION_HEAL
 
 	move_enemies()
 	_compute_visibility()
@@ -282,7 +320,7 @@ func get_tile(x: int, y: int) -> int:
 
 
 func update_status(message: String) -> void:
-	status_label.text = "HP: %d/%d    Rats: %d\n%s" % [player_hp, PLAYER_HP_MAX, enemy_cells.size(), message]
+	status_label.text = "HP: %d/%d    Rats: %d    Potions: %d\n%s" % [player_hp, PLAYER_HP_MAX, enemy_cells.size(), potion_cells.size(), message]
 	help_label.text = "Arrow keys: move/attack • Enter: next floor after death/exit • Esc: back"
 
 
@@ -364,6 +402,12 @@ func _configure_tileset() -> void:
 			atlas.create_tile(Vector2i(x, y))
 
 	dungeon_layer.tile_set = tileset
+
+
+func _load_actor_and_item_textures() -> void:
+	player_texture = load(PLAYER_TEXTURE_PATH) as Texture2D
+	enemy_texture = load(ENEMY_TEXTURE_PATH) as Texture2D
+	items_texture = load(ITEMS_TEXTURE_PATH) as Texture2D
 
 
 func _render_tilemap() -> void:
