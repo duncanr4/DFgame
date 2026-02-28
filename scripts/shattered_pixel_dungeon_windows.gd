@@ -17,7 +17,7 @@ func _apply_chrome_theme() -> void:
 	button_pressed.border_color = Color("a7bedf")
 	button_pressed.set_border_width_all(2)
 
-	var button_hover := button_normal.duplicate()
+	var button_hover: StyleBoxFlat = button_normal.duplicate() as StyleBoxFlat
 	button_hover.bg_color = Color("263046")
 
 	for node: Node in get_tree().get_nodes_in_group("spd_button"):
