@@ -326,8 +326,9 @@ func _carve_corridor_cell(cell: Vector2i) -> void:
 	if get_tile(cell.x, cell.y) == TERRAIN_WALL or get_tile(cell.x, cell.y) == TERRAIN_WALL_DECO:
 		set_tile(cell.x, cell.y, TERRAIN_EMPTY)
 	if rng.randf() < 0.06:
-		for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var neighbor := cell + offset
+		var corridor_offsets: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+		for offset: Vector2i in corridor_offsets:
+			var neighbor: Vector2i = cell + offset
 			if get_tile(neighbor.x, neighbor.y) == TERRAIN_WALL and _touches_floor_on_other_side(neighbor, offset):
 				set_tile(neighbor.x, neighbor.y, TERRAIN_DOOR)
 
