@@ -8,6 +8,18 @@ const TILE_DOOR_OPEN := 3
 const MAP_WIDTH := 48
 const MAP_HEIGHT := 30
 const CELL_SIZE := 24
+const SOURCE_TILE_SIZE := 16
+
+const SEWERS_TILE_TEXTURE := preload("res://assets/shattered_pixel_dungeon/environment/tiles_sewers.png")
+
+# These atlas positions come from the sewers sheet used by the original game.
+# They can be tweaked later if we need a more exact visual parity pass.
+const SEWERS_ATLAS_COORDS := {
+	TILE_WALL: Vector2i(0, 0),
+	TILE_FLOOR: Vector2i(1, 0),
+	TILE_DOOR_CLOSED: Vector2i(6, 1),
+	TILE_DOOR_OPEN: Vector2i(7, 1)
+}
 
 @onready var dungeon_view: Control = $Layout/Margin/Content/DungeonView
 @onready var status_label: Label = $Layout/Margin/Content/HUD/StatusLabel
@@ -161,18 +173,8 @@ func _on_dungeon_view_draw() -> void:
 	for y in MAP_HEIGHT:
 		for x in MAP_WIDTH:
 			var tile := map_tiles[y][x]
-			var color := Color("1a1d26")
-			match tile:
-				TILE_FLOOR:
-					color = Color("3a4354")
-				TILE_DOOR_CLOSED:
-					color = Color("8c6a44")
-				TILE_DOOR_OPEN:
-					color = Color("5f8f63")
-				_:
-					color = Color("0b0d13")
 			var rect := Rect2(Vector2(x, y) * CELL_SIZE, Vector2.ONE * CELL_SIZE)
-			dungeon_view.draw_rect(rect, color)
+			_draw_sewers_tile(tile, rect)
 			dungeon_view.draw_rect(rect, Color(0, 0, 0, 0.2), false, 1.0)
 
 	var player_rect := Rect2(Vector2(player_cell) * CELL_SIZE + Vector2(4, 4), Vector2.ONE * (CELL_SIZE - 8))
@@ -185,3 +187,14 @@ func _room_center(room: Rect2i) -> Vector2i:
 
 func _update_status(text: String) -> void:
 	status_label.text = text
+
+
+func _draw_sewers_tile(tile: int, rect: Rect2) -> void:
+	if SEWERS_TILE_TEXTURE == null:
+		dungeon_view.draw_rect(rect, Color("0b0d13"))
+		return
+
+	var atlas_coords: Vector2i = SEWERS_ATLAS_COORDS.get(tile, Vector2i.ZERO)
+	var atlas_origin := Vector2(atlas_coords) * SOURCE_TILE_SIZE
+	var source := Rect2(atlas_origin, Vector2.ONE * SOURCE_TILE_SIZE)
+	dungeon_view.draw_texture_rect_region(SEWERS_TILE_TEXTURE, rect, source)
