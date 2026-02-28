@@ -62,16 +62,22 @@ var map_tiles: Array[PackedInt32Array] = []
 var revealed: Array[PackedByteArray] = []
 var visible_cells: Array[PackedByteArray] = []
 var player_cell := Vector2i.ZERO
+var missing_tile_sheet_warning := false
 
 
 func _ready() -> void:
 	rng.randomize()
 	tile_sheet = load(TILE_SHEET_PATH) as Texture2D
 	hero_sprite = load(HERO_SPRITE_PATH) as Texture2D
+	if tile_sheet == null and _is_git_lfs_pointer(TILE_SHEET_PATH):
+		missing_tile_sheet_warning = true
 	_generate_dungeon()
 	dungeon_view.draw.connect(_on_dungeon_view_draw)
 	dungeon_view.gui_input.connect(_on_dungeon_view_gui_input)
-	_update_status("Dungeon generated. Dense rooms, corridors, and line-of-sight lighting enabled.")
+	if missing_tile_sheet_warning:
+		_update_status("Shattered tileset missing (Git LFS pointer detected). Rendering fallback dungeon colors.")
+	else:
+		_update_status("Dungeon generated. Dense rooms, corridors, and line-of-sight lighting enabled.")
 	dungeon_view.queue_redraw()
 
 
@@ -367,7 +373,7 @@ func _on_dungeon_view_draw() -> void:
 
 func _draw_tile(tile: int, x: int, y: int, rect: Rect2) -> void:
 	if tile_sheet == null:
-		dungeon_view.draw_rect(rect, Color("2a2a2a"))
+		_draw_fallback_tile(tile, x, y, rect)
 		return
 
 	var atlas_coords := Vector2i.ZERO
@@ -397,6 +403,40 @@ func _draw_tile(tile: int, x: int, y: int, rect: Rect2) -> void:
 
 	if tile == TILE_WALL and _is_floorish(x, y + 1):
 		dungeon_view.draw_rect(Rect2(rect.position + Vector2(0, CELL_SIZE - 3), Vector2(CELL_SIZE, 3)), Color(0, 0, 0, 0.35))
+
+
+func _draw_fallback_tile(tile: int, x: int, y: int, rect: Rect2) -> void:
+	match tile:
+		TILE_WALL:
+			dungeon_view.draw_rect(rect, Color("3b2f2a"))
+			dungeon_view.draw_line(rect.position + Vector2(0, 4), rect.position + Vector2(CELL_SIZE, 4), Color("2a201c"), 1.0)
+			dungeon_view.draw_line(rect.position + Vector2(0, 10), rect.position + Vector2(CELL_SIZE, 10), Color("2a201c"), 1.0)
+		TILE_FLOOR:
+			dungeon_view.draw_rect(rect, Color("5a5f58"))
+		TILE_DOOR_CLOSED:
+			dungeon_view.draw_rect(rect, Color("7a5432"))
+		TILE_DOOR_OPEN:
+			dungeon_view.draw_rect(rect, Color("6a4a2c"))
+		TILE_WATER:
+			dungeon_view.draw_rect(rect, Color("1f4766"))
+		TILE_GRASS:
+			dungeon_view.draw_rect(rect, Color("375b2f"))
+		TILE_BARREL:
+			dungeon_view.draw_rect(rect, Color("8a6238"))
+		TILE_CHEST:
+			dungeon_view.draw_rect(rect, Color("9b7a2f"))
+		_:
+			dungeon_view.draw_rect(rect, Color("1a1a1a"))
+
+
+func _is_git_lfs_pointer(path: String) -> bool:
+	if not FileAccess.file_exists(path):
+		return false
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	var first_line := file.get_line()
+	return first_line == "version https://git-lfs.github.com/spec/v1"
 
 
 func _draw_player() -> void:
