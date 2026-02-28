@@ -52,12 +52,15 @@ var atlas_columns: int = 1
 var player_texture: Texture2D
 var enemy_texture: Texture2D
 var items_texture: Texture2D
+var missing_texture_warning: String = ""
 
 
 func _ready() -> void:
 	rng.randomize()
 	_configure_tileset()
 	_load_actor_and_item_textures()
+	if not missing_texture_warning.is_empty():
+		push_warning(missing_texture_warning)
 	restart_run()
 
 
@@ -322,6 +325,8 @@ func get_tile(x: int, y: int) -> int:
 func update_status(message: String) -> void:
 	status_label.text = "HP: %d/%d    Rats: %d    Potions: %d\n%s" % [player_hp, PLAYER_HP_MAX, enemy_cells.size(), potion_cells.size(), message]
 	help_label.text = "Arrow keys: move/attack • Enter: next floor after death/exit • Esc: back"
+	if not missing_texture_warning.is_empty():
+		help_label.text += "\n" + missing_texture_warning
 
 
 func _is_walkable(cell: Vector2i) -> bool:
@@ -408,6 +413,8 @@ func _load_actor_and_item_textures() -> void:
 	player_texture = load(PLAYER_TEXTURE_PATH) as Texture2D
 	enemy_texture = load(ENEMY_TEXTURE_PATH) as Texture2D
 	items_texture = load(ITEMS_TEXTURE_PATH) as Texture2D
+	if player_texture == null or enemy_texture == null or items_texture == null:
+		missing_texture_warning = "Sprite textures failed to load. Run 'git lfs install && git lfs pull' to fetch Pixel Dungeon assets."
 
 
 func _render_tilemap() -> void:
