@@ -47,12 +47,12 @@ func _generate_dungeon() -> void:
 	var room_count := rng.randi_range(10, 16)
 
 	for _i in room_count:
-		var size := Vector2i(rng.randi_range(5, 9), rng.randi_range(5, 8))
+		var room_size := Vector2i(rng.randi_range(5, 9), rng.randi_range(5, 8))
 		var pos := Vector2i(
-			rng.randi_range(1, MAP_WIDTH - size.x - 2),
-			rng.randi_range(1, MAP_HEIGHT - size.y - 2)
+			rng.randi_range(1, MAP_WIDTH - room_size.x - 2),
+			rng.randi_range(1, MAP_HEIGHT - room_size.y - 2)
 		)
-		var candidate := Rect2i(pos, size)
+		var candidate := Rect2i(pos, room_size)
 		var overlaps := false
 		for room: Rect2i in rooms:
 			if room.grow(1).intersects(candidate):
@@ -115,7 +115,7 @@ func _place_doors() -> void:
 
 
 func _on_dungeon_view_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		dungeon_view.grab_focus()
 	if event.is_action_pressed("ui_left"):
 		_try_move(Vector2i.LEFT)
