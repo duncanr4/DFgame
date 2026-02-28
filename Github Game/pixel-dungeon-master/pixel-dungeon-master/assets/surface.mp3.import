@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cjncmvce00iml"
+path="res://.godot/imported/surface.mp3-db82e24c23c3c08d5bedbc25bc3bdfd9.mp3str"
+
+[deps]
+
+source_file="res://Github Game/pixel-dungeon-master/pixel-dungeon-master/assets/surface.mp3"
+dest_files=["res://.godot/imported/surface.mp3-db82e24c23c3c08d5bedbc25bc3bdfd9.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

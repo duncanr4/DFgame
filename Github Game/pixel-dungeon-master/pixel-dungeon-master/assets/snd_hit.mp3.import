@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://doouvmi8elud7"
+path="res://.godot/imported/snd_hit.mp3-0c17704da1c95c6f80a31bd2a35115e0.mp3str"
+
+[deps]
+
+source_file="res://Github Game/pixel-dungeon-master/pixel-dungeon-master/assets/snd_hit.mp3"
+dest_files=["res://.godot/imported/snd_hit.mp3-0c17704da1c95c6f80a31bd2a35115e0.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

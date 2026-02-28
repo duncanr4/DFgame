@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://d2bwtrqi0wq3n"
+path="res://.godot/imported/snd_door_open.mp3-37352ff36892655fdd0149866a8f95e1.mp3str"
+
+[deps]
+
+source_file="res://Github Game/pixel-dungeon-master/pixel-dungeon-master/assets/snd_door_open.mp3"
+dest_files=["res://.godot/imported/snd_door_open.mp3-37352ff36892655fdd0149866a8f95e1.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
