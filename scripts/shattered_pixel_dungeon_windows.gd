@@ -21,7 +21,7 @@ const HERO_SPRITE_PATH := "res://resources/images/shattered_ui/warrior.png"
 
 # SPD-inspired tile buckets sampled from the sewers atlas.
 const FLOOR_VARIANTS := [
-	Vector2i(4, 8), Vector2i(5, 8), Vector2i(6, 8), Vector2i(7, 8), Vector2i(8, 8)
+	Vector2i(0, 0)
 ]
 const WALL_VARIANTS := {
 	0: Vector2i(0, 0),
