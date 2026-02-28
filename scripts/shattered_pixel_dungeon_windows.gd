@@ -21,36 +21,36 @@ const HERO_SPRITE_PATH := "res://resources/images/shattered_ui/warrior.png"
 
 # SPD-inspired tile buckets sampled from the sewers atlas.
 const FLOOR_VARIANTS := [
-	Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1), Vector2i(2, 1)
+	Vector2i(4, 8), Vector2i(5, 8), Vector2i(6, 8), Vector2i(7, 8), Vector2i(8, 8)
 ]
 const WALL_VARIANTS := {
 	0: Vector2i(0, 0),
-	1: Vector2i(4, 0),
-	2: Vector2i(5, 0),
-	3: Vector2i(6, 0),
-	4: Vector2i(7, 0),
-	5: Vector2i(8, 0),
-	6: Vector2i(9, 0),
-	7: Vector2i(10, 0),
-	8: Vector2i(11, 0),
-	9: Vector2i(12, 0),
-	10: Vector2i(13, 0),
-	11: Vector2i(14, 0),
-	12: Vector2i(15, 0),
-	13: Vector2i(0, 1),
-	14: Vector2i(3, 1),
-	15: Vector2i(4, 1)
+	1: Vector2i(1, 0),
+	2: Vector2i(2, 0),
+	3: Vector2i(3, 0),
+	4: Vector2i(4, 0),
+	5: Vector2i(5, 0),
+	6: Vector2i(6, 0),
+	7: Vector2i(7, 0),
+	8: Vector2i(8, 0),
+	9: Vector2i(9, 0),
+	10: Vector2i(10, 0),
+	11: Vector2i(11, 0),
+	12: Vector2i(12, 0),
+	13: Vector2i(13, 0),
+	14: Vector2i(14, 0),
+	15: Vector2i(15, 0)
 }
-const DOOR_CLOSED_VARIANTS := [Vector2i(6, 1), Vector2i(6, 2)]
-const DOOR_OPEN_VARIANTS := [Vector2i(7, 1), Vector2i(7, 2)]
+const DOOR_CLOSED_VARIANTS := [Vector2i(11, 3)]
+const DOOR_OPEN_VARIANTS := [Vector2i(12, 3)]
 const WATER_VARIANTS := [
-	Vector2i(8, 1), Vector2i(9, 1), Vector2i(10, 1), Vector2i(11, 1), Vector2i(12, 1)
+	Vector2i(2, 14), Vector2i(3, 14), Vector2i(6, 14), Vector2i(7, 14), Vector2i(8, 14)
 ]
 const GRASS_VARIANTS := [
-	Vector2i(13, 1), Vector2i(14, 1), Vector2i(15, 1), Vector2i(0, 2), Vector2i(1, 2)
+	Vector2i(2, 4), Vector2i(3, 4), Vector2i(5, 4), Vector2i(7, 4), Vector2i(10, 7)
 ]
-const BARREL_VARIANTS := [Vector2i(2, 2), Vector2i(3, 2)]
-const CHEST_VARIANTS := [Vector2i(4, 2), Vector2i(5, 2)]
+const BARREL_VARIANTS := [Vector2i(10, 4), Vector2i(11, 4), Vector2i(2, 8), Vector2i(3, 8)]
+const CHEST_VARIANTS := [Vector2i(10, 3), Vector2i(11, 3)]
 
 @onready var dungeon_view: Control = $Layout/Margin/Content/DungeonView
 @onready var status_label: Label = $Layout/Margin/Content/HUD/StatusLabel
