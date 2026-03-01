@@ -1041,6 +1041,7 @@ const DWARFHOLD_GENERATION_SCENE_PATH := "res://scenes/dwarf_hold_generation.tsc
 const DWARFHOLD_SCENE_SEED_KEY := "dwarfhold_scene_seed"
 const DWARFHOLD_SCENE_TILE_KEY := "dwarfhold_scene_tile"
 const DWARFHOLD_SCENE_NAME_KEY := "dwarfhold_scene_name"
+const DWARFHOLD_SCENE_POPULATION_KEY := "dwarfhold_scene_population"
 const MORE_INFO_IMAGE_FOLDER := "res://resources/images/overworld/more_info"
 const GENERATION_YIELD_ROW_INTERVAL := 32
 const GENERATION_YIELD_CELL_INTERVAL := 1024
@@ -1317,6 +1318,7 @@ func _store_selected_dwarfhold_scene_context(seed_text: String, tile_coord: Vect
 	settings[DWARFHOLD_SCENE_SEED_KEY] = seed_text
 	settings[DWARFHOLD_SCENE_TILE_KEY] = {"x": tile_coord.x, "y": tile_coord.y}
 	settings[DWARFHOLD_SCENE_NAME_KEY] = String(details.get("region_name", "")).strip_edges()
+	settings[DWARFHOLD_SCENE_POPULATION_KEY] = maxi(0, int(details.get("population", 0)))
 	game_session.call("set_world_settings", settings)
 
 func _dwarfhold_scene_seed_for_tile(tile_coord: Vector2i, details: Dictionary) -> String:
@@ -1327,7 +1329,9 @@ func _dwarfhold_scene_seed_for_tile(tile_coord: Vector2i, details: Dictionary) -
 	var settlement_name := String(details.get("region_name", "Unknown Dwarfhold")).strip_edges()
 	if settlement_name.is_empty():
 		settlement_name = "Unknown Dwarfhold"
-	var seed_basis := "%s|%d|%d|%d" % [settlement_name, tile_coord.x, tile_coord.y, map_seed]
+	var population := maxi(0, int(details.get("population", 0)))
+	var npc_target := int(ceil(float(population) / 10.0))
+	var seed_basis := "%s|%d|%d|%d|%d|%d" % [settlement_name, tile_coord.x, tile_coord.y, map_seed, population, npc_target]
 	return str(seed_basis.hash())
 
 func _open_structure_details_from_context_menu(tile_coord: Vector2i) -> void:
