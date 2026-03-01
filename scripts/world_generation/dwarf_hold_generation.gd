@@ -2079,7 +2079,9 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 
 	if _is_corridor_cell(cell):
 		if _rng.randf() < 0.015:
-			var corridor_tile: String = String(["sign", "water_bucket"][_rng.randi_range(0, 1)])
+			if not _is_adjacent_to_business(grid, x, y):
+				return ""
+			var corridor_tile := "sign"
 			if _is_furniture_tile(corridor_tile) and base_tile != "floor":
 				return ""
 			return corridor_tile
@@ -2108,6 +2110,13 @@ func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: St
 			return ""
 		return default_tile
 	return ""
+
+func _is_adjacent_to_business(grid: Dictionary, x: int, y: int) -> bool:
+	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var neighbor := Vector2i(x, y) + direction
+		if _cell_at(grid, neighbor.x, neighbor.y) == CELL_BUILDING:
+			return true
+	return false
 
 func _is_adjacent_to_stone_or_wall(grid: Dictionary, x: int, y: int) -> bool:
 	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
