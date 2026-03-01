@@ -161,6 +161,8 @@ var _player_is_moving := false
 var _player_move_target_cell := Vector2i.ZERO
 var _player_move_target_position := Vector2.ZERO
 var _player_pending_chest_interaction := Vector2i(2147483647, 2147483647)
+var _hover_tooltip_cell := Vector2i(2147483647, 2147483647)
+var _hover_tooltip_layer: TileMapLayer
 var _last_move_direction := Vector2i.ZERO
 var _move_repeat_timer := 0.0
 var _npc_states: Array[Dictionary] = []
@@ -2288,13 +2290,15 @@ func _update_hover_tooltip(mouse_position: Vector2) -> void:
 		_hide_hover_tooltip()
 		return
 
-	var local_position := (mouse_position - city_layer.position) / _zoom_level
-	var hovered_cell := city_layer.local_to_map(local_position)
+	var hovered_cell := _cell_from_mouse_position(mouse_position)
 	var hovered_layer := decor_layer
 	if decor_layer.get_cell_source_id(hovered_cell) < 0:
 		hovered_layer = city_layer
 	if hovered_layer.get_cell_source_id(hovered_cell) < 0:
 		_hide_hover_tooltip()
+		return
+	if tile_hover_tooltip.visible and hovered_cell == _hover_tooltip_cell and hovered_layer == _hover_tooltip_layer:
+		tile_hover_tooltip.position = _clamp_tooltip_position(mouse_position + Vector2(14, 14))
 		return
 
 	var atlas_coords := hovered_layer.get_cell_atlas_coords(hovered_cell)
@@ -2311,9 +2315,13 @@ func _update_hover_tooltip(mouse_position: Vector2) -> void:
 	tile_hover_tooltip.visible = true
 	tile_hover_tooltip.reset_size()
 	tile_hover_tooltip.position = _clamp_tooltip_position(mouse_position + Vector2(14, 14))
+	_hover_tooltip_cell = hovered_cell
+	_hover_tooltip_layer = hovered_layer
 
 func _hide_hover_tooltip() -> void:
 	tile_hover_tooltip.visible = false
+	_hover_tooltip_cell = Vector2i(2147483647, 2147483647)
+	_hover_tooltip_layer = null
 
 func _tile_name_from_atlas(atlas_coords: Vector2i) -> String:
 	for tile_key: String in TILE_ATLAS.keys():
