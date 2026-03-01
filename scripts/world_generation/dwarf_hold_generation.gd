@@ -1525,6 +1525,7 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_player_sprite = _create_player_character_sprite()
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
 	actor_layer.add_child(_player_sprite)
+	_center_view_on_cell(_player_cell)
 
 	for i in tavern_npc_count:
 		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
@@ -1616,9 +1617,19 @@ func _try_move_player(direction: Vector2i) -> void:
 		return
 	_player_cell = target_cell
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
+	_center_view_on_cell(_player_cell)
 	if not _latest_grid.is_empty():
 		_update_shattered_visibility(_latest_grid)
 		_refresh_lighting(_latest_grid)
+
+func _center_view_on_cell(cell: Vector2i) -> void:
+	var panel_size := city_panel.size
+	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
+		return
+	var panel_center := panel_size * 0.5
+	var local_position := _cell_center_position(cell)
+	_pan_offset = panel_center - ((_map_origin_offset + local_position) * _zoom_level)
+	_update_city_layer_transform()
 
 func _update_npc_movement(delta: float) -> void:
 	for state: Dictionary in _npc_states:
