@@ -468,14 +468,20 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _player_sprite == null or not _player_control_enabled:
 		return
-	if event.is_action_pressed("ui_left"):
+	if _is_move_pressed(event, "ui_left", KEY_A):
 		_try_move_player(Vector2i.LEFT)
-	elif event.is_action_pressed("ui_right"):
+	elif _is_move_pressed(event, "ui_right", KEY_D):
 		_try_move_player(Vector2i.RIGHT)
-	elif event.is_action_pressed("ui_up"):
+	elif _is_move_pressed(event, "ui_up", KEY_W):
 		_try_move_player(Vector2i.UP)
-	elif event.is_action_pressed("ui_down"):
+	elif _is_move_pressed(event, "ui_down", KEY_S):
 		_try_move_player(Vector2i.DOWN)
+
+func _is_move_pressed(event: InputEvent, action_name: StringName, wasd_key: Key) -> bool:
+	if event.is_action_pressed(action_name):
+		return true
+	var key_event := event as InputEventKey
+	return key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == wasd_key
 
 func _update_zone_legend() -> void:
 	var lines: PackedStringArray = ["[b]Zone Overlay Legend[/b]"]
