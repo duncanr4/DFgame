@@ -12,6 +12,7 @@ const CELL_BUILDING := 3
 @export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
 @export var structure_fallback_max_extra_radius := 240
 @export var tavern_vehicle_sprite_path := "res://resources/images/dwarfhold/very_epic_taverner_vehicle.png"
+@export var shattered_player_sprite_path := "res://resources/images/shattered_ui/warrior.png"
 @export var tavern_npc_count := 5
 @export var tavern_player_speed := 92.0
 @export var tavern_npc_speed_range := Vector2(38.0, 62.0)
@@ -147,12 +148,15 @@ var _torch_sprite_texture: Texture2D
 var _fog_image: Image
 var _fog_texture: ImageTexture
 var _tavern_character_texture: Texture2D
+var _shattered_player_texture: Texture2D
 var _placeholder_actor_texture: Texture2D
 var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
 var _player_facing_row := 0
 var _player_control_enabled := false
+var _player_move_direction := Vector2i.ZERO
+var _player_move_target := Vector2.ZERO
 var _npc_states: Array[Dictionary] = []
 
 const TAVERN_SPRITE_COLUMNS := 12
@@ -460,6 +464,7 @@ func _ready() -> void:
 	_tavern_character_texture = load(tavern_vehicle_sprite_path) as Texture2D
 	if _tavern_character_texture == null:
 		_tavern_character_texture = _create_placeholder_tavern_character_texture()
+	_shattered_player_texture = load(shattered_player_sprite_path) as Texture2D
 	_placeholder_actor_texture = _create_placeholder_actor_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
 	start_as_player_button.pressed.connect(_on_start_as_player_pressed)
@@ -1633,6 +1638,8 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_npc_states.clear()
 	_player_sprite = null
 	_player_control_enabled = false
+	_player_move_direction = Vector2i.ZERO
+	_player_move_target = Vector2.ZERO
 	start_as_player_button.text = "▶ Start as Player Character"
 	_walkable_cells = _collect_walkable_cells(grid)
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
@@ -1640,9 +1647,9 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 
 	_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
 	_player_facing_row = 0
-	_player_sprite = _create_tavern_character_sprite(0)
-	_player_sprite.modulate = Color(0.98, 0.95, 0.70, 1.0)
+	_player_sprite = _create_player_character_sprite()
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
+	_player_move_target = _player_sprite.position
 	actor_layer.add_child(_player_sprite)
 	player_light.visible = false
 	player_light.position = _player_sprite.position
@@ -1690,6 +1697,26 @@ func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
 	sprite.scale = Vector2(float(tile_size.x), float(tile_size.y)) * 0.45
 	return sprite
 
+func _create_player_character_sprite() -> Sprite2D:
+	if _shattered_player_texture == null:
+		var fallback_sprite := _create_tavern_character_sprite(0)
+		fallback_sprite.modulate = Color(0.98, 0.95, 0.70, 1.0)
+		return fallback_sprite
+
+	var sprite := Sprite2D.new()
+	sprite.texture = _shattered_player_texture
+	sprite.region_enabled = true
+	sprite.centered = true
+	sprite.modulate = Color.WHITE
+	var source_size := _shattered_player_texture.get_size()
+	var source_tile_size := Vector2i(16, 16)
+	if source_size.x > 0 and source_size.y > 0:
+		source_tile_size.x = maxi(1, mini(16, source_size.x))
+		source_tile_size.y = maxi(1, mini(16, source_size.y))
+	sprite.region_rect = Rect2(Vector2.ZERO, Vector2(source_tile_size))
+	sprite.scale = Vector2(float(tile_size.x) / float(source_tile_size.x), float(tile_size.y) / float(source_tile_size.y)) * 0.9
+	return sprite
+
 func _create_placeholder_actor_texture() -> Texture2D:
 	var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE)
@@ -1712,29 +1739,38 @@ func _placeholder_actor_color(character_slot: int) -> Color:
 func _update_player_movement(delta: float) -> void:
 	if _player_sprite == null or not _player_control_enabled:
 		return
-	var input_direction := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-	if input_direction.length_squared() > 0.0:
-		input_direction = input_direction.normalized()
-		var target_position := _player_sprite.position + input_direction * tavern_player_speed * delta
-		var target_cell := city_layer.local_to_map(target_position)
+	var direction := _consume_player_step_input()
+	if direction != Vector2i.ZERO and _player_move_direction == Vector2i.ZERO:
+		var target_cell := _player_cell + direction
 		if _is_walkable_cell(target_cell):
-			_player_sprite.position = target_position
-			if target_cell != _player_cell:
-				_player_cell = target_cell
-				_reveal_fog_chunks_around_cell(_player_cell)
-				if not _latest_grid.is_empty():
-					_refresh_lighting(_latest_grid)
-			else:
-				_player_cell = target_cell
-			var facing_row := _facing_row_from_direction(input_direction)
-			if facing_row != _player_facing_row:
-				_player_facing_row = facing_row
-			var walk_frame := 1 + int(Time.get_ticks_msec() / int(TAVERN_FRAME_ADVANCE_SECONDS * 1000.0)) % TAVERN_CHARACTER_COLUMNS
-			_update_character_frame(_player_sprite, 0, walk_frame, _player_facing_row)
-		else:
-			_update_character_frame(_player_sprite, 0, 1, _player_facing_row)
-	else:
-		_update_character_frame(_player_sprite, 0, 1, _player_facing_row)
+			_player_move_direction = direction
+			_player_move_target = _cell_center_position(target_cell)
+			_player_facing_row = _facing_row_from_direction(Vector2(direction))
+
+	if _player_move_direction != Vector2i.ZERO:
+		_player_sprite.position = _player_sprite.position.move_toward(_player_move_target, tavern_player_speed * delta)
+		if _player_sprite.position.distance_to(_player_move_target) <= 0.5:
+			_player_sprite.position = _player_move_target
+			_player_cell += _player_move_direction
+			_player_move_direction = Vector2i.ZERO
+			_reveal_fog_chunks_around_cell(_player_cell)
+			if not _latest_grid.is_empty():
+				_refresh_lighting(_latest_grid)
+
+	if _shattered_player_texture == null:
+		var walk_frame := 1 if _player_move_direction == Vector2i.ZERO else (1 + int(Time.get_ticks_msec() / int(TAVERN_FRAME_ADVANCE_SECONDS * 1000.0)) % TAVERN_CHARACTER_COLUMNS)
+		_update_character_frame(_player_sprite, 0, walk_frame, _player_facing_row)
+
+func _consume_player_step_input() -> Vector2i:
+	if Input.is_action_just_pressed("ui_left"):
+		return Vector2i.LEFT
+	if Input.is_action_just_pressed("ui_right"):
+		return Vector2i.RIGHT
+	if Input.is_action_just_pressed("ui_up"):
+		return Vector2i.UP
+	if Input.is_action_just_pressed("ui_down"):
+		return Vector2i.DOWN
+	return Vector2i.ZERO
 
 func _update_npc_movement(delta: float) -> void:
 	for state: Dictionary in _npc_states:
