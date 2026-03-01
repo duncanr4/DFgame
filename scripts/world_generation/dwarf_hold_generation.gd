@@ -14,7 +14,6 @@ const CELL_BUILDING := 3
 @export var tavern_vehicle_sprite_path := "res://resources/images/dwarfhold/very_epic_taverner_vehicle.png"
 @export var shattered_player_sprite_path := "res://resources/images/shattered_ui/warrior.png"
 @export var tavern_npc_count := 5
-@export var tavern_player_speed := 92.0
 @export var tavern_npc_speed_range := Vector2(38.0, 62.0)
 @export var enable_fog_of_war := true
 
@@ -92,7 +91,6 @@ const COLLISION_LAYER_WORLD := 1
 
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
-@onready var start_as_player_button: Button = %StartAsPlayerButton
 @onready var overlay_toggle: CheckButton = %OverlayToggle
 @onready var lighting_toggle: CheckButton = %LightingToggle
 @onready var city_summary: Label = %CitySummary
@@ -153,10 +151,7 @@ var _placeholder_actor_texture: Texture2D
 var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
-var _player_facing_row := 0
 var _player_control_enabled := false
-var _player_move_direction := Vector2i.ZERO
-var _player_move_target := Vector2.ZERO
 var _npc_states: Array[Dictionary] = []
 
 const TAVERN_SPRITE_COLUMNS := 12
@@ -451,7 +446,6 @@ func _ready() -> void:
 	_shattered_player_texture = load(shattered_player_sprite_path) as Texture2D
 	_placeholder_actor_texture = _create_placeholder_actor_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
-	start_as_player_button.pressed.connect(_on_start_as_player_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	lighting_toggle.toggled.connect(_on_lighting_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
@@ -469,8 +463,19 @@ func _ready() -> void:
 	_generate_city()
 
 func _process(delta: float) -> void:
-	_update_player_movement(delta)
 	_update_npc_movement(delta)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _player_sprite == null or not _player_control_enabled:
+		return
+	if event.is_action_pressed("ui_left"):
+		_try_move_player(Vector2i.LEFT)
+	elif event.is_action_pressed("ui_right"):
+		_try_move_player(Vector2i.RIGHT)
+	elif event.is_action_pressed("ui_up"):
+		_try_move_player(Vector2i.UP)
+	elif event.is_action_pressed("ui_down"):
+		_try_move_player(Vector2i.DOWN)
 
 func _update_zone_legend() -> void:
 	var lines: PackedStringArray = ["[b]Zone Overlay Legend[/b]"]
@@ -568,15 +573,6 @@ func _apply_cached_dwarfhold_scene_seed() -> void:
 func _on_generate_pressed() -> void:
 	_generate_city()
 
-func _on_start_as_player_pressed() -> void:
-	if _player_sprite == null:
-		return
-	_player_control_enabled = true
-	start_as_player_button.text = "✅ Player Active"
-	city_summary.text = "Player control enabled. Use arrow keys to move through the hold."
-	if not _latest_grid.is_empty():
-		_update_shattered_visibility(_latest_grid)
-		_refresh_lighting(_latest_grid)
 
 func _generate_city() -> void:
 	var seed_text := seed_input.text.strip_edges()
@@ -1520,19 +1516,14 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 		child.queue_free()
 	_npc_states.clear()
 	_player_sprite = null
-	_player_control_enabled = false
-	_player_move_direction = Vector2i.ZERO
-	_player_move_target = Vector2.ZERO
-	start_as_player_button.text = "▶ Start as Player Character"
+	_player_control_enabled = true
 	_walkable_cells = _collect_walkable_cells(grid)
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
 		return
 
 	_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
-	_player_facing_row = 0
 	_player_sprite = _create_player_character_sprite()
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
-	_player_move_target = _player_sprite.position
 	actor_layer.add_child(_player_sprite)
 
 	for i in tavern_npc_count:
@@ -1617,41 +1608,17 @@ func _placeholder_actor_color(character_slot: int) -> Color:
 	var index := posmod(character_slot, palette.size())
 	return palette[index]
 
-func _update_player_movement(delta: float) -> void:
-	if _player_sprite == null or not _player_control_enabled:
+func _try_move_player(direction: Vector2i) -> void:
+	if direction == Vector2i.ZERO:
 		return
-	var direction := _consume_player_step_input()
-	if direction != Vector2i.ZERO and _player_move_direction == Vector2i.ZERO:
-		var target_cell := _player_cell + direction
-		if _is_walkable_cell(target_cell):
-			_player_move_direction = direction
-			_player_move_target = _cell_center_position(target_cell)
-			_player_facing_row = _facing_row_from_direction(Vector2(direction))
-
-	if _player_move_direction != Vector2i.ZERO:
-		_player_sprite.position = _player_sprite.position.move_toward(_player_move_target, tavern_player_speed * delta)
-		if _player_sprite.position.distance_to(_player_move_target) <= 0.5:
-			_player_sprite.position = _player_move_target
-			_player_cell += _player_move_direction
-			_player_move_direction = Vector2i.ZERO
-			if not _latest_grid.is_empty():
-				_update_shattered_visibility(_latest_grid)
-				_refresh_lighting(_latest_grid)
-
-	if _shattered_player_texture == null:
-		var walk_frame := 1 if _player_move_direction == Vector2i.ZERO else (1 + int(Time.get_ticks_msec() / int(TAVERN_FRAME_ADVANCE_SECONDS * 1000.0)) % TAVERN_CHARACTER_COLUMNS)
-		_update_character_frame(_player_sprite, 0, walk_frame, _player_facing_row)
-
-func _consume_player_step_input() -> Vector2i:
-	if Input.is_action_just_pressed("ui_left"):
-		return Vector2i.LEFT
-	if Input.is_action_just_pressed("ui_right"):
-		return Vector2i.RIGHT
-	if Input.is_action_just_pressed("ui_up"):
-		return Vector2i.UP
-	if Input.is_action_just_pressed("ui_down"):
-		return Vector2i.DOWN
-	return Vector2i.ZERO
+	var target_cell := _player_cell + direction
+	if not _is_walkable_cell(target_cell):
+		return
+	_player_cell = target_cell
+	_actor_sprite_to_cell(_player_sprite, _player_cell)
+	if not _latest_grid.is_empty():
+		_update_shattered_visibility(_latest_grid)
+		_refresh_lighting(_latest_grid)
 
 func _update_npc_movement(delta: float) -> void:
 	for state: Dictionary in _npc_states:
