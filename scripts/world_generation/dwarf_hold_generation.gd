@@ -800,6 +800,7 @@ func _generate_single_level(level_seed: String) -> Dictionary:
 		if not placed and not prefers_hall_arteries:
 			_place_structure_along_halls(grid, CELL_BUILDING, civic_footprint, civic_type)
 
+	_ensure_walkable_connectivity(grid)
 	_door_cells = _compute_single_doors(grid)
 	_ensure_door_connectivity(grid)
 	var civic_buildings_by_id := _compute_civic_buildings_by_id(grid)
@@ -1268,6 +1269,88 @@ func _collect_walkable_reachable_cells(grid: Dictionary, start_cell: Vector2i) -
 			queue.append(neighbor)
 
 	return reachable
+
+func _ensure_walkable_connectivity(grid: Dictionary) -> void:
+	var components := _collect_walkable_components(grid)
+	if components.size() <= 1:
+		return
+
+	var largest_component_index := 0
+	var largest_component_size := 0
+	for i in range(components.size()):
+		var component := components[i] as Array[Vector2i]
+		if component.size() > largest_component_size:
+			largest_component_size = component.size()
+			largest_component_index = i
+
+	var connected_cells: Array[Vector2i] = []
+	connected_cells.assign(components[largest_component_index])
+
+	for i in range(components.size()):
+		if i == largest_component_index:
+			continue
+		var component := components[i] as Array[Vector2i]
+		if component.is_empty() or connected_cells.is_empty():
+			continue
+
+		var nearest_pair := _find_nearest_cell_pair(connected_cells, component)
+		if nearest_pair.is_empty():
+			continue
+
+		_connect_points(grid, nearest_pair[0] as Vector2i, nearest_pair[1] as Vector2i, CELL_HALL)
+		connected_cells.append_array(component)
+
+func _collect_walkable_components(grid: Dictionary) -> Array[Array]:
+	var components: Array[Array] = []
+	var visited: Dictionary = {}
+
+	for cell_variant: Variant in grid.keys():
+		var origin := cell_variant as Vector2i
+		if visited.has(origin):
+			continue
+		if not _is_walkable_zone(_cell_at(grid, origin.x, origin.y)):
+			continue
+
+		var queue: Array[Vector2i] = [origin]
+		var component: Array[Vector2i] = []
+		visited[origin] = true
+
+		while not queue.is_empty():
+			var current: Vector2i = queue.pop_front()
+			component.append(current)
+			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var neighbor := current + direction
+				if visited.has(neighbor):
+					continue
+				if not grid.has(neighbor):
+					continue
+				if not _is_walkable_zone(_cell_at(grid, neighbor.x, neighbor.y)):
+					continue
+				visited[neighbor] = true
+				queue.append(neighbor)
+
+		if not component.is_empty():
+			components.append(component)
+
+	return components
+
+func _find_nearest_cell_pair(group_a: Array[Vector2i], group_b: Array[Vector2i]) -> Array[Vector2i]:
+	if group_a.is_empty() or group_b.is_empty():
+		return []
+
+	var nearest_a := group_a[0]
+	var nearest_b := group_b[0]
+	var best_distance := nearest_a.distance_squared_to(nearest_b)
+
+	for cell_a: Vector2i in group_a:
+		for cell_b: Vector2i in group_b:
+			var candidate_distance := cell_a.distance_squared_to(cell_b)
+			if candidate_distance < best_distance:
+				best_distance = candidate_distance
+				nearest_a = cell_a
+				nearest_b = cell_b
+
+	return [nearest_a, nearest_b]
 
 func _is_walkable_zone(cell: int) -> bool:
 	return cell == CELL_HALL or cell == CELL_HOUSE or cell == CELL_BUILDING
