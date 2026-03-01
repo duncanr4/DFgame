@@ -757,40 +757,51 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	var grid: Dictionary = {}
 	_latest_civic_buildings_by_id = {}
 	_latest_civic_building_type_map = {}
-	var seed_hall_center := Vector2i.ZERO
-	var seed_hall_size := Vector2i(18, 14)
-	_dig_rect(grid, seed_hall_center - seed_hall_size / 2, seed_hall_center + seed_hall_size / 2, CELL_HALL)
+	var plaza_layouts: Array[Dictionary] = []
+	var central_plaza_radius := Vector2i(_rng.randi_range(6, 10), _rng.randi_range(5, 8))
+	var central_plaza := {"center": Vector2i.ZERO, "radius": central_plaza_radius}
+	_dig_ellipse(grid, central_plaza["center"] as Vector2i, central_plaza["radius"] as Vector2i, CELL_PLAZA)
+	plaza_layouts.append(central_plaza)
 
-	var hubs: Array[Vector2i] = [seed_hall_center]
-
-	for i in requested_hall_count:
-		var anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
-		var horizontal := _rng.randf() < 0.5
-		var direction := 1 if _rng.randf() < 0.5 else -1
-		var hall_length := _rng.randi_range(12, 34)
-		var hall_half_width := _rng.randi_range(1, 2)
-		var end := anchor + (Vector2i(direction, 0) if horizontal else Vector2i(0, direction)) * hall_length
-		var from_cell := Vector2i(mini(anchor.x, end.x), mini(anchor.y, end.y))
-		var to_cell := Vector2i(maxi(anchor.x, end.x), maxi(anchor.y, end.y))
-		if horizontal:
-			from_cell.y -= hall_half_width
-			to_cell.y += hall_half_width
-		else:
-			from_cell.x -= hall_half_width
-			to_cell.x += hall_half_width
-		_dig_rect(grid, from_cell, to_cell, CELL_HALL)
-		hubs.append(end)
-
-	for _plaza_index in requested_plaza_count:
-		var plaza_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+	for _plaza_index in maxi(0, requested_plaza_count - 1):
+		var plaza_anchor := (plaza_layouts[_rng.randi_range(0, plaza_layouts.size() - 1)] as Dictionary).get("center", Vector2i.ZERO) as Vector2i
 		var plaza_direction := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN][_rng.randi_range(0, 3)] as Vector2i
-		var plaza_offset_distance := _rng.randi_range(6, 16)
+		var plaza_offset_distance := _rng.randi_range(18, 44)
 		var plaza_center := plaza_anchor + plaza_direction * plaza_offset_distance
-		plaza_center += Vector2i(_rng.randi_range(-4, 4), _rng.randi_range(-4, 4))
-		var plaza_radius := Vector2i(_rng.randi_range(4, 9), _rng.randi_range(3, 7))
+		plaza_center += Vector2i(_rng.randi_range(-6, 6), _rng.randi_range(-6, 6))
+		var plaza_radius := Vector2i(_rng.randi_range(5, 10), _rng.randi_range(4, 8))
 		_dig_ellipse(grid, plaza_center, plaza_radius, CELL_PLAZA)
-		_connect_points(grid, plaza_anchor, plaza_center, CELL_HALL)
-		hubs.append(plaza_center)
+		plaza_layouts.append({"center": plaza_center, "radius": plaza_radius})
+
+	var hubs: Array[Vector2i] = []
+	for plaza_data_variant: Variant in plaza_layouts:
+		var plaza_data := plaza_data_variant as Dictionary
+		hubs.append(plaza_data.get("center", Vector2i.ZERO) as Vector2i)
+
+	if plaza_layouts.size() >= 2:
+		for plaza_index in range(1, plaza_layouts.size()):
+			var from_plaza := plaza_layouts[plaza_index] as Dictionary
+			var from_center := from_plaza.get("center", Vector2i.ZERO) as Vector2i
+			var nearest_index := 0
+			var nearest_distance := INF
+			for candidate_index in range(plaza_index):
+				var candidate_center := (plaza_layouts[candidate_index] as Dictionary).get("center", Vector2i.ZERO) as Vector2i
+				var candidate_distance := from_center.distance_squared_to(candidate_center)
+				if candidate_distance < nearest_distance:
+					nearest_distance = candidate_distance
+					nearest_index = candidate_index
+			var to_plaza := plaza_layouts[nearest_index] as Dictionary
+			_dig_branching_hall_between_plazas(grid, from_plaza, to_plaza)
+
+	var extra_hall_branches := maxi(0, requested_hall_count - maxi(0, plaza_layouts.size() - 1))
+	for _extra_hall_index in extra_hall_branches:
+		if plaza_layouts.size() < 2:
+			break
+		var from_index := _rng.randi_range(0, plaza_layouts.size() - 1)
+		var to_index := _rng.randi_range(0, plaza_layouts.size() - 2)
+		if to_index >= from_index:
+			to_index += 1
+		_dig_branching_hall_between_plazas(grid, plaza_layouts[from_index] as Dictionary, plaza_layouts[to_index] as Dictionary)
 
 	for i in requested_house_count:
 		var house_footprint := (func() -> Vector2i:
@@ -926,6 +937,45 @@ func _roll_civic_footprint(civic_definition: Dictionary) -> Vector2i:
 func _civic_prefers_hall_arteries(civic_definition: Dictionary) -> bool:
 	var adjacency := civic_definition.get("adjacency_preferences", {}) as Dictionary
 	return bool(adjacency.get("prefers_hall_arteries", false))
+
+func _dig_branching_hall_between_plazas(grid: Dictionary, from_plaza: Dictionary, to_plaza: Dictionary) -> void:
+	var from_center := from_plaza.get("center", Vector2i.ZERO) as Vector2i
+	var to_center := to_plaza.get("center", Vector2i.ZERO) as Vector2i
+	if from_center == to_center:
+		return
+	var from_radius := from_plaza.get("radius", Vector2i(6, 5)) as Vector2i
+	var to_radius := to_plaza.get("radius", Vector2i(6, 5)) as Vector2i
+	var corridor_width := _rng.randi_range(3, 5)
+	var from_exit := _plaza_edge_cell_facing(from_center, from_radius, to_center)
+	var to_exit := _plaza_edge_cell_facing(to_center, to_radius, from_center)
+	_dig_wide_hall_path(grid, from_exit, to_exit, corridor_width)
+
+func _plaza_edge_cell_facing(plaza_center: Vector2i, plaza_radius: Vector2i, target: Vector2i) -> Vector2i:
+	var axis_direction := _major_axis_direction_toward_target(plaza_center, target)
+	if axis_direction == Vector2i.LEFT:
+		return Vector2i(plaza_center.x - plaza_radius.x, plaza_center.y + _rng.randi_range(-1, 1))
+	if axis_direction == Vector2i.RIGHT:
+		return Vector2i(plaza_center.x + plaza_radius.x, plaza_center.y + _rng.randi_range(-1, 1))
+	if axis_direction == Vector2i.UP:
+		return Vector2i(plaza_center.x + _rng.randi_range(-1, 1), plaza_center.y - plaza_radius.y)
+	return Vector2i(plaza_center.x + _rng.randi_range(-1, 1), plaza_center.y + plaza_radius.y)
+
+func _dig_wide_hall_path(grid: Dictionary, start: Vector2i, finish: Vector2i, width: int) -> void:
+	var half_width := maxi(1, width / 2)
+	var corner := Vector2i(finish.x, start.y)
+	_dig_wide_hall_segment(grid, start, corner, half_width)
+	_dig_wide_hall_segment(grid, corner, finish, half_width)
+
+func _dig_wide_hall_segment(grid: Dictionary, from_cell: Vector2i, to_cell: Vector2i, half_width: int) -> void:
+	var segment_from := Vector2i(mini(from_cell.x, to_cell.x), mini(from_cell.y, to_cell.y))
+	var segment_to := Vector2i(maxi(from_cell.x, to_cell.x), maxi(from_cell.y, to_cell.y))
+	if segment_from.x == segment_to.x:
+		segment_from.x -= half_width
+		segment_to.x += half_width
+	else:
+		segment_from.y -= half_width
+		segment_to.y += half_width
+	_dig_rect(grid, segment_from, segment_to, CELL_HALL)
 
 func _place_structure_zone(
 	grid: Dictionary,
