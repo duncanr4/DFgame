@@ -153,7 +153,9 @@ var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
 var _player_control_enabled := false
 var _player_move_path: Array[Vector2i] = []
-var _player_turn_cooldown := 0.0
+var _player_is_moving := false
+var _player_move_target_cell := Vector2i.ZERO
+var _player_move_target_position := Vector2.ZERO
 var _player_pending_chest_interaction := Vector2i(2147483647, 2147483647)
 var _last_move_direction := Vector2i.ZERO
 var _move_repeat_timer := 0.0
@@ -168,7 +170,7 @@ const TAVERN_FRAME_ADVANCE_SECONDS := 0.22
 const TAVERN_WANDER_COOLDOWN_RANGE := Vector2(0.35, 1.25)
 const PLAYER_MOVE_REPEAT_INITIAL_DELAY := 0.22
 const PLAYER_MOVE_REPEAT_INTERVAL := 0.10
-const PLAYER_BASE_MOVE_TIME := 1.0
+const PLAYER_MOVE_SPEED := 260.0
 const SPD_NEIGHBOR_OFFSETS := [
 	Vector2i(-1, -1),
 	Vector2i(0, -1),
@@ -544,14 +546,22 @@ func _reset_player_hold_state() -> void:
 func _update_player_turn_movement(delta: float) -> void:
 	if _player_sprite == null or not _player_control_enabled:
 		_player_move_path.clear()
-		_player_turn_cooldown = 0.0
+		_player_is_moving = false
 		_player_pending_chest_interaction = Vector2i(2147483647, 2147483647)
 		return
 
-	if _player_turn_cooldown > 0.0:
-		_player_turn_cooldown = maxf(0.0, _player_turn_cooldown - delta)
-		if _player_turn_cooldown > 0.0:
+	if _player_is_moving:
+		var next_position := _player_sprite.position.move_toward(_player_move_target_position, PLAYER_MOVE_SPEED * delta)
+		_player_sprite.position = next_position
+		_center_view_on_world_position(next_position)
+		if next_position.distance_to(_player_move_target_position) > 0.5:
 			return
+		_player_sprite.position = _player_move_target_position
+		_player_cell = _player_move_target_cell
+		_player_is_moving = false
+		if not _latest_grid.is_empty():
+			_update_shattered_visibility(_latest_grid)
+			_refresh_lighting(_latest_grid)
 
 	if _player_move_path.is_empty():
 		if _player_pending_chest_interaction.x != 2147483647:
@@ -1622,7 +1632,7 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_player_sprite = null
 	_player_control_enabled = true
 	_player_move_path.clear()
-	_player_turn_cooldown = 0.0
+	_player_is_moving = false
 	_player_pending_chest_interaction = Vector2i(2147483647, 2147483647)
 	_walkable_cells = _collect_walkable_cells(grid)
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
@@ -1752,7 +1762,7 @@ func _request_player_move_to_cell(target_cell: Vector2i) -> void:
 		return
 
 	_player_move_path = next_path
-	if _player_turn_cooldown <= 0.0:
+	if not _player_is_moving:
 		_update_player_turn_movement(0.0)
 
 func _build_player_path(from_cell: Vector2i, to_cell: Vector2i) -> Array[Vector2i]:
@@ -1829,21 +1839,19 @@ func _try_move_player(direction: Vector2i) -> bool:
 		return false
 	if _is_cell_occupied_by_npc(target_cell):
 		return false
-	_player_cell = target_cell
-	_actor_sprite_to_cell(_player_sprite, _player_cell)
-	_center_view_on_cell(_player_cell)
-	_player_turn_cooldown = PLAYER_BASE_MOVE_TIME
-	if not _latest_grid.is_empty():
-		_update_shattered_visibility(_latest_grid)
-		_refresh_lighting(_latest_grid)
+	_player_move_target_cell = target_cell
+	_player_move_target_position = _cell_center_position(target_cell)
+	_player_is_moving = true
 	return true
 
 func _center_view_on_cell(cell: Vector2i) -> void:
+	_center_view_on_world_position(_cell_center_position(cell))
+
+func _center_view_on_world_position(local_position: Vector2) -> void:
 	var panel_size := city_panel.size
 	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
 		return
 	var panel_center := panel_size * 0.5
-	var local_position := _cell_center_position(cell)
 	_pan_offset = panel_center - ((_map_origin_offset + local_position) * _zoom_level)
 	_update_city_layer_transform()
 
