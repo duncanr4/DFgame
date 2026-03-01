@@ -152,6 +152,9 @@ var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
 var _player_control_enabled := false
+var _player_move_path: Array[Vector2i] = []
+var _player_turn_cooldown := 0.0
+var _player_pending_chest_interaction := Vector2i(2147483647, 2147483647)
 var _last_move_direction := Vector2i.ZERO
 var _move_repeat_timer := 0.0
 var _npc_states: Array[Dictionary] = []
@@ -165,6 +168,17 @@ const TAVERN_FRAME_ADVANCE_SECONDS := 0.22
 const TAVERN_WANDER_COOLDOWN_RANGE := Vector2(0.35, 1.25)
 const PLAYER_MOVE_REPEAT_INITIAL_DELAY := 0.22
 const PLAYER_MOVE_REPEAT_INTERVAL := 0.10
+const PLAYER_BASE_MOVE_TIME := 1.0
+const SPD_NEIGHBOR_OFFSETS := [
+	Vector2i(-1, -1),
+	Vector2i(0, -1),
+	Vector2i(1, -1),
+	Vector2i(-1, 0),
+	Vector2i(1, 0),
+	Vector2i(-1, 1),
+	Vector2i(0, 1),
+	Vector2i(1, 1)
+]
 
 const ZONE_OVERLAY_COLORS := {
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
@@ -467,6 +481,7 @@ func _ready() -> void:
 	_generate_city()
 
 func _process(delta: float) -> void:
+	_update_player_turn_movement(delta)
 	_update_player_hold_movement(delta)
 	_update_npc_movement(delta)
 
@@ -485,7 +500,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_handle_player_move_input(Vector2i.DOWN)
 
 func _handle_player_move_input(direction: Vector2i) -> void:
-	_try_move_player(direction)
+	_request_player_move_to_cell(_player_cell + direction)
 	_last_move_direction = direction
 	_move_repeat_timer = PLAYER_MOVE_REPEAT_INITIAL_DELAY
 
@@ -508,7 +523,7 @@ func _update_player_hold_movement(delta: float) -> void:
 
 	_move_repeat_timer -= delta
 	while _move_repeat_timer <= 0.0:
-		_try_move_player(move_direction)
+		_request_player_move_to_cell(_player_cell + move_direction)
 		_move_repeat_timer += PLAYER_MOVE_REPEAT_INTERVAL
 
 func _current_move_input_direction() -> Vector2i:
@@ -525,6 +540,36 @@ func _current_move_input_direction() -> Vector2i:
 func _reset_player_hold_state() -> void:
 	_last_move_direction = Vector2i.ZERO
 	_move_repeat_timer = 0.0
+
+func _update_player_turn_movement(delta: float) -> void:
+	if _player_sprite == null or not _player_control_enabled:
+		_player_move_path.clear()
+		_player_turn_cooldown = 0.0
+		_player_pending_chest_interaction = Vector2i(2147483647, 2147483647)
+		return
+
+	if _player_turn_cooldown > 0.0:
+		_player_turn_cooldown = maxf(0.0, _player_turn_cooldown - delta)
+		if _player_turn_cooldown > 0.0:
+			return
+
+	if _player_move_path.is_empty():
+		if _player_pending_chest_interaction.x != 2147483647:
+			_handle_chest_click(_screen_position_from_cell(_player_pending_chest_interaction))
+			_player_pending_chest_interaction = Vector2i(2147483647, 2147483647)
+		return
+
+	var next_cell := _player_move_path[0]
+	if _player_cell == next_cell:
+		_player_move_path.pop_front()
+		return
+
+	if _is_cell_occupied_by_npc(next_cell):
+		_player_move_path.clear()
+		return
+
+	if _try_move_player(next_cell - _player_cell):
+		_player_move_path.pop_front()
 
 func _is_text_input_focused() -> bool:
 	var focused := get_viewport().gui_get_focus_owner()
@@ -1521,7 +1566,7 @@ func _on_city_panel_gui_input(event: InputEvent) -> void:
 			_is_panning = mouse_button.pressed
 		if mouse_button.pressed:
 			if mouse_button.button_index == MOUSE_BUTTON_LEFT:
-				_handle_chest_click(mouse_button.position)
+				_handle_player_click_action(mouse_button.position)
 			if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP:
 				_apply_zoom(ZOOM_STEP, mouse_button.position)
 			elif mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -1576,6 +1621,9 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_npc_states.clear()
 	_player_sprite = null
 	_player_control_enabled = true
+	_player_move_path.clear()
+	_player_turn_cooldown = 0.0
+	_player_pending_chest_interaction = Vector2i(2147483647, 2147483647)
 	_walkable_cells = _collect_walkable_cells(grid)
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
 		return
@@ -1668,18 +1716,127 @@ func _placeholder_actor_color(character_slot: int) -> Color:
 	var index := posmod(character_slot, palette.size())
 	return palette[index]
 
-func _try_move_player(direction: Vector2i) -> void:
-	if direction == Vector2i.ZERO:
+func _handle_player_click_action(mouse_position: Vector2) -> void:
+	if _player_sprite == null or not _player_control_enabled:
 		return
+	var clicked_cell := _cell_from_mouse_position(mouse_position)
+	if _is_chest_cell(clicked_cell):
+		_request_chest_interaction(clicked_cell)
+		return
+	_request_player_move_to_cell(clicked_cell)
+
+func _request_chest_interaction(chest_cell: Vector2i) -> void:
+	if _player_cell == chest_cell:
+		_handle_chest_click(_screen_position_from_cell(chest_cell))
+		return
+	if not _is_walkable_cell(chest_cell):
+		_clear_chest_selection()
+		return
+	_request_player_move_to_cell(chest_cell)
+	if not _player_move_path.is_empty():
+		_player_pending_chest_interaction = chest_cell
+
+func _request_player_move_to_cell(target_cell: Vector2i) -> void:
+	if _player_sprite == null or not _player_control_enabled:
+		return
+	if target_cell == _player_cell:
+		_player_move_path.clear()
+		return
+	if _latest_grid.is_empty() or not _latest_grid.has(target_cell):
+		return
+
+	var next_path := _build_player_path(_player_cell, target_cell)
+	if next_path.is_empty():
+		if not _is_cell_occupied_by_npc(target_cell):
+			_player_move_path.clear()
+		return
+
+	_player_move_path = next_path
+	if _player_turn_cooldown <= 0.0:
+		_update_player_turn_movement(0.0)
+
+func _build_player_path(from_cell: Vector2i, to_cell: Vector2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if from_cell == to_cell:
+		return result
+
+	var queue: Array[Vector2i] = [from_cell]
+	var visited := {from_cell: true}
+	var came_from: Dictionary = {}
+	var found := false
+
+	while not queue.is_empty():
+		var current: Vector2i = queue.pop_front()
+		if current == to_cell:
+			found = true
+			break
+		for offset: Vector2i in SPD_NEIGHBOR_OFFSETS:
+			var next := current + offset
+			if visited.has(next):
+				continue
+			if not _can_step_to_cell(current, next, to_cell):
+				continue
+			visited[next] = true
+			came_from[next] = current
+			queue.append(next)
+
+	if not found:
+		return result
+
+	var path_reversed: Array[Vector2i] = []
+	var cursor := to_cell
+	while cursor != from_cell:
+		path_reversed.append(cursor)
+		cursor = came_from.get(cursor, from_cell) as Vector2i
+		if cursor == from_cell:
+			break
+	if path_reversed.is_empty():
+		return result
+	for i in range(path_reversed.size() - 1, -1, -1):
+		result.append(path_reversed[i])
+	return result
+
+func _can_step_to_cell(from_cell: Vector2i, to_cell: Vector2i, goal_cell: Vector2i) -> bool:
+	if not _latest_grid.has(to_cell):
+		return false
+	if not _is_walkable_cell(to_cell):
+		return false
+	if to_cell != goal_cell and _is_cell_occupied_by_npc(to_cell):
+		return false
+	var delta := to_cell - from_cell
+	if absi(delta.x) == 1 and absi(delta.y) == 1:
+		var orth_a := from_cell + Vector2i(delta.x, 0)
+		var orth_b := from_cell + Vector2i(0, delta.y)
+		if not _is_walkable_cell(orth_a) or not _is_walkable_cell(orth_b):
+			return false
+	return true
+
+func _is_cell_occupied_by_npc(cell: Vector2i) -> bool:
+	for state: Dictionary in _npc_states:
+		var npc_cell := state.get("cell", Vector2i(2147483647, 2147483647)) as Vector2i
+		if npc_cell == cell:
+			return true
+	return false
+
+func _screen_position_from_cell(cell: Vector2i) -> Vector2:
+	return city_layer.position + (_cell_center_position(cell) * _zoom_level)
+
+func _try_move_player(direction: Vector2i) -> bool:
+	if direction == Vector2i.ZERO:
+		return false
 	var target_cell := _player_cell + direction
 	if not _is_walkable_cell(target_cell):
-		return
+		return false
+	if _is_cell_occupied_by_npc(target_cell):
+		return false
 	_player_cell = target_cell
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
 	_center_view_on_cell(_player_cell)
+	_player_turn_cooldown = PLAYER_BASE_MOVE_TIME
 	if not _latest_grid.is_empty():
 		_update_shattered_visibility(_latest_grid)
 		_refresh_lighting(_latest_grid)
+	return true
 
 func _center_view_on_cell(cell: Vector2i) -> void:
 	var panel_size := city_panel.size
