@@ -16,6 +16,7 @@ const CELL_BUILDING := 3
 @export var tavern_npc_count := 5
 @export var tavern_npc_speed_range := Vector2(38.0, 62.0)
 @export var enable_fog_of_war := true
+@export var underground_level_count_range := Vector2i(3, 7)
 
 const TILE_ATLAS := {
 	"dirt": Vector2i(0, 2),
@@ -91,6 +92,9 @@ const COLLISION_LAYER_WORLD := 1
 
 @onready var seed_input: LineEdit = %SeedInput
 @onready var generate_button: Button = %GenerateButton
+@onready var depth_down_button: Button = %DepthDownButton
+@onready var depth_up_button: Button = %DepthUpButton
+@onready var depth_label: Label = %DepthLabel
 @onready var overlay_toggle: CheckButton = %OverlayToggle
 @onready var lighting_toggle: CheckButton = %LightingToggle
 @onready var city_summary: Label = %CitySummary
@@ -160,6 +164,8 @@ var _player_pending_chest_interaction := Vector2i(2147483647, 2147483647)
 var _last_move_direction := Vector2i.ZERO
 var _move_repeat_timer := 0.0
 var _npc_states: Array[Dictionary] = []
+var _generated_levels: Array[Dictionary] = []
+var _current_level_index := 0
 
 const TAVERN_SPRITE_COLUMNS := 12
 const TAVERN_SPRITE_ROWS := 8
@@ -466,6 +472,8 @@ func _ready() -> void:
 	_shattered_player_texture = load(shattered_player_sprite_path) as Texture2D
 	_placeholder_actor_texture = _create_placeholder_actor_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
+	depth_down_button.pressed.connect(_on_depth_down_pressed)
+	depth_up_button.pressed.connect(_on_depth_up_pressed)
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	lighting_toggle.toggled.connect(_on_lighting_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
@@ -687,6 +695,11 @@ func _apply_cached_dwarfhold_scene_seed() -> void:
 func _on_generate_pressed() -> void:
 	_generate_city()
 
+func _on_depth_down_pressed() -> void:
+	_show_level(_current_level_index - 1)
+
+func _on_depth_up_pressed() -> void:
+	_show_level(_current_level_index + 1)
 
 func _generate_city() -> void:
 	var seed_text := seed_input.text.strip_edges()
@@ -694,12 +707,26 @@ func _generate_city() -> void:
 		_rng.randomize()
 		seed_text = str(_rng.randi())
 		seed_input.text = seed_text
+
 	_rng.seed = hash(seed_text)
+	_generated_levels.clear()
+
+	var minimum_levels := mini(underground_level_count_range.x, underground_level_count_range.y)
+	var maximum_levels := maxi(underground_level_count_range.x, underground_level_count_range.y)
+	var level_count := maxi(1, _rng.randi_range(minimum_levels, maximum_levels))
+	for level_index in range(level_count):
+		var level_seed := "%s::depth_%d" % [seed_text, level_index]
+		_generated_levels.append(_generate_single_level(level_seed))
+
+	_show_level(0)
+
+func _generate_single_level(level_seed: String) -> Dictionary:
+	_rng.seed = hash(level_seed)
 
 	var requested_hall_count := _pick_seeded_zone_target(hall_zone_count_range)
 	var requested_house_count := _pick_seeded_zone_target(housing_zone_count_range)
 	var requested_building_count := _pick_seeded_zone_target(civic_building_zone_count_range)
-	_latest_requested_zone_counts = {
+	var requested_zone_counts := {
 		"halls": requested_hall_count,
 		"houses": requested_house_count,
 		"buildings": requested_building_count
@@ -775,17 +802,51 @@ func _generate_city() -> void:
 
 	_door_cells = _compute_single_doors(grid)
 	_ensure_door_connectivity(grid)
+	var civic_buildings_by_id := _compute_civic_buildings_by_id(grid)
+	var civic_building_type_map := _build_civic_building_type_lookup(civic_buildings_by_id)
+	var zone_counts := _count_zone_components(grid)
+	return {
+		"grid": grid,
+		"zone_counts": zone_counts,
+		"requested_zone_counts": requested_zone_counts,
+		"civic_buildings_by_id": civic_buildings_by_id,
+		"civic_building_type_map": civic_building_type_map
+	}
+
+func _show_level(target_level_index: int) -> void:
+	if _generated_levels.is_empty():
+		depth_down_button.disabled = true
+		depth_up_button.disabled = true
+		depth_label.text = "Level 0 / 0"
+		return
+
+	_current_level_index = clampi(target_level_index, 0, _generated_levels.size() - 1)
+	var level_data := _generated_levels[_current_level_index] as Dictionary
+	var grid := level_data.get("grid", {}) as Dictionary
 	_latest_grid = grid
-	_latest_civic_buildings_by_id = _compute_civic_buildings_by_id(grid)
-	_latest_civic_building_type_map = _build_civic_building_type_lookup(_latest_civic_buildings_by_id)
-	_latest_zone_counts = _count_zone_components(grid)
+	_latest_zone_counts = level_data.get("zone_counts", {}) as Dictionary
+	_latest_requested_zone_counts = level_data.get("requested_zone_counts", {}) as Dictionary
+	_latest_civic_buildings_by_id = level_data.get("civic_buildings_by_id", {}) as Dictionary
+	_latest_civic_building_type_map = level_data.get("civic_building_type_map", {}) as Dictionary
+
 	_chest_inventories.clear()
 	_clear_chest_selection()
-
 	_render_city(grid)
 	_spawn_tavern_characters(grid)
-	_update_summary(grid, seed_text)
+	_update_summary(grid, seed_input.text.strip_edges())
 	_update_zone_overlay()
+	_update_depth_controls()
+
+func _update_depth_controls() -> void:
+	var level_count := _generated_levels.size()
+	if level_count <= 0:
+		depth_down_button.disabled = true
+		depth_up_button.disabled = true
+		depth_label.text = "Level 0 / 0"
+		return
+	depth_down_button.disabled = _current_level_index <= 0
+	depth_up_button.disabled = _current_level_index >= level_count - 1
+	depth_label.text = "Level %d / %d" % [_current_level_index + 1, level_count]
 
 
 func _pick_seeded_zone_target(count_range: Vector2i) -> int:
@@ -2204,8 +2265,10 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var requested_buildings := int(_latest_requested_zone_counts.get("buildings", 0))
 
 	var building_subtype_summary := _building_subtype_summary_text()
-	city_summary.text = "Seed %s\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d" % [
+	city_summary.text = "Seed %s\nDepth: %d / %d\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d" % [
 		seed_text,
+		_current_level_index + 1,
+		maxi(_generated_levels.size(), 1),
 		bounds.size.x,
 		bounds.size.y,
 		bounds.position.x,
