@@ -143,6 +143,27 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Generate New Hold"
 
+[node name="DepthControls" type="HBoxContainer" parent="Margin/Layout/Controls" unique_id=170009992]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DepthDownButton" type="Button" parent="Margin/Layout/Controls/DepthControls" unique_id=93990912]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Depth -"
+
+[node name="DepthLabel" type="Label" parent="Margin/Layout/Controls/DepthControls" unique_id=16041918]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+text = "Level 1 / 1"
+
+[node name="DepthUpButton" type="Button" parent="Margin/Layout/Controls/DepthControls" unique_id=1321381987]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Depth +"
+
 
 [node name="OverlayToggle" type="CheckButton" parent="Margin/Layout/Controls" unique_id=195430028]
 unique_name_in_owner = true
