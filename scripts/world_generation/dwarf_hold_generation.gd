@@ -12,6 +12,7 @@ const CELL_BUILDING := 3
 @export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
 @export var structure_fallback_max_extra_radius := 240
 @export var tavern_vehicle_sprite_path := "res://resources/images/dwarfhold/very_epic_taverner_vehicle.png"
+@export var shattered_player_sprite_path := "res://resources/images/shattered_ui/warrior.png"
 @export var tavern_npc_count := 5
 @export var tavern_player_speed := 92.0
 @export var tavern_npc_speed_range := Vector2(38.0, 62.0)
@@ -100,8 +101,6 @@ const COLLISION_LAYER_WORLD := 1
 @onready var decor_layer: TileMapLayer = %DecorTileLayer
 @onready var lighting_layer: Node2D = %LightingLayer
 @onready var global_darkness: CanvasModulate = %GlobalDarkness
-@onready var torch_lights: Node2D = %TorchLights
-@onready var player_light: PointLight2D = %PlayerLight
 @onready var fog_of_war: Sprite2D = %FogOfWar
 @onready var actor_layer: Node2D = %ActorLayer
 @onready var zone_overlay: Control = %ZoneOverlay
@@ -142,17 +141,22 @@ var _latest_requested_zone_counts := {
 	"houses": 0,
 	"buildings": 0
 }
-var _torch_light_texture: Texture2D
-var _torch_sprite_texture: Texture2D
-var _fog_image: Image
-var _fog_texture: ImageTexture
+var _lighting_mask_image: Image
+var _lighting_mask_texture: ImageTexture
+var _lighting_mask_sprite: Sprite2D
+var _lighting_bounds := Rect2i()
+var _revealed_cells: Dictionary = {}
+var _visible_cells: Dictionary = {}
 var _tavern_character_texture: Texture2D
+var _shattered_player_texture: Texture2D
 var _placeholder_actor_texture: Texture2D
 var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
 var _player_facing_row := 0
 var _player_control_enabled := false
+var _player_move_direction := Vector2i.ZERO
+var _player_move_target := Vector2.ZERO
 var _npc_states: Array[Dictionary] = []
 
 const TAVERN_SPRITE_COLUMNS := 12
@@ -188,22 +192,10 @@ const MIN_ZOOM := 0.1
 const MAX_ZOOM := 2.5
 const ZOOM_STEP := 0.1
 
-const TORCH_LIGHT_COLOR := Color(1.0, 0.90, 0.72, 1.0)
-const PLAYER_LIGHT_COLOR := Color(1.0, 0.92, 0.72, 1.0)
-const TORCH_LIGHT_RADIUS_CELLS := 6.6
-const HALL_LIGHT_RADIUS_CELLS := 5.4
-const PLAYER_LIGHT_RADIUS_CELLS := 6.2
-const TORCH_LIGHT_ENERGY := 1.85
-const HALL_LIGHT_ENERGY := 1.35
-const PLAYER_LIGHT_ENERGY := 1.6
-const TORCH_PLACEMENT_INTERVAL_CELLS := 4
-const MAX_TORCH_LIGHTS := 420
-const LIGHT_CULL_DISTANCE_CELLS := 10000.0
-const LIGHT_CHUNK_SIZE := 12
-const LIGHT_ACTIVE_CHUNK_RADIUS := 999
-
-const FOG_CHUNK_SIZE := 12
-const FOG_REVEAL_CHUNK_RADIUS := 1
+const SHATTERED_VISION_RADIUS := 7
+const SHATTERED_UNSEEN_ALPHA := 1.0
+const SHATTERED_REVEALED_ALPHA := 0.72
+const SHATTERED_VISIBLE_ALPHA := 0.0
 
 const CHEST_SLOT_COLUMNS := 8
 const CHEST_SLOT_ROWS := 4
@@ -448,18 +440,15 @@ const CIVIC_BUILDING_TYPES := {
 func _ready() -> void:
 	_apply_cached_dwarfhold_scene_seed()
 	_configure_tile_layer()
-	_torch_light_texture = _create_torch_light_texture()
-	_torch_sprite_texture = _create_torch_sprite_texture()
-	global_darkness.color = Color(0.92, 0.92, 0.94, 1.0)
-	player_light.texture = _torch_light_texture
-	player_light.color = PLAYER_LIGHT_COLOR
-	player_light.energy = PLAYER_LIGHT_ENERGY
-	player_light.blend_mode = Light2D.BLEND_MODE_ADD
-	player_light.texture_scale = maxf((float(tile_size.x) * PLAYER_LIGHT_RADIUS_CELLS) / 128.0, 0.05)
-	player_light.visible = false
+	global_darkness.color = Color(1.0, 1.0, 1.0, 1.0)
+	_lighting_mask_sprite = Sprite2D.new()
+	_lighting_mask_sprite.centered = false
+	lighting_layer.add_child(_lighting_mask_sprite)
+	fog_of_war.visible = false
 	_tavern_character_texture = load(tavern_vehicle_sprite_path) as Texture2D
 	if _tavern_character_texture == null:
 		_tavern_character_texture = _create_placeholder_tavern_character_texture()
+	_shattered_player_texture = load(shattered_player_sprite_path) as Texture2D
 	_placeholder_actor_texture = _create_placeholder_actor_texture()
 	generate_button.pressed.connect(_on_generate_pressed)
 	start_as_player_button.pressed.connect(_on_start_as_player_pressed)
@@ -482,8 +471,6 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_player_movement(delta)
 	_update_npc_movement(delta)
-	if _player_sprite != null:
-		player_light.position = _player_sprite.position
 
 func _update_zone_legend() -> void:
 	var lines: PackedStringArray = ["[b]Zone Overlay Legend[/b]"]
@@ -587,10 +574,8 @@ func _on_start_as_player_pressed() -> void:
 	_player_control_enabled = true
 	start_as_player_button.text = "✅ Player Active"
 	city_summary.text = "Player control enabled. Use arrow keys to move through the hold."
-	player_light.visible = true
-	player_light.position = _player_sprite.position
-	_reveal_fog_chunks_around_cell(_player_cell)
 	if not _latest_grid.is_empty():
+		_update_shattered_visibility(_latest_grid)
 		_refresh_lighting(_latest_grid)
 
 func _generate_city() -> void:
@@ -1155,208 +1140,111 @@ func _render_city(grid: Dictionary) -> void:
 				_place_tile(decor_layer, render_cell, decor_tile)
 				if decor_tile == "chest":
 					_ensure_chest_inventory(render_cell)
-	_initialize_fog_of_war(grid)
+	_initialize_shattered_lighting(grid)
 	_refresh_lighting(grid)
 	_reset_view(bounds)
 
 
-func _create_torch_light_texture() -> Texture2D:
-	var gradient := Gradient.new()
-	gradient.colors = PackedColorArray([
-		Color(1.0, 1.0, 1.0, 1.0),
-		Color(1.0, 1.0, 1.0, 0.35),
-		Color(1.0, 1.0, 1.0, 0.0)
-	])
-	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+func _initialize_shattered_lighting(grid: Dictionary) -> void:
+	if grid.is_empty():
+		_lighting_bounds = Rect2i(Vector2i.ZERO, Vector2i.ONE)
+		_revealed_cells.clear()
+		_visible_cells.clear()
+		if _lighting_mask_sprite != null:
+			_lighting_mask_sprite.visible = false
+		return
 
-	var texture := GradientTexture2D.new()
-	texture.gradient = gradient
-	texture.width = 256
-	texture.height = 256
-	texture.fill = GradientTexture2D.FILL_RADIAL
-	return texture
-
-func _create_torch_sprite_texture() -> Texture2D:
-	var image := Image.create(16, 24, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
-	for y in range(9, 24):
-		for x in range(7, 9):
-			image.set_pixel(x, y, Color(0.28, 0.18, 0.09, 1.0))
-	for y in range(6, 14):
-		for x in range(4, 12):
-			var local := Vector2(float(x - 8), float(y - 10))
-			var dist := local.length()
-			if dist > 4.6:
-				continue
-			var outer := Color(1.0, 0.56, 0.20, 0.95)
-			var inner := Color(1.0, 0.92, 0.56, 0.98)
-			var t := clampf(dist / 4.6, 0.0, 1.0)
-			image.set_pixel(x, y, inner.lerp(outer, t))
-	return ImageTexture.create_from_image(image)
+	_lighting_bounds = _find_bounds(grid).grow(1)
+	var image_size := Vector2i(
+		maxi(_lighting_bounds.size.x * tile_size.x, 1),
+		maxi(_lighting_bounds.size.y * tile_size.y, 1)
+	)
+	_lighting_mask_image = Image.create(image_size.x, image_size.y, false, Image.FORMAT_RGBA8)
+	_lighting_mask_image.fill(Color(0, 0, 0, SHATTERED_UNSEEN_ALPHA))
+	_lighting_mask_texture = ImageTexture.create_from_image(_lighting_mask_image)
+	if _lighting_mask_sprite != null:
+		_lighting_mask_sprite.texture = _lighting_mask_texture
+		_lighting_mask_sprite.position = Vector2(_lighting_bounds.position * tile_size)
+		_lighting_mask_sprite.visible = _lighting_enabled
+	_revealed_cells.clear()
+	_visible_cells.clear()
+	_update_shattered_visibility(grid)
 
 func _refresh_lighting(grid: Dictionary) -> void:
-	for child in torch_lights.get_children():
-		child.queue_free()
-	if not _lighting_enabled:
-		player_light.visible = false
+	if _lighting_mask_sprite == null:
 		return
-	if _torch_light_texture == null:
+	if not _lighting_enabled or grid.is_empty() or _lighting_mask_image == null or _lighting_mask_texture == null:
+		_lighting_mask_sprite.visible = false
 		return
-	if _player_sprite != null:
-		player_light.visible = true
-		player_light.position = _player_sprite.position
-	else:
-		player_light.visible = false
 
-	var light_center_cell := _get_light_culling_center_cell(grid)
-	var active_chunk_center := _chunk_from_cell(light_center_cell, LIGHT_CHUNK_SIZE)
-
-	var light_cells: Dictionary = {}
-	for door_cell_variant: Variant in _door_cells.keys():
-		var door_cell := door_cell_variant as Vector2i
-		if not _is_light_cell_in_active_region(door_cell, light_center_cell, active_chunk_center):
-			continue
-		light_cells[door_cell] = {"radius": TORCH_LIGHT_RADIUS_CELLS, "energy": TORCH_LIGHT_ENERGY}
-
-	var hall_candidates: Array[Vector2i] = []
+	_lighting_mask_sprite.visible = true
+	_lighting_mask_sprite.position = Vector2(_lighting_bounds.position * tile_size)
 	for cell_variant: Variant in grid.keys():
 		var cell := cell_variant as Vector2i
-		if _cell_at(grid, cell.x, cell.y) != CELL_HALL:
-			continue
-		if _hall_neighbor_count(grid, cell) < 2:
-			continue
-		hall_candidates.append(cell)
+		var alpha := SHATTERED_UNSEEN_ALPHA
+		if _visible_cells.has(cell):
+			alpha = SHATTERED_VISIBLE_ALPHA
+		elif _revealed_cells.has(cell):
+			alpha = SHATTERED_REVEALED_ALPHA
+		_draw_lighting_alpha_for_cell(cell, alpha)
 
-	hall_candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		if a.y == b.y:
-			return a.x < b.x
-		return a.y < b.y
-	)
+	_lighting_mask_texture.update(_lighting_mask_image)
 
-	for hall_cell in hall_candidates:
-		if light_cells.size() >= MAX_TORCH_LIGHTS:
-			break
-		if light_cells.has(hall_cell):
-			continue
-		if not _is_light_cell_in_active_region(hall_cell, light_center_cell, active_chunk_center):
-			continue
-		if hall_cell.x % TORCH_PLACEMENT_INTERVAL_CELLS != 0 and hall_cell.y % TORCH_PLACEMENT_INTERVAL_CELLS != 0:
-			continue
-		if not _is_light_cell_well_spaced(hall_cell, light_cells, float(TORCH_PLACEMENT_INTERVAL_CELLS) * 0.9):
-			continue
-		light_cells[hall_cell] = {"radius": HALL_LIGHT_RADIUS_CELLS, "energy": HALL_LIGHT_ENERGY}
+func _draw_lighting_alpha_for_cell(cell: Vector2i, alpha: float) -> void:
+	if _lighting_mask_image == null:
+		return
+	var local_cell := cell - _lighting_bounds.position
+	if local_cell.x < 0 or local_cell.y < 0 or local_cell.x >= _lighting_bounds.size.x or local_cell.y >= _lighting_bounds.size.y:
+		return
+	var pixel_origin := Vector2i(local_cell.x * tile_size.x, local_cell.y * tile_size.y)
+	_lighting_mask_image.fill_rect(Rect2i(pixel_origin, tile_size), Color(0, 0, 0, clampf(alpha, 0.0, 1.0)))
 
-	for light_cell_variant: Variant in light_cells.keys():
-		var light_cell := light_cell_variant as Vector2i
-		var payload := light_cells[light_cell] as Dictionary
-		_spawn_torch_light(light_cell, float(payload.get("radius", TORCH_LIGHT_RADIUS_CELLS)), float(payload.get("energy", TORCH_LIGHT_ENERGY)))
+func _update_shattered_visibility(grid: Dictionary) -> void:
+	_visible_cells.clear()
+	if grid.is_empty() or _player_sprite == null:
+		return
 
-func _is_light_cell_well_spaced(cell: Vector2i, existing_cells: Dictionary, min_distance: float) -> bool:
-	for existing_variant: Variant in existing_cells.keys():
-		var existing := existing_variant as Vector2i
-		if cell.distance_to(existing) < min_distance:
+	for dy in range(-SHATTERED_VISION_RADIUS, SHATTERED_VISION_RADIUS + 1):
+		for dx in range(-SHATTERED_VISION_RADIUS, SHATTERED_VISION_RADIUS + 1):
+			var cell := _player_cell + Vector2i(dx, dy)
+			if not grid.has(cell):
+				continue
+			if Vector2(dx, dy).length() > SHATTERED_VISION_RADIUS + 0.25:
+				continue
+			if not _has_line_of_sight_to_cell(_player_cell, cell):
+				continue
+			_visible_cells[cell] = true
+			_revealed_cells[cell] = true
+
+func _has_line_of_sight_to_cell(from_cell: Vector2i, to_cell: Vector2i) -> bool:
+	var x0 := from_cell.x
+	var y0 := from_cell.y
+	var x1 := to_cell.x
+	var y1 := to_cell.y
+	var dx := absi(x1 - x0)
+	var dy := -absi(y1 - y0)
+	var sx := 1 if x0 < x1 else -1
+	var sy := 1 if y0 < y1 else -1
+	var err := dx + dy
+
+	while true:
+		if x0 == x1 and y0 == y1:
+			return true
+		var cell := Vector2i(x0, y0)
+		if cell != from_cell and not _is_transparent_lighting_cell(cell):
 			return false
+		var e2 := 2 * err
+		if e2 >= dy:
+			err += dy
+			x0 += sx
+		if e2 <= dx:
+			err += dx
+			y0 += sy
+
 	return true
 
-func _hall_neighbor_count(grid: Dictionary, cell: Vector2i) -> int:
-	var count := 0
-	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		if _cell_at(grid, cell.x + direction.x, cell.y + direction.y) == CELL_HALL:
-			count += 1
-	return count
-
-func _get_light_culling_center_cell(grid: Dictionary) -> Vector2i:
-	if _player_sprite != null:
-		return _player_cell
-	if not grid.is_empty():
-		for key: Variant in grid.keys():
-			return key as Vector2i
-	return Vector2i.ZERO
-
-func _chunk_from_cell(cell: Vector2i, chunk_size: int) -> Vector2i:
-	if chunk_size <= 0:
-		return Vector2i.ZERO
-	return Vector2i(
-		int(floor(float(cell.x) / float(chunk_size))),
-		int(floor(float(cell.y) / float(chunk_size)))
-	)
-
-func _is_light_cell_in_active_region(cell: Vector2i, center_cell: Vector2i, center_chunk: Vector2i) -> bool:
-	if cell.distance_to(center_cell) > LIGHT_CULL_DISTANCE_CELLS:
-		return false
-	var chunk := _chunk_from_cell(cell, LIGHT_CHUNK_SIZE)
-	return abs(chunk.x - center_chunk.x) <= LIGHT_ACTIVE_CHUNK_RADIUS and abs(chunk.y - center_chunk.y) <= LIGHT_ACTIVE_CHUNK_RADIUS
-
-func _spawn_torch_light(cell: Vector2i, radius_cells: float, energy: float) -> void:
-	var torch := Node2D.new()
-	torch.position = Vector2(
-		(float(cell.x) + 0.5) * tile_size.x,
-		(float(cell.y) + 0.5) * tile_size.y
-	)
-	if _torch_sprite_texture != null:
-		var torch_sprite := Sprite2D.new()
-		torch_sprite.texture = _torch_sprite_texture
-		torch_sprite.centered = true
-		torch_sprite.position = Vector2(0, -float(tile_size.y) * 0.24)
-		torch.add_child(torch_sprite)
-
-	var light := PointLight2D.new()
-	light.texture = _torch_light_texture
-	light.color = TORCH_LIGHT_COLOR
-	light.energy = energy
-	light.blend_mode = Light2D.BLEND_MODE_ADD
-	var radius_pixels := float(tile_size.x) * radius_cells
-	light.texture_scale = maxf(radius_pixels / 128.0, 0.05)
-	torch.add_child(light)
-	torch_lights.add_child(torch)
-
-func _initialize_fog_of_war(grid: Dictionary) -> void:
-	if not enable_fog_of_war:
-		fog_of_war.visible = false
-		return
-	if grid.is_empty():
-		fog_of_war.visible = false
-		return
-	var bounds := _find_bounds(grid)
-	var image_size := Vector2i(
-		maxi(bounds.size.x * tile_size.x, 1),
-		maxi(bounds.size.y * tile_size.y, 1)
-	)
-	_fog_image = Image.create(image_size.x, image_size.y, false, Image.FORMAT_RGBA8)
-	_fog_image.fill(Color(1, 1, 1, 1))
-	_fog_texture = ImageTexture.create_from_image(_fog_image)
-	fog_of_war.texture = _fog_texture
-	fog_of_war.position = Vector2(bounds.position * tile_size)
-	fog_of_war.visible = true
-	_reveal_fog_chunks_around_cell(_player_cell)
-
-func _reveal_fog_chunks_around_cell(cell: Vector2i) -> void:
-	if not enable_fog_of_war:
-		return
-	if _fog_image == null or _fog_texture == null:
-		return
-	var center_chunk := _chunk_from_cell(cell, FOG_CHUNK_SIZE)
-	for chunk_y in range(center_chunk.y - FOG_REVEAL_CHUNK_RADIUS, center_chunk.y + FOG_REVEAL_CHUNK_RADIUS + 1):
-		for chunk_x in range(center_chunk.x - FOG_REVEAL_CHUNK_RADIUS, center_chunk.x + FOG_REVEAL_CHUNK_RADIUS + 1):
-			_reveal_fog_chunk(Vector2i(chunk_x, chunk_y))
-
-func _reveal_fog_chunk(chunk: Vector2i) -> void:
-	if _fog_image == null:
-		return
-	var chunk_origin_cell := chunk * FOG_CHUNK_SIZE
-	var start := Vector2i(chunk_origin_cell * tile_size)
-	var chunk_pixel_size := Vector2i(FOG_CHUNK_SIZE * tile_size.x, FOG_CHUNK_SIZE * tile_size.y)
-	var end := start + chunk_pixel_size
-	var fog_width := _fog_image.get_width()
-	var fog_height := _fog_image.get_height()
-	if end.x < 0 or end.y < 0 or start.x >= fog_width or start.y >= fog_height:
-		return
-	var clipped_start := Vector2i(maxi(start.x, 0), maxi(start.y, 0))
-	var clipped_end := Vector2i(mini(end.x, fog_width), mini(end.y, fog_height))
-	for py in range(clipped_start.y, clipped_end.y):
-		for px in range(clipped_start.x, clipped_end.x):
-			_fog_image.set_pixel(px, py, Color(0, 0, 0, 0))
-	_fog_texture.update(_fog_image)
+func _is_transparent_lighting_cell(cell: Vector2i) -> bool:
+	return _is_passable_cell_for_actor(cell)
 
 func _ensure_chest_inventory(cell: Vector2i) -> void:
 	if _chest_inventories.has(cell):
@@ -1633,6 +1521,8 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_npc_states.clear()
 	_player_sprite = null
 	_player_control_enabled = false
+	_player_move_direction = Vector2i.ZERO
+	_player_move_target = Vector2.ZERO
 	start_as_player_button.text = "▶ Start as Player Character"
 	_walkable_cells = _collect_walkable_cells(grid)
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
@@ -1640,12 +1530,10 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 
 	_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
 	_player_facing_row = 0
-	_player_sprite = _create_tavern_character_sprite(0)
-	_player_sprite.modulate = Color(0.98, 0.95, 0.70, 1.0)
+	_player_sprite = _create_player_character_sprite()
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
+	_player_move_target = _player_sprite.position
 	actor_layer.add_child(_player_sprite)
-	player_light.visible = false
-	player_light.position = _player_sprite.position
 
 	for i in tavern_npc_count:
 		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
@@ -1690,6 +1578,26 @@ func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
 	sprite.scale = Vector2(float(tile_size.x), float(tile_size.y)) * 0.45
 	return sprite
 
+func _create_player_character_sprite() -> Sprite2D:
+	if _shattered_player_texture == null:
+		var fallback_sprite := _create_tavern_character_sprite(0)
+		fallback_sprite.modulate = Color(0.98, 0.95, 0.70, 1.0)
+		return fallback_sprite
+
+	var sprite := Sprite2D.new()
+	sprite.texture = _shattered_player_texture
+	sprite.region_enabled = true
+	sprite.centered = true
+	sprite.modulate = Color.WHITE
+	var source_size := _shattered_player_texture.get_size()
+	var source_tile_size := Vector2i(16, 16)
+	if source_size.x > 0 and source_size.y > 0:
+		source_tile_size.x = maxi(1, mini(16, source_size.x))
+		source_tile_size.y = maxi(1, mini(16, source_size.y))
+	sprite.region_rect = Rect2(Vector2.ZERO, Vector2(source_tile_size))
+	sprite.scale = Vector2(float(tile_size.x) / float(source_tile_size.x), float(tile_size.y) / float(source_tile_size.y)) * 0.9
+	return sprite
+
 func _create_placeholder_actor_texture() -> Texture2D:
 	var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE)
@@ -1712,29 +1620,38 @@ func _placeholder_actor_color(character_slot: int) -> Color:
 func _update_player_movement(delta: float) -> void:
 	if _player_sprite == null or not _player_control_enabled:
 		return
-	var input_direction := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-	if input_direction.length_squared() > 0.0:
-		input_direction = input_direction.normalized()
-		var target_position := _player_sprite.position + input_direction * tavern_player_speed * delta
-		var target_cell := city_layer.local_to_map(target_position)
+	var direction := _consume_player_step_input()
+	if direction != Vector2i.ZERO and _player_move_direction == Vector2i.ZERO:
+		var target_cell := _player_cell + direction
 		if _is_walkable_cell(target_cell):
-			_player_sprite.position = target_position
-			if target_cell != _player_cell:
-				_player_cell = target_cell
-				_reveal_fog_chunks_around_cell(_player_cell)
-				if not _latest_grid.is_empty():
-					_refresh_lighting(_latest_grid)
-			else:
-				_player_cell = target_cell
-			var facing_row := _facing_row_from_direction(input_direction)
-			if facing_row != _player_facing_row:
-				_player_facing_row = facing_row
-			var walk_frame := 1 + int(Time.get_ticks_msec() / int(TAVERN_FRAME_ADVANCE_SECONDS * 1000.0)) % TAVERN_CHARACTER_COLUMNS
-			_update_character_frame(_player_sprite, 0, walk_frame, _player_facing_row)
-		else:
-			_update_character_frame(_player_sprite, 0, 1, _player_facing_row)
-	else:
-		_update_character_frame(_player_sprite, 0, 1, _player_facing_row)
+			_player_move_direction = direction
+			_player_move_target = _cell_center_position(target_cell)
+			_player_facing_row = _facing_row_from_direction(Vector2(direction))
+
+	if _player_move_direction != Vector2i.ZERO:
+		_player_sprite.position = _player_sprite.position.move_toward(_player_move_target, tavern_player_speed * delta)
+		if _player_sprite.position.distance_to(_player_move_target) <= 0.5:
+			_player_sprite.position = _player_move_target
+			_player_cell += _player_move_direction
+			_player_move_direction = Vector2i.ZERO
+			if not _latest_grid.is_empty():
+				_update_shattered_visibility(_latest_grid)
+				_refresh_lighting(_latest_grid)
+
+	if _shattered_player_texture == null:
+		var walk_frame := 1 if _player_move_direction == Vector2i.ZERO else (1 + int(Time.get_ticks_msec() / int(TAVERN_FRAME_ADVANCE_SECONDS * 1000.0)) % TAVERN_CHARACTER_COLUMNS)
+		_update_character_frame(_player_sprite, 0, walk_frame, _player_facing_row)
+
+func _consume_player_step_input() -> Vector2i:
+	if Input.is_action_just_pressed("ui_left"):
+		return Vector2i.LEFT
+	if Input.is_action_just_pressed("ui_right"):
+		return Vector2i.RIGHT
+	if Input.is_action_just_pressed("ui_up"):
+		return Vector2i.UP
+	if Input.is_action_just_pressed("ui_down"):
+		return Vector2i.DOWN
+	return Vector2i.ZERO
 
 func _update_npc_movement(delta: float) -> void:
 	for state: Dictionary in _npc_states:
