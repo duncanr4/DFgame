@@ -43,11 +43,11 @@ func _draw() -> void:
 	draw_line(Vector2(left + _bar_pixel_width, top + bar_height), Vector2(left + _bar_pixel_width, top + bar_height + 4.0), stroke_color, 1.5)
 
 func _pick_nice_distance(target_distance: float) -> float:
-	var safe_target := maxf(target_distance, 0.001)
-	var exponent := floor(log(safe_target) / log(10.0))
-	var magnitude := pow(10.0, exponent)
-	var normalized := safe_target / magnitude
-	var step := 1.0
+	var safe_target: float = maxf(target_distance, 0.001)
+	var exponent: float = floor(log(safe_target) / log(10.0))
+	var magnitude: float = pow(10.0, exponent)
+	var normalized: float = safe_target / magnitude
+	var step: float = 1.0
 	if normalized > 1.0:
 		step = 2.0
 	if normalized > 2.0:
