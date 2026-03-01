@@ -4,10 +4,12 @@ const CELL_ROCK := 0
 const CELL_HALL := 1
 const CELL_HOUSE := 2
 const CELL_BUILDING := 3
+const CELL_PLAZA := 4
 
 @export var hall_zone_count_range := Vector2i(14, 22)
 @export var housing_zone_count_range := Vector2i(80, 140)
 @export var civic_building_zone_count_range := Vector2i(45, 95)
+@export var plaza_zone_count_range := Vector2i(6, 14)
 @export var tile_size := Vector2i(32, 32)
 @export var tilesheet_path := "res://resources/images/dwarfhold/map.png"
 @export var structure_fallback_max_extra_radius := 240
@@ -136,12 +138,14 @@ var _chest_slot_labels: Array[Label] = []
 var _latest_zone_counts := {
 	"halls": 0,
 	"houses": 0,
-	"buildings": 0
+	"buildings": 0,
+	"plazas": 0
 }
 var _latest_requested_zone_counts := {
 	"halls": 0,
 	"houses": 0,
-	"buildings": 0
+	"buildings": 0,
+	"plazas": 0
 }
 var _lighting_mask_image: Image
 var _lighting_mask_texture: ImageTexture
@@ -193,13 +197,15 @@ const SPD_NEIGHBOR_OFFSETS := [
 const ZONE_OVERLAY_COLORS := {
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
 	CELL_HOUSE: Color(0.84, 0.72, 0.24, 0.35),
-	CELL_BUILDING: Color(0.61, 0.35, 0.88, 0.35)
+	CELL_BUILDING: Color(0.61, 0.35, 0.88, 0.35),
+	CELL_PLAZA: Color(0.18, 0.74, 0.66, 0.35)
 }
 
 const ZONE_LEGEND_ORDER := [
 	{"tile": CELL_HALL, "name": "Hall"},
 	{"tile": CELL_HOUSE, "name": "House"},
-	{"tile": CELL_BUILDING, "name": "Building"}
+	{"tile": CELL_BUILDING, "name": "Building"},
+	{"tile": CELL_PLAZA, "name": "Plaza"}
 ]
 
 const BUILDING_SUBTYPE_FLAVOR := {
@@ -728,10 +734,12 @@ func _generate_single_level(level_seed: String) -> Dictionary:
 	var requested_hall_count := _pick_seeded_zone_target(hall_zone_count_range)
 	var requested_house_count := _pick_seeded_zone_target(housing_zone_count_range)
 	var requested_building_count := _pick_seeded_zone_target(civic_building_zone_count_range)
+	var requested_plaza_count := _pick_seeded_zone_target(plaza_zone_count_range)
 	var requested_zone_counts := {
 		"halls": requested_hall_count,
 		"houses": requested_house_count,
-		"buildings": requested_building_count
+		"buildings": requested_building_count,
+		"plazas": requested_plaza_count
 	}
 
 	var grid: Dictionary = {}
@@ -760,6 +768,17 @@ func _generate_single_level(level_seed: String) -> Dictionary:
 			to_cell.x += hall_half_width
 		_dig_rect(grid, from_cell, to_cell, CELL_HALL)
 		hubs.append(end)
+
+	for _plaza_index in requested_plaza_count:
+		var plaza_anchor := hubs[_rng.randi_range(0, hubs.size() - 1)]
+		var plaza_direction := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN][_rng.randi_range(0, 3)] as Vector2i
+		var plaza_offset_distance := _rng.randi_range(6, 16)
+		var plaza_center := plaza_anchor + plaza_direction * plaza_offset_distance
+		plaza_center += Vector2i(_rng.randi_range(-4, 4), _rng.randi_range(-4, 4))
+		var plaza_radius := Vector2i(_rng.randi_range(4, 9), _rng.randi_range(3, 7))
+		_dig_ellipse(grid, plaza_center, plaza_radius, CELL_PLAZA)
+		_connect_points(grid, plaza_anchor, plaza_center, CELL_HALL)
+		hubs.append(plaza_center)
 
 	for i in requested_house_count:
 		var house_footprint := (func() -> Vector2i:
@@ -1029,7 +1048,8 @@ func _count_zone_components(grid: Dictionary) -> Dictionary:
 	return {
 		"halls": _count_components_for_tile(grid, CELL_HALL),
 		"houses": _count_components_for_tile(grid, CELL_HOUSE),
-		"buildings": _count_components_for_tile(grid, CELL_BUILDING)
+		"buildings": _count_components_for_tile(grid, CELL_BUILDING),
+		"plazas": _count_components_for_tile(grid, CELL_PLAZA)
 	}
 
 func _count_components_for_tile(grid: Dictionary, tile_type: int) -> int:
@@ -1356,7 +1376,7 @@ func _find_nearest_cell_pair(group_a: Array[Vector2i], group_b: Array[Vector2i])
 	return [nearest_a, nearest_b]
 
 func _is_walkable_zone(cell: int) -> bool:
-	return cell == CELL_HALL or cell == CELL_HOUSE or cell == CELL_BUILDING
+	return cell == CELL_HALL or cell == CELL_HOUSE or cell == CELL_BUILDING or cell == CELL_PLAZA
 
 func _is_component_corner_cell(cell: Vector2i, component_lookup: Dictionary) -> bool:
 	var has_left := component_lookup.has(cell + Vector2i.LEFT)
@@ -1426,7 +1446,7 @@ func _is_structural_cell(cell: int) -> bool:
 	return cell == CELL_HOUSE or cell == CELL_BUILDING
 
 func _is_corridor_cell(cell: int) -> bool:
-	return cell == CELL_HALL
+	return cell == CELL_HALL or cell == CELL_PLAZA
 
 func _find_bounds(grid: Dictionary) -> Rect2i:
 	if grid.is_empty():
@@ -1887,7 +1907,7 @@ func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
 	for key: Variant in grid.keys():
 		var cell := key as Vector2i
 		var zone := int(grid[key])
-		if zone == CELL_HALL or zone == CELL_HOUSE or zone == CELL_BUILDING:
+		if zone == CELL_HALL or zone == CELL_HOUSE or zone == CELL_BUILDING or zone == CELL_PLAZA:
 			cells.append(cell)
 	return cells
 
@@ -2161,7 +2181,7 @@ func _is_walkable_cell(cell: Vector2i) -> bool:
 	if _latest_grid.is_empty():
 		return false
 	var zone := int(_latest_grid.get(cell, CELL_ROCK))
-	if zone != CELL_HALL and zone != CELL_HOUSE and zone != CELL_BUILDING:
+	if zone != CELL_HALL and zone != CELL_HOUSE and zone != CELL_BUILDING and zone != CELL_PLAZA:
 		return false
 	return _is_passable_cell_for_actor(cell)
 
@@ -2210,6 +2230,8 @@ func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 		return _wall_or_floor_tile(grid, x, y, cell)
 	match cell:
 		CELL_HALL:
+			return "floor"
+		CELL_PLAZA:
 			return "floor"
 		CELL_ROCK:
 			if _is_hall_border_rock_cell(grid, x, y):
@@ -2346,12 +2368,14 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var hall_zones := int(_latest_zone_counts.get("halls", 0))
 	var house_zones := int(_latest_zone_counts.get("houses", 0))
 	var building_zones := int(_latest_zone_counts.get("buildings", 0))
+	var plaza_zones := int(_latest_zone_counts.get("plazas", 0))
 	var requested_halls := int(_latest_requested_zone_counts.get("halls", 0))
 	var requested_houses := int(_latest_requested_zone_counts.get("houses", 0))
 	var requested_buildings := int(_latest_requested_zone_counts.get("buildings", 0))
+	var requested_plazas := int(_latest_requested_zone_counts.get("plazas", 0))
 
 	var building_subtype_summary := _building_subtype_summary_text()
-	city_summary.text = "Seed %s\nDepth: %d / %d\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d" % [
+	city_summary.text = "Seed %s\nDepth: %d / %d\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d | Plazas: %d/%d" % [
 		seed_text,
 		_current_level_index + 1,
 		maxi(_generated_levels.size(), 1),
@@ -2364,7 +2388,9 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 		house_zones,
 		requested_houses,
 		building_zones,
-		requested_buildings
+		requested_buildings,
+		plaza_zones,
+		requested_plazas
 	]
 	if not building_subtype_summary.is_empty():
 		city_summary.text += "\nBuilding Types: %s" % building_subtype_summary
@@ -2421,6 +2447,8 @@ func _zone_name_for_cell(cell: Vector2i) -> String:
 	match zone:
 		CELL_HALL:
 			return "Hall"
+		CELL_PLAZA:
+			return "Plaza"
 		CELL_HOUSE:
 			return "House"
 		CELL_BUILDING:

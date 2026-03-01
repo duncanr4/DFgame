@@ -85,6 +85,7 @@ const tileVariantPools = {
   corridor: { base: interiorTileSprites.carvedFloor },
   entrance: { base: interiorTileSprites.carvedFloor, overlays: interiorTileSprites.overlays.entrance },
   hall: { base: interiorTileSprites.polishedFloor },
+  plaza: { base: interiorTileSprites.polishedFloor },
   forge: { base: interiorTileSprites.workFloor, overlays: interiorTileSprites.overlays.forge },
   market: { base: interiorTileSprites.polishedFloor, overlays: interiorTileSprites.overlays.market },
   dormitory: { base: interiorTileSprites.dampFloor, overlays: interiorTileSprites.overlays.dormitory },
@@ -130,6 +131,14 @@ const baseLegend = {
     label: 'Great hall',
     description: 'Feasting and assembly chamber beneath vaulted arches.',
     borderColor: '#f59e0b'
+  },
+  plaza: {
+    color: '#fbbf24',
+    label: 'Grand plaza',
+    description: 'Wide-open civic chambers where major halls converge.',
+    texture: 'speckled',
+    accent: 'rgba(120, 53, 15, 0.2)',
+    borderColor: '#d97706'
   },
   forge: {
     color: '#ea580c',
@@ -266,6 +275,7 @@ const dwarfPersonalityTraits = [
 
 const dwarfRolesByDistrict = {
   hall: ['thane', 'speaker', 'skald', 'banner-warden'],
+  plaza: ['town crier', 'stone steward', 'marshal of gatherings'],
   forge: ['runeforger', 'steelwright', 'smelter', 'hammer adept'],
   market: ['factor', 'gemcutter', 'trader', 'appraiser'],
   dormitory: ['shieldbearer', 'miner', 'tunnel guard', 'porter'],
@@ -300,7 +310,8 @@ const dwarfScheduleTemplates = {
 };
 
 const dwarfLeisurePreferences = {
-  hall: ['hall', 'market', 'brewery'],
+  hall: ['hall', 'plaza', 'market', 'brewery'],
+  plaza: ['plaza', 'hall', 'market'],
   forge: ['brewery', 'hall'],
   market: ['market', 'hall'],
   dormitory: ['hall', 'brewery'],
@@ -318,6 +329,11 @@ const districtPlacementConfig = {
     label: 'Grand Hall',
     mode: 'gaps',
     marker: { color: '#fcd34d', stroke: '#78350f', radius: 0.38, shadowColor: 'rgba(250, 204, 21, 0.45)' }
+  },
+  plaza: {
+    label: 'Stone Plaza',
+    mode: 'gaps',
+    marker: { color: '#fbbf24', stroke: '#92400e', radius: 0.34, shadowColor: 'rgba(251, 191, 36, 0.4)' }
   },
   forge: {
     label: 'Great Forge',
@@ -1253,12 +1269,12 @@ function placeDistrictStructures(options) {
   districtsByStage.forEach((list) => list.sort((a, b) => b.area - a.area));
 
   const essentialPlans = {
-    0: ['forge', 'market', 'shrine'],
+    0: ['plaza', 'forge', 'market', 'shrine'],
     1: ['dormitory', 'brewery', 'storage'],
     2: ['garden', 'water', 'stairs']
   };
   const fallbackPlans = {
-    0: ['storage', 'dormitory', 'market'],
+    0: ['plaza', 'storage', 'dormitory', 'market'],
     1: ['dormitory', 'storage', 'brewery'],
     2: ['garden', 'water', 'storage', 'dormitory']
   };
@@ -1321,7 +1337,7 @@ function generateNpcRoster(options) {
   });
 
   const livingTypes = ['dormitory', 'hall', 'garden'];
-  const leisureFallback = ['hall', 'brewery', 'market'];
+  const leisureFallback = ['plaza', 'hall', 'brewery', 'market'];
 
   const hallDistricts = districtsByType.get('hall') || [];
 
@@ -1457,6 +1473,10 @@ const ruinedHallDescriptors = [
 ];
 
 const featureNotes = {
+  plaza: [
+    'Grand Plaza — wide-open commons host trade calls, proclamations, and festivals.',
+    'Stone Plaza — broad civic courts join the major halls with room for musters.'
+  ],
   forge: [
     'Great Forge — master smiths hammer runed steel beside roaring furnaces.',
     'Anvil Gallery — slag pits glow while apprentices temper new blades.'
