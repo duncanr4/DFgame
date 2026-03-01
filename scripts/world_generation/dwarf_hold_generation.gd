@@ -802,6 +802,7 @@ func _generate_single_level(level_seed: String) -> Dictionary:
 		if not placed and not prefers_hall_arteries:
 			_place_structure_along_halls(grid, CELL_BUILDING, civic_footprint, civic_type)
 
+	_ensure_walkable_connectivity(grid)
 	_door_cells = _compute_single_doors(grid)
 	_ensure_door_connectivity(grid)
 	_ensure_walkable_connectivity(grid)
