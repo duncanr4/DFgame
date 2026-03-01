@@ -205,7 +205,7 @@ func _populate_options() -> void:
 	map_size_select.clear()
 	for map_size: Dictionary in MAP_SIZES:
 		map_size_select.add_item("%s — %s" % [map_size["name"], map_size["dimensions"]])
-	map_size_select.select(2)
+	map_size_select.select(0)
 
 	world_layout_select.clear()
 	for layout: String in WORLD_LAYOUTS:
@@ -289,7 +289,7 @@ func _apply_cached_world_settings() -> void:
 	if settings.is_empty():
 		return
 
-	var map_size_key := str(settings.get("map_size_key", "normal"))
+	var map_size_key := str(settings.get("map_size_key", "mini"))
 	for i in MAP_SIZES.size():
 		var map_size_option: Dictionary = MAP_SIZES[i]
 		if String(map_size_option.get("key", "")) == map_size_key:
