@@ -172,6 +172,8 @@ var _move_repeat_timer := 0.0
 var _npc_states: Array[Dictionary] = []
 var _generated_levels: Array[Dictionary] = []
 var _current_level_index := 0
+var _selected_hold_population := 0
+var _target_resident_npcs := 0
 
 const TAVERN_SPRITE_COLUMNS := 12
 const TAVERN_SPRITE_ROWS := 8
@@ -232,6 +234,7 @@ const BACKPACK_SLOT_ROWS := 3
 
 
 const DWARFHOLD_SCENE_SEED_KEY := "dwarfhold_scene_seed"
+const DWARFHOLD_SCENE_POPULATION_KEY := "dwarfhold_scene_population"
 
 const CHEST_LOOT_TABLE := [
 	{"name": "Iron Ingot", "min": 1, "max": 5},
@@ -696,6 +699,8 @@ func _apply_cached_dwarfhold_scene_seed() -> void:
 		return
 	var settings: Dictionary = game_session.call("get_world_settings")
 	var scene_seed := String(settings.get(DWARFHOLD_SCENE_SEED_KEY, "")).strip_edges()
+	_selected_hold_population = maxi(0, int(settings.get(DWARFHOLD_SCENE_POPULATION_KEY, 0)))
+	_target_resident_npcs = int(ceil(float(_selected_hold_population) / 10.0))
 	if scene_seed.is_empty():
 		return
 	seed_input.text = scene_seed
@@ -724,17 +729,23 @@ func _generate_city() -> void:
 	var level_count := maxi(1, _rng.randi_range(minimum_levels, maximum_levels))
 	for level_index in range(level_count):
 		var level_seed := "%s::depth_%d" % [seed_text, level_index]
-		_generated_levels.append(_generate_single_level(level_seed))
+		_generated_levels.append(_generate_single_level(level_seed, level_index, level_count))
 
 	_show_level(0)
 
-func _generate_single_level(level_seed: String) -> Dictionary:
+func _generate_single_level(level_seed: String, level_index: int, level_count: int) -> Dictionary:
 	_rng.seed = hash(level_seed)
 
-	var requested_hall_count := _pick_seeded_zone_target(hall_zone_count_range)
-	var requested_house_count := _pick_seeded_zone_target(housing_zone_count_range)
-	var requested_building_count := _pick_seeded_zone_target(civic_building_zone_count_range)
-	var requested_plaza_count := _pick_seeded_zone_target(plaza_zone_count_range)
+	var target_npcs_for_level := _target_npcs_for_level(level_index, level_count)
+	var minimum_halls_for_level := int(ceil(float(target_npcs_for_level) / 24.0))
+	var minimum_houses_for_level := target_npcs_for_level
+	var minimum_buildings_for_level := int(ceil(float(target_npcs_for_level) / 6.0))
+	var minimum_plazas_for_level := int(ceil(float(target_npcs_for_level) / 80.0))
+
+	var requested_hall_count := maxi(_pick_seeded_zone_target(hall_zone_count_range), minimum_halls_for_level)
+	var requested_house_count := maxi(_pick_seeded_zone_target(housing_zone_count_range), minimum_houses_for_level)
+	var requested_building_count := maxi(_pick_seeded_zone_target(civic_building_zone_count_range), minimum_buildings_for_level)
+	var requested_plaza_count := maxi(_pick_seeded_zone_target(plaza_zone_count_range), minimum_plazas_for_level)
 	var requested_zone_counts := {
 		"halls": requested_hall_count,
 		"houses": requested_house_count,
@@ -876,6 +887,16 @@ func _pick_seeded_zone_target(count_range: Vector2i) -> int:
 	var minimum := mini(count_range.x, count_range.y)
 	var maximum := maxi(count_range.x, count_range.y)
 	return _rng.randi_range(minimum, maximum)
+
+func _target_npcs_for_level(level_index: int, level_count: int) -> int:
+	if _target_resident_npcs <= 0:
+		return 0
+	var safe_level_count := maxi(level_count, 1)
+	var base_target := _target_resident_npcs / safe_level_count
+	var remainder := _target_resident_npcs % safe_level_count
+	if level_index < remainder:
+		return base_target + 1
+	return base_target
 
 func _pick_civic_building_type() -> String:
 	var total_weight := 0.0
@@ -2373,6 +2394,7 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var requested_houses := int(_latest_requested_zone_counts.get("houses", 0))
 	var requested_buildings := int(_latest_requested_zone_counts.get("buildings", 0))
 	var requested_plazas := int(_latest_requested_zone_counts.get("plazas", 0))
+	var expected_npcs := int(ceil(float(_selected_hold_population) / 10.0))
 
 	var building_subtype_summary := _building_subtype_summary_text()
 	city_summary.text = "Seed %s\nDepth: %d / %d\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d | Plazas: %d/%d" % [
@@ -2392,6 +2414,8 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 		plaza_zones,
 		requested_plazas
 	]
+	if expected_npcs > 0:
+		city_summary.text += "\nHold Population: %d (target residents in-scene: %d at 10:1)" % [_selected_hold_population, expected_npcs]
 	if not building_subtype_summary.is_empty():
 		city_summary.text += "\nBuilding Types: %s" % building_subtype_summary
 
