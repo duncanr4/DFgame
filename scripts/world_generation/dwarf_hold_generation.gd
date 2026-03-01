@@ -774,6 +774,7 @@ func _generate_city() -> void:
 			_place_structure_along_halls(grid, CELL_BUILDING, civic_footprint, civic_type)
 
 	_door_cells = _compute_single_doors(grid)
+	_ensure_door_connectivity(grid)
 	_latest_grid = grid
 	_latest_civic_buildings_by_id = _compute_civic_buildings_by_id(grid)
 	_latest_civic_building_type_map = _build_civic_building_type_lookup(_latest_civic_buildings_by_id)
@@ -1144,6 +1145,71 @@ func _compute_single_doors(grid: Dictionary) -> Dictionary:
 		chosen_doors[selected] = true
 
 	return chosen_doors
+
+func _ensure_door_connectivity(grid: Dictionary) -> void:
+	if _door_cells.is_empty():
+		return
+
+	var connected_doors: Dictionary = {}
+	var door_cells: Array[Vector2i] = []
+	for door_variant: Variant in _door_cells.keys():
+		var door_cell := door_variant as Vector2i
+		door_cells.append(door_cell)
+
+	var root_door := door_cells[0]
+	connected_doors[root_door] = true
+	var reachable := _collect_walkable_reachable_cells(grid, root_door)
+
+	for _iteration in range(door_cells.size() * 4):
+		var disconnected_door := Vector2i(2147483647, 2147483647)
+		for door_cell: Vector2i in door_cells:
+			if reachable.has(door_cell):
+				connected_doors[door_cell] = true
+				continue
+			disconnected_door = door_cell
+			break
+
+		if disconnected_door.x == 2147483647:
+			break
+
+		var closest_connected := root_door
+		var closest_distance := disconnected_door.distance_squared_to(root_door)
+		for connected_variant: Variant in connected_doors.keys():
+			var connected_door := connected_variant as Vector2i
+			var candidate_distance := disconnected_door.distance_squared_to(connected_door)
+			if candidate_distance < closest_distance:
+				closest_connected = connected_door
+				closest_distance = candidate_distance
+
+		_connect_points(grid, closest_connected, disconnected_door, CELL_HALL)
+		reachable = _collect_walkable_reachable_cells(grid, root_door)
+
+func _collect_walkable_reachable_cells(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
+	var reachable: Dictionary = {}
+	if not grid.has(start_cell):
+		return reachable
+	if not _is_walkable_zone(_cell_at(grid, start_cell.x, start_cell.y)):
+		return reachable
+
+	var queue: Array[Vector2i] = [start_cell]
+	reachable[start_cell] = true
+	while not queue.is_empty():
+		var current: Vector2i = queue.pop_front()
+		for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var neighbor := current + direction
+			if reachable.has(neighbor):
+				continue
+			if not grid.has(neighbor):
+				continue
+			if not _is_walkable_zone(_cell_at(grid, neighbor.x, neighbor.y)):
+				continue
+			reachable[neighbor] = true
+			queue.append(neighbor)
+
+	return reachable
+
+func _is_walkable_zone(cell: int) -> bool:
+	return cell == CELL_HALL or cell == CELL_HOUSE or cell == CELL_BUILDING
 
 func _is_component_corner_cell(cell: Vector2i, component_lookup: Dictionary) -> bool:
 	var has_left := component_lookup.has(cell + Vector2i.LEFT)
