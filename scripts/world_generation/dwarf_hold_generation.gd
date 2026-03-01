@@ -735,6 +735,7 @@ func _generate_city() -> void:
 
 func _generate_single_level(level_seed: String, level_index: int, level_count: int) -> Dictionary:
 	_rng.seed = hash(level_seed)
+	var is_additional_layer := level_index > 0
 
 	var target_npcs_for_level := _target_npcs_for_level(level_index, level_count)
 	var minimum_halls_for_level := int(ceil(float(target_npcs_for_level) / 24.0))
@@ -743,8 +744,8 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	var minimum_plazas_for_level := int(ceil(float(target_npcs_for_level) / 80.0))
 
 	var requested_hall_count := maxi(_pick_seeded_zone_target(hall_zone_count_range), minimum_halls_for_level)
-	var requested_house_count := maxi(_pick_seeded_zone_target(housing_zone_count_range), minimum_houses_for_level)
-	var requested_building_count := maxi(_pick_seeded_zone_target(civic_building_zone_count_range), minimum_buildings_for_level)
+	var requested_house_count := 0 if is_additional_layer else maxi(_pick_seeded_zone_target(housing_zone_count_range), minimum_houses_for_level)
+	var requested_building_count := 0 if is_additional_layer else maxi(_pick_seeded_zone_target(civic_building_zone_count_range), minimum_buildings_for_level)
 	var requested_plaza_count := maxi(_pick_seeded_zone_target(plaza_zone_count_range), minimum_plazas_for_level)
 	var requested_zone_counts := {
 		"halls": requested_hall_count,
