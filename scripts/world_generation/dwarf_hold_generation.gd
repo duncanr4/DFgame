@@ -152,6 +152,8 @@ var _walkable_cells: Array[Vector2i] = []
 var _player_sprite: Sprite2D
 var _player_cell := Vector2i.ZERO
 var _player_control_enabled := false
+var _last_move_direction := Vector2i.ZERO
+var _move_repeat_timer := 0.0
 var _npc_states: Array[Dictionary] = []
 
 const TAVERN_SPRITE_COLUMNS := 12
@@ -161,6 +163,8 @@ const TAVERN_CHARACTER_ROWS := 4
 const TAVERN_CHARACTER_SLOT_COUNT := 8
 const TAVERN_FRAME_ADVANCE_SECONDS := 0.22
 const TAVERN_WANDER_COOLDOWN_RANGE := Vector2(0.35, 1.25)
+const PLAYER_MOVE_REPEAT_INITIAL_DELAY := 0.22
+const PLAYER_MOVE_REPEAT_INTERVAL := 0.10
 
 const ZONE_OVERLAY_COLORS := {
 	CELL_HALL: Color(0.27, 0.58, 0.90, 0.35),
@@ -463,19 +467,68 @@ func _ready() -> void:
 	_generate_city()
 
 func _process(delta: float) -> void:
+	_update_player_hold_movement(delta)
 	_update_npc_movement(delta)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _player_sprite == null or not _player_control_enabled:
 		return
+	if _is_text_input_focused():
+		return
 	if _is_move_pressed(event, "ui_left", KEY_A):
-		_try_move_player(Vector2i.LEFT)
+		_handle_player_move_input(Vector2i.LEFT)
 	elif _is_move_pressed(event, "ui_right", KEY_D):
-		_try_move_player(Vector2i.RIGHT)
+		_handle_player_move_input(Vector2i.RIGHT)
 	elif _is_move_pressed(event, "ui_up", KEY_W):
-		_try_move_player(Vector2i.UP)
+		_handle_player_move_input(Vector2i.UP)
 	elif _is_move_pressed(event, "ui_down", KEY_S):
-		_try_move_player(Vector2i.DOWN)
+		_handle_player_move_input(Vector2i.DOWN)
+
+func _handle_player_move_input(direction: Vector2i) -> void:
+	_try_move_player(direction)
+	_last_move_direction = direction
+	_move_repeat_timer = PLAYER_MOVE_REPEAT_INITIAL_DELAY
+
+func _update_player_hold_movement(delta: float) -> void:
+	if _player_sprite == null or not _player_control_enabled:
+		_reset_player_hold_state()
+		return
+	if _is_text_input_focused():
+		_reset_player_hold_state()
+		return
+
+	var move_direction := _current_move_input_direction()
+	if move_direction == Vector2i.ZERO:
+		_reset_player_hold_state()
+		return
+
+	if move_direction != _last_move_direction:
+		_handle_player_move_input(move_direction)
+		return
+
+	_move_repeat_timer -= delta
+	while _move_repeat_timer <= 0.0:
+		_try_move_player(move_direction)
+		_move_repeat_timer += PLAYER_MOVE_REPEAT_INTERVAL
+
+func _current_move_input_direction() -> Vector2i:
+	if Input.is_action_pressed("ui_left"):
+		return Vector2i.LEFT
+	if Input.is_action_pressed("ui_right"):
+		return Vector2i.RIGHT
+	if Input.is_action_pressed("ui_up"):
+		return Vector2i.UP
+	if Input.is_action_pressed("ui_down"):
+		return Vector2i.DOWN
+	return Vector2i.ZERO
+
+func _reset_player_hold_state() -> void:
+	_last_move_direction = Vector2i.ZERO
+	_move_repeat_timer = 0.0
+
+func _is_text_input_focused() -> bool:
+	var focused := get_viewport().gui_get_focus_owner()
+	return focused is LineEdit or focused is TextEdit
 
 func _is_move_pressed(event: InputEvent, action_name: StringName, wasd_key: Key) -> bool:
 	if event.is_action_pressed(action_name):
