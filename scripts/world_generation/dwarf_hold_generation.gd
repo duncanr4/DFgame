@@ -758,20 +758,28 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	_latest_civic_buildings_by_id = {}
 	_latest_civic_building_type_map = {}
 	var plaza_layouts: Array[Dictionary] = []
-	var central_plaza_radius := Vector2i(_rng.randi_range(6, 10), _rng.randi_range(5, 8))
-	var central_plaza := {"center": Vector2i.ZERO, "radius": central_plaza_radius}
-	_dig_ellipse(grid, central_plaza["center"] as Vector2i, central_plaza["radius"] as Vector2i, CELL_PLAZA)
+	var central_plaza_radius := Vector2i(_rng.randi_range(8, 14), _rng.randi_range(7, 12))
+	var central_plaza_shape := _roll_plaza_shape()
+	var central_plaza := {"center": Vector2i.ZERO, "radius": central_plaza_radius, "shape": central_plaza_shape}
+	_dig_plaza_zone(
+		grid,
+		central_plaza["center"] as Vector2i,
+		central_plaza["radius"] as Vector2i,
+		String(central_plaza["shape"]),
+		CELL_PLAZA
+	)
 	plaza_layouts.append(central_plaza)
 
 	for _plaza_index in maxi(0, requested_plaza_count - 1):
 		var plaza_anchor := (plaza_layouts[_rng.randi_range(0, plaza_layouts.size() - 1)] as Dictionary).get("center", Vector2i.ZERO) as Vector2i
 		var plaza_direction := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN][_rng.randi_range(0, 3)] as Vector2i
-		var plaza_offset_distance := _rng.randi_range(18, 44)
+		var plaza_offset_distance := _rng.randi_range(32, 74)
 		var plaza_center := plaza_anchor + plaza_direction * plaza_offset_distance
-		plaza_center += Vector2i(_rng.randi_range(-6, 6), _rng.randi_range(-6, 6))
-		var plaza_radius := Vector2i(_rng.randi_range(5, 10), _rng.randi_range(4, 8))
-		_dig_ellipse(grid, plaza_center, plaza_radius, CELL_PLAZA)
-		plaza_layouts.append({"center": plaza_center, "radius": plaza_radius})
+		plaza_center += Vector2i(_rng.randi_range(-10, 10), _rng.randi_range(-10, 10))
+		var plaza_radius := Vector2i(_rng.randi_range(7, 14), _rng.randi_range(6, 12))
+		var plaza_shape := _roll_plaza_shape()
+		_dig_plaza_zone(grid, plaza_center, plaza_radius, plaza_shape, CELL_PLAZA)
+		plaza_layouts.append({"center": plaza_center, "radius": plaza_radius, "shape": plaza_shape})
 
 	var hubs: Array[Vector2i] = []
 	for plaza_data_variant: Variant in plaza_layouts:
@@ -949,6 +957,15 @@ func _dig_branching_hall_between_plazas(grid: Dictionary, from_plaza: Dictionary
 	var from_exit := _plaza_edge_cell_facing(from_center, from_radius, to_center)
 	var to_exit := _plaza_edge_cell_facing(to_center, to_radius, from_center)
 	_dig_wide_hall_path(grid, from_exit, to_exit, corridor_width)
+
+func _roll_plaza_shape() -> String:
+	return "rect" if _rng.randf() < 0.5 else "ellipse"
+
+func _dig_plaza_zone(grid: Dictionary, center: Vector2i, radius: Vector2i, shape: String, tile: int) -> void:
+	if shape == "rect":
+		_dig_rect(grid, center - radius, center + radius, tile)
+		return
+	_dig_ellipse(grid, center, radius, tile)
 
 func _plaza_edge_cell_facing(plaza_center: Vector2i, plaza_radius: Vector2i, target: Vector2i) -> Vector2i:
 	var axis_direction := _major_axis_direction_toward_target(plaza_center, target)
