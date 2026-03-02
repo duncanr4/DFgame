@@ -26,6 +26,7 @@ const TILE_ATLAS := {
 	"shelf": Vector2i(0, 4),
 	"winepress": Vector2i(0, 5),
 	"grain_bag": Vector2i(0, 6),
+	"stairway_up": Vector2i(0, 7),
 	"wall_right": Vector2i(1, 1),
 	"bed": Vector2i(1, 3),
 	"butcher_table": Vector2i(1, 3),
@@ -51,7 +52,8 @@ const TILE_ATLAS := {
 	"mushroom_wild": Vector2i(4, 5),
 	"keg": Vector2i(5, 5),
 	"target": Vector2i(6, 3),
-	"anvil": Vector2i(6, 4)
+	"anvil": Vector2i(6, 4),
+	"stairway_down": Vector2i(6, 7)
 }
 
 const EXPECTED_TILE_COORDS := {
@@ -60,6 +62,7 @@ const EXPECTED_TILE_COORDS := {
 	"shelf": Vector2i(0, 4),
 	"winepress": Vector2i(0, 5),
 	"grain_bag": Vector2i(0, 6),
+	"stairway_up": Vector2i(0, 7),
 	"wall_right": Vector2i(1, 1),
 	"bed": Vector2i(1, 3),
 	"butcher_table": Vector2i(1, 3),
@@ -85,9 +88,10 @@ const EXPECTED_TILE_COORDS := {
 	"mushroom_wild": Vector2i(4, 5),
 	"keg": Vector2i(5, 5),
 	"target": Vector2i(6, 3),
-	"anvil": Vector2i(6, 4)
+	"anvil": Vector2i(6, 4),
+	"stairway_down": Vector2i(6, 7)
 }
-const PASSABLE_TILE_KEYS := ["floor", "door"]
+const PASSABLE_TILE_KEYS := ["floor", "door", "stairway_up", "stairway_down"]
 const COLLISION_LAYER_WORLD := 1
 
 
@@ -172,6 +176,8 @@ var _move_repeat_timer := 0.0
 var _npc_states: Array[Dictionary] = []
 var _generated_levels: Array[Dictionary] = []
 var _current_level_index := 0
+var _active_level_stairs: Dictionary = {}
+var _pending_player_spawn_cell := Vector2i(2147483647, 2147483647)
 var _selected_hold_population := 0
 var _target_resident_npcs := 0
 
@@ -578,6 +584,8 @@ func _update_player_turn_movement(delta: float) -> void:
 		_player_sprite.position = _player_move_target_position
 		_player_cell = _player_move_target_cell
 		_player_is_moving = false
+		if _try_use_stairs_at_player_cell():
+			return
 		if not _latest_grid.is_empty():
 			_update_shattered_visibility(_latest_grid)
 			_refresh_lighting(_latest_grid)
@@ -859,12 +867,14 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	var civic_buildings_by_id := _compute_civic_buildings_by_id(grid)
 	var civic_building_type_map := _build_civic_building_type_lookup(civic_buildings_by_id)
 	var zone_counts := _count_zone_components(grid)
+	var stair_cells := _pick_level_stair_cells(grid, level_index, level_count)
 	return {
 		"grid": grid,
 		"zone_counts": zone_counts,
 		"requested_zone_counts": requested_zone_counts,
 		"civic_buildings_by_id": civic_buildings_by_id,
-		"civic_building_type_map": civic_building_type_map
+		"civic_building_type_map": civic_building_type_map,
+		"stair_cells": stair_cells
 	}
 
 func _show_level(target_level_index: int) -> void:
@@ -882,10 +892,11 @@ func _show_level(target_level_index: int) -> void:
 	_latest_requested_zone_counts = level_data.get("requested_zone_counts", {}) as Dictionary
 	_latest_civic_buildings_by_id = level_data.get("civic_buildings_by_id", {}) as Dictionary
 	_latest_civic_building_type_map = level_data.get("civic_building_type_map", {}) as Dictionary
+	_active_level_stairs = level_data.get("stair_cells", {}) as Dictionary
 
 	_chest_inventories.clear()
 	_clear_chest_selection()
-	_render_city(grid)
+	_render_city(grid, _active_level_stairs)
 	_spawn_tavern_characters(grid)
 	_update_summary(grid, seed_input.text.strip_edges())
 	_update_zone_overlay()
@@ -1554,7 +1565,7 @@ func _find_bounds(grid: Dictionary) -> Rect2i:
 		max_y = maxi(max_y, cell.y)
 	return Rect2i(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
 
-func _render_city(grid: Dictionary) -> void:
+func _render_city(grid: Dictionary, stair_cells: Dictionary = {}) -> void:
 	if city_layer.tile_set == null:
 		return
 	city_layer.clear()
@@ -1574,9 +1585,54 @@ func _render_city(grid: Dictionary) -> void:
 				_place_tile(decor_layer, render_cell, decor_tile)
 				if decor_tile == "chest":
 					_ensure_chest_inventory(render_cell)
+	for stair_key: String in ["up", "down"]:
+		if not stair_cells.has(stair_key):
+			continue
+		var stair_cell := stair_cells[stair_key] as Vector2i
+		if city_layer.get_cell_source_id(stair_cell) < 0:
+			continue
+		_place_tile(city_layer, stair_cell, "stairway_up" if stair_key == "up" else "stairway_down")
+		decor_layer.erase_cell(stair_cell)
 	_initialize_shattered_lighting(grid)
 	_refresh_lighting(grid)
 	_reset_view(bounds)
+
+func _pick_level_stair_cells(grid: Dictionary, level_index: int, level_count: int) -> Dictionary:
+	var result := {}
+	if level_count <= 1:
+		return result
+
+	var candidates := _stair_candidates_for_level(grid)
+	if candidates.is_empty():
+		return result
+
+	var up_cell := Vector2i(2147483647, 2147483647)
+	if level_index > 0:
+		up_cell = candidates[_rng.randi_range(0, candidates.size() - 1)]
+		result["up"] = up_cell
+
+	if level_index < level_count - 1:
+		var down_cell := candidates[_rng.randi_range(0, candidates.size() - 1)]
+		for _retry in 16:
+			if down_cell != up_cell:
+				break
+			down_cell = candidates[_rng.randi_range(0, candidates.size() - 1)]
+		if down_cell == up_cell and candidates.size() > 1:
+			down_cell = candidates[(candidates.find(up_cell) + 1) % candidates.size()]
+		result["down"] = down_cell
+
+	return result
+
+func _stair_candidates_for_level(grid: Dictionary) -> Array[Vector2i]:
+	var candidates: Array[Vector2i] = []
+	for key: Variant in grid.keys():
+		var cell := key as Vector2i
+		var zone := int(grid[key])
+		if zone == CELL_HALL or zone == CELL_PLAZA:
+			candidates.append(cell)
+	if candidates.is_empty():
+		candidates = _collect_walkable_cells(grid)
+	return candidates
 
 
 func _initialize_shattered_lighting(grid: Dictionary) -> void:
@@ -1962,7 +2018,11 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	if _walkable_cells.is_empty() or _tavern_character_texture == null:
 		return
 
-	_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
+	if _pending_player_spawn_cell.x != 2147483647 and _is_walkable_cell(_pending_player_spawn_cell):
+		_player_cell = _pending_player_spawn_cell
+	else:
+		_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
+	_pending_player_spawn_cell = Vector2i(2147483647, 2147483647)
 	_player_sprite = _create_player_character_sprite()
 	_actor_sprite_to_cell(_player_sprite, _player_cell)
 	actor_layer.add_child(_player_sprite)
@@ -2088,6 +2148,47 @@ func _request_player_move_to_cell(target_cell: Vector2i) -> void:
 	_player_move_path = next_path
 	if not _player_is_moving:
 		_update_player_turn_movement(0.0)
+
+func _try_use_stairs_at_player_cell() -> bool:
+	if _generated_levels.is_empty() or _current_level_index < 0 or _current_level_index >= _generated_levels.size():
+		return false
+
+	var stair_direction := _stair_direction_at_cell(_player_cell)
+	if stair_direction == "down" and _current_level_index < _generated_levels.size() - 1:
+		var destination_index := _current_level_index + 1
+		_pending_player_spawn_cell = _resolve_stair_spawn_cell(destination_index, "up", _player_cell)
+		_show_level(destination_index)
+		return true
+	if stair_direction == "up" and _current_level_index > 0:
+		var destination_index := _current_level_index - 1
+		_pending_player_spawn_cell = _resolve_stair_spawn_cell(destination_index, "down", _player_cell)
+		_show_level(destination_index)
+		return true
+	return false
+
+func _stair_direction_at_cell(cell: Vector2i) -> String:
+	for layer: TileMapLayer in [decor_layer, city_layer]:
+		if layer == null or layer.get_cell_source_id(cell) < 0:
+			continue
+		var atlas := layer.get_cell_atlas_coords(cell)
+		if atlas == TILE_ATLAS["stairway_up"]:
+			return "up"
+		if atlas == TILE_ATLAS["stairway_down"]:
+			return "down"
+	return ""
+
+func _resolve_stair_spawn_cell(level_index: int, preferred_stair: String, fallback_cell: Vector2i) -> Vector2i:
+	if level_index < 0 or level_index >= _generated_levels.size():
+		return fallback_cell
+	var level_data := _generated_levels[level_index] as Dictionary
+	var stairs := level_data.get("stair_cells", {}) as Dictionary
+	if stairs.has(preferred_stair):
+		return stairs[preferred_stair] as Vector2i
+	if stairs.has("up"):
+		return stairs["up"] as Vector2i
+	if stairs.has("down"):
+		return stairs["down"] as Vector2i
+	return fallback_cell
 
 func _build_player_path(from_cell: Vector2i, to_cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
