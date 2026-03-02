@@ -1507,6 +1507,8 @@ func _nearest_point(target: Vector2i, points: Array[Vector2i]) -> Vector2i:
 
 func _set_cell(grid: Dictionary, cell: Vector2i, tile: int) -> void:
 	var existing := _cell_at(grid, cell.x, cell.y)
+	if tile == CELL_HALL and existing == CELL_PLAZA:
+		return
 	if _is_corridor_cell(tile) and _is_structural_cell(existing):
 		return
 	grid[cell] = tile
