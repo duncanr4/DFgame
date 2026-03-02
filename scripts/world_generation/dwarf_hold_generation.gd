@@ -766,7 +766,7 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	_latest_civic_buildings_by_id = {}
 	_latest_civic_building_type_map = {}
 	var plaza_layouts: Array[Dictionary] = []
-	var central_plaza_radius := Vector2i(_rng.randi_range(8, 14), _rng.randi_range(7, 12))
+	var central_plaza_radius := Vector2i(_rng.randi_range(12, 18), _rng.randi_range(10, 16))
 	var central_plaza_shape := _roll_plaza_shape()
 	var central_plaza := {"center": Vector2i.ZERO, "radius": central_plaza_radius, "shape": central_plaza_shape}
 	_dig_plaza_zone(
@@ -779,13 +779,24 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	plaza_layouts.append(central_plaza)
 
 	for _plaza_index in maxi(0, requested_plaza_count - 1):
-		var plaza_anchor := (plaza_layouts[_rng.randi_range(0, plaza_layouts.size() - 1)] as Dictionary).get("center", Vector2i.ZERO) as Vector2i
-		var plaza_direction := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN][_rng.randi_range(0, 3)] as Vector2i
-		var plaza_offset_distance := _rng.randi_range(32, 74)
-		var plaza_center := plaza_anchor + plaza_direction * plaza_offset_distance
-		plaza_center += Vector2i(_rng.randi_range(-10, 10), _rng.randi_range(-10, 10))
-		var plaza_radius := Vector2i(_rng.randi_range(7, 14), _rng.randi_range(6, 12))
+		var plaza_radius := Vector2i(_rng.randi_range(10, 18), _rng.randi_range(8, 15))
 		var plaza_shape := _roll_plaza_shape()
+		var plaza_center := Vector2i.ZERO
+		var found_location := false
+		for _placement_attempt in 24:
+			var plaza_anchor := (plaza_layouts[_rng.randi_range(0, plaza_layouts.size() - 1)] as Dictionary).get("center", Vector2i.ZERO) as Vector2i
+			var plaza_direction := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN][_rng.randi_range(0, 3)] as Vector2i
+			var plaza_offset_distance := _rng.randi_range(56, 120)
+			var candidate_center := plaza_anchor + plaza_direction * plaza_offset_distance
+			candidate_center += Vector2i(_rng.randi_range(-14, 14), _rng.randi_range(-14, 14))
+			if _is_plaza_too_close(candidate_center, plaza_radius, plaza_layouts, 22):
+				continue
+			plaza_center = candidate_center
+			found_location = true
+			break
+		if not found_location:
+			plaza_center = (plaza_layouts[_rng.randi_range(0, plaza_layouts.size() - 1)] as Dictionary).get("center", Vector2i.ZERO) as Vector2i
+			plaza_center += Vector2i(_rng.randi_range(-160, 160), _rng.randi_range(-160, 160))
 		_dig_plaza_zone(grid, plaza_center, plaza_radius, plaza_shape, CELL_PLAZA)
 		plaza_layouts.append({"center": plaza_center, "radius": plaza_radius, "shape": plaza_shape})
 
@@ -977,6 +988,21 @@ func _dig_plaza_zone(grid: Dictionary, center: Vector2i, radius: Vector2i, shape
 		_dig_rect(grid, center - radius, center + radius, tile)
 		return
 	_dig_ellipse(grid, center, radius, tile)
+
+
+func _plaza_clearance_radius(radius: Vector2i) -> float:
+	return float(maxi(radius.x, radius.y))
+
+func _is_plaza_too_close(candidate_center: Vector2i, candidate_radius: Vector2i, plaza_layouts: Array[Dictionary], min_gap: int) -> bool:
+	var candidate_clearance := _plaza_clearance_radius(candidate_radius)
+	for plaza_data_variant: Variant in plaza_layouts:
+		var plaza_data := plaza_data_variant as Dictionary
+		var existing_center := plaza_data.get("center", Vector2i.ZERO) as Vector2i
+		var existing_radius := plaza_data.get("radius", Vector2i(6, 5)) as Vector2i
+		var minimum_distance := candidate_clearance + _plaza_clearance_radius(existing_radius) + float(min_gap)
+		if candidate_center.distance_to(existing_center) < minimum_distance:
+			return true
+	return false
 
 func _plaza_edge_cell_facing(plaza_center: Vector2i, plaza_radius: Vector2i, target: Vector2i) -> Vector2i:
 	var axis_direction := _major_axis_direction_toward_target(plaza_center, target)
