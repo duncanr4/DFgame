@@ -1316,6 +1316,7 @@ function placeDistrictStructures(options) {
       assignDistrictType(district, 'storage');
     }
   }
+
 }
 
 function generateNpcRoster(options) {
@@ -1911,6 +1912,64 @@ function addFeatureNote(type, features, featureSet, randomFn, fallback) {
   }
 }
 
+
+function placeMandatoryStairwellObject(tiles, randomFn, center, markers, features, featureSet) {
+  if (!Array.isArray(tiles) || tiles.length === 0 || !Number.isFinite(center?.x) || !Number.isFinite(center?.y)) {
+    return;
+  }
+
+  const corridorCandidates = [];
+  for (let y = 0; y < tiles.length; y += 1) {
+    const row = tiles[y];
+    if (!Array.isArray(row)) {
+      continue;
+    }
+    for (let x = 0; x < row.length; x += 1) {
+      const cell = row[x];
+      if (!cell || cell.type !== 'corridor') {
+        continue;
+      }
+      const distanceToCenter = manhattanDistance(x, y, center.x, center.y);
+      if (y <= center.y && distanceToCenter < 8) {
+        continue;
+      }
+      corridorCandidates.push({ x, y, distanceToCenter });
+    }
+  }
+
+  if (corridorCandidates.length === 0) {
+    return;
+  }
+
+  corridorCandidates.sort((a, b) => b.distanceToCenter - a.distanceToCenter);
+  const topBand = corridorCandidates.slice(0, Math.min(8, corridorCandidates.length));
+  const chosen = topBand[Math.floor(randomFn() * topBand.length)] || topBand[0];
+  const targetCell = tiles?.[chosen.y]?.[chosen.x];
+  if (!targetCell || targetCell.type !== 'corridor') {
+    return;
+  }
+
+  const stairsOverlay = cloneSpriteDefinition(interiorTileSprites.overlays.stairs?.[0]);
+  if (stairsOverlay) {
+    if (Array.isArray(targetCell.overlays)) {
+      targetCell.overlays = [...targetCell.overlays, stairsOverlay];
+    } else if (targetCell.overlay && !Array.isArray(targetCell.overlay)) {
+      targetCell.overlays = [targetCell.overlay, stairsOverlay].filter(Boolean);
+      delete targetCell.overlay;
+    } else {
+      targetCell.overlays = [stairsOverlay];
+    }
+  }
+
+  addFeatureNote('stairs', features, featureSet, randomFn);
+  addMarker(markers, chosen.x, chosen.y, {
+    color: '#a855f7',
+    stroke: '#581c87',
+    radius: 0.26,
+    shadowColor: 'rgba(168, 85, 247, 0.32)'
+  });
+}
+
 function applyVoidMask(tiles, randomFn) {
   if (!Array.isArray(tiles) || tiles.length === 0) {
     return;
@@ -2023,6 +2082,8 @@ export function generateDwarfholdMap(options = {}) {
   const npcs = [];
 
   applyVoidMask(tiles, randomFn);
+
+  placeMandatoryStairwellObject(tiles, randomFn, roadNetwork?.center, markers, features, featureSet);
 
   assignTileSpritesToGrid(tiles, seedValue);
 
