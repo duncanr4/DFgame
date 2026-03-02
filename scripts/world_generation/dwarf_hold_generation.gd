@@ -872,8 +872,8 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 			_place_structure_along_halls(grid, CELL_BUILDING, civic_footprint, civic_type)
 
 	_ensure_walkable_connectivity(grid)
-	_door_cells = _compute_single_doors(grid)
-	_ensure_door_connectivity(grid)
+	var level_door_cells := _compute_single_doors(grid)
+	_ensure_door_connectivity(grid, level_door_cells)
 	_ensure_walkable_connectivity(grid)
 	var civic_buildings_by_id := _compute_civic_buildings_by_id(grid)
 	var civic_building_type_map := _build_civic_building_type_lookup(civic_buildings_by_id)
@@ -881,6 +881,7 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	var stair_cells := _pick_level_stair_cells(grid, level_index, level_count)
 	return {
 		"grid": grid,
+		"door_cells": level_door_cells,
 		"zone_counts": zone_counts,
 		"requested_zone_counts": requested_zone_counts,
 		"civic_buildings_by_id": civic_buildings_by_id,
@@ -898,6 +899,7 @@ func _show_level(target_level_index: int) -> void:
 	_current_level_index = clampi(target_level_index, 0, _generated_levels.size() - 1)
 	var level_data := _generated_levels[_current_level_index] as Dictionary
 	var grid := level_data.get("grid", {}) as Dictionary
+	_door_cells = level_data.get("door_cells", {}) as Dictionary
 	_latest_grid = grid
 	_latest_zone_counts = level_data.get("zone_counts", {}) as Dictionary
 	_latest_requested_zone_counts = level_data.get("requested_zone_counts", {}) as Dictionary
@@ -1357,13 +1359,13 @@ func _compute_single_doors(grid: Dictionary) -> Dictionary:
 
 	return chosen_doors
 
-func _ensure_door_connectivity(grid: Dictionary) -> void:
-	if _door_cells.is_empty():
+func _ensure_door_connectivity(grid: Dictionary, door_cells_by_level: Dictionary) -> void:
+	if door_cells_by_level.is_empty():
 		return
 
 	var connected_doors: Dictionary = {}
 	var door_cells: Array[Vector2i] = []
-	for door_variant: Variant in _door_cells.keys():
+	for door_variant: Variant in door_cells_by_level.keys():
 		var door_cell := door_variant as Vector2i
 		door_cells.append(door_cell)
 
