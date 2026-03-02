@@ -1630,26 +1630,60 @@ func _pick_level_stair_cells(grid: Dictionary, level_index: int, level_count: in
 	if level_count <= 1:
 		return result
 
-	var candidates := _stair_candidates_for_level(grid)
-	if candidates.is_empty():
-		return result
+	var requires_up_stair := level_index > 0
+	var requires_down_stair := level_index < level_count - 1
 
 	var up_cell := Vector2i(2147483647, 2147483647)
-	if level_index > 0:
-		up_cell = candidates[_rng.randi_range(0, candidates.size() - 1)]
-		result["up"] = up_cell
+	if requires_up_stair:
+		up_cell = _pick_required_stair_cell(grid)
+		if up_cell.x != 2147483647:
+			result["up"] = up_cell
 
-	if level_index < level_count - 1:
-		var down_cell := candidates[_rng.randi_range(0, candidates.size() - 1)]
-		for _retry in 16:
-			if down_cell != up_cell:
-				break
-			down_cell = candidates[_rng.randi_range(0, candidates.size() - 1)]
-		if down_cell == up_cell and candidates.size() > 1:
-			down_cell = candidates[(candidates.find(up_cell) + 1) % candidates.size()]
-		result["down"] = down_cell
+	if requires_down_stair:
+		var down_cell := _pick_required_stair_cell(grid)
+		if down_cell == up_cell:
+			down_cell = _pick_required_stair_cell(grid, up_cell)
+		if down_cell.x != 2147483647:
+			result["down"] = down_cell
 
 	return result
+
+func _pick_required_stair_cell(grid: Dictionary, excluded_cell: Vector2i = Vector2i(2147483647, 2147483647)) -> Vector2i:
+	var stair_candidates := _stair_candidates_for_level(grid)
+	if not stair_candidates.is_empty():
+		var shuffled_candidates := stair_candidates.duplicate()
+		shuffled_candidates.shuffle()
+		for candidate_variant: Variant in shuffled_candidates:
+			var candidate := candidate_variant as Vector2i
+			if candidate != excluded_cell:
+				return candidate
+
+	var walkable_cells := _collect_walkable_cells(grid)
+	if not walkable_cells.is_empty():
+		var shuffled_walkable := walkable_cells.duplicate()
+		shuffled_walkable.shuffle()
+		for walkable_variant: Variant in shuffled_walkable:
+			var walkable_cell := walkable_variant as Vector2i
+			if walkable_cell != excluded_cell:
+				return walkable_cell
+
+	for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var forced_cell := excluded_cell + offset
+		if forced_cell == excluded_cell:
+			continue
+		if not grid.has(forced_cell):
+			continue
+		grid[forced_cell] = CELL_HALL
+		return forced_cell
+
+	for key_variant: Variant in grid.keys():
+		var grid_cell := key_variant as Vector2i
+		if grid_cell == excluded_cell:
+			continue
+		grid[grid_cell] = CELL_HALL
+		return grid_cell
+
+	return Vector2i(2147483647, 2147483647)
 
 func _stair_candidates_for_level(grid: Dictionary) -> Array[Vector2i]:
 	var candidates: Array[Vector2i] = []
