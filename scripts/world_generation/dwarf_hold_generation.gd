@@ -1591,7 +1591,8 @@ func _render_city(grid: Dictionary, stair_cells: Dictionary = {}) -> void:
 		var stair_cell := stair_cells[stair_key] as Vector2i
 		if city_layer.get_cell_source_id(stair_cell) < 0:
 			continue
-		_place_tile(decor_layer, stair_cell, "stairway_up" if stair_key == "up" else "stairway_down")
+		_place_tile(city_layer, stair_cell, "stairway_up" if stair_key == "up" else "stairway_down")
+		decor_layer.erase_cell(stair_cell)
 	_initialize_shattered_lighting(grid)
 	_refresh_lighting(grid)
 	_reset_view(bounds)
@@ -2151,21 +2152,30 @@ func _request_player_move_to_cell(target_cell: Vector2i) -> void:
 func _try_use_stairs_at_player_cell() -> bool:
 	if _generated_levels.is_empty() or _current_level_index < 0 or _current_level_index >= _generated_levels.size():
 		return false
-	if decor_layer.get_cell_source_id(_player_cell) < 0:
-		return false
 
-	var atlas := decor_layer.get_cell_atlas_coords(_player_cell)
-	if atlas == TILE_ATLAS["stairway_down"] and _current_level_index < _generated_levels.size() - 1:
+	var stair_direction := _stair_direction_at_cell(_player_cell)
+	if stair_direction == "down" and _current_level_index < _generated_levels.size() - 1:
 		var destination_index := _current_level_index + 1
 		_pending_player_spawn_cell = _resolve_stair_spawn_cell(destination_index, "up", _player_cell)
 		_show_level(destination_index)
 		return true
-	if atlas == TILE_ATLAS["stairway_up"] and _current_level_index > 0:
+	if stair_direction == "up" and _current_level_index > 0:
 		var destination_index := _current_level_index - 1
 		_pending_player_spawn_cell = _resolve_stair_spawn_cell(destination_index, "down", _player_cell)
 		_show_level(destination_index)
 		return true
 	return false
+
+func _stair_direction_at_cell(cell: Vector2i) -> String:
+	for layer: TileMapLayer in [decor_layer, city_layer]:
+		if layer == null or layer.get_cell_source_id(cell) < 0:
+			continue
+		var atlas := layer.get_cell_atlas_coords(cell)
+		if atlas == TILE_ATLAS["stairway_up"]:
+			return "up"
+		if atlas == TILE_ATLAS["stairway_down"]:
+			return "down"
+	return ""
 
 func _resolve_stair_spawn_cell(level_index: int, preferred_stair: String, fallback_cell: Vector2i) -> Vector2i:
 	if level_index < 0 or level_index >= _generated_levels.size():
