@@ -1035,8 +1035,9 @@ layout_mode = 2
 layout_mode = 2
 
 [node name="TextureRect" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=974652834]
-custom_minimum_size = Vector2(250, 250)
+custom_minimum_size = Vector2(210, 210)
 layout_mode = 2
+expand_mode = 1
 texture = ExtResource("15_dk5wx")
 stretch_mode = 2
 
@@ -1045,6 +1046,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("15_y6x2m")
@@ -1052,10 +1057,15 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="DwarfHairSprite" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/TextureRect" unique_id=1039548828]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("16_5kcbn")
