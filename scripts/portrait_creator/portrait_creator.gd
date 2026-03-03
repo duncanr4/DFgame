@@ -561,6 +561,8 @@ const GENDER_BUTTON_BRIGHTNESS_NORMAL := 0.85
 const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
 const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
+const BEARD_STYLE_ENABLED_MODULATE := Color(1, 1, 1, 1)
+const BEARD_STYLE_DISABLED_MODULATE := Color(0.55, 0.55, 0.55, 1)
 const ROLLING_DICE_SOUND := preload("res://Github Game/sound/sounds/rolling-dice.mp3")
 
 var _hovered_attribute_icon: Control
@@ -616,6 +618,7 @@ func _ready() -> void:
 	_images.resize(3)
 	_colors.resize(3)
 	_setup_beard_style_slider()
+	_update_beard_style_availability()
 	_setup_hair_style_slider()
 	_configure_attribute_reminder_entries()
 	_refresh_random_name()
@@ -760,7 +763,19 @@ func _refresh_random_name() -> void:
 
 func _set_gender(is_female: bool) -> void:
 	_is_female = is_female
+	_update_beard_style_availability()
 	character_name.text = _generate_full_name()
+	_update_attribute_reminders()
+
+func _update_beard_style_availability() -> void:
+	if beard_style == null:
+		return
+	beard_style.editable = not _is_female
+	beard_style.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_female else Control.MOUSE_FILTER_STOP
+	beard_style.focus_mode = Control.FOCUS_NONE if _is_female else Control.FOCUS_ALL
+	beard_style.modulate = BEARD_STYLE_DISABLED_MODULATE if _is_female else BEARD_STYLE_ENABLED_MODULATE
+	if _is_female:
+		beard = null
 
 func _generate_random_name() -> String:
 	var pool := FEMALE_NAME_POOL if _is_female else MALE_NAME_POOL

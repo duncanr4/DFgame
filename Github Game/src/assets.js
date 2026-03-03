@@ -456,15 +456,22 @@ function analyseCharacterCreatorSkinAsset(assetKey) {
     if (a < 16) return false;
     const sum = r + g + b;
     if (sum === 0) return false;
+
+    // Keep skin masking constrained to warm skin-toned pixels only.
+    // This prevents dark slider values (for example coal) from also tinting
+    // hair, beard, clothing, or other non-skin details in the portrait layers.
+    if (r < g || g < b) return false;
+
     const brightnessRatio = sum / characterCreatorSkinBaseColorSum;
-    if (brightnessRatio < 0.28 || brightnessRatio > 1.95) return false;
+    if (brightnessRatio < 0.42 || brightnessRatio > 1.75) return false;
+
     const normalisedR = r / sum;
     const normalisedG = g / sum;
     const normalisedB = b / sum;
     const diffR = Math.abs(normalisedR - characterCreatorSkinBaseNormalised.r);
     const diffG = Math.abs(normalisedG - characterCreatorSkinBaseNormalised.g);
     const diffB = Math.abs(normalisedB - characterCreatorSkinBaseNormalised.b);
-    return diffR + diffG + diffB <= 0.22;
+    return diffR + diffG + diffB <= 0.14;
   };
 
   const pixelModificationFn = (data, i) => {
