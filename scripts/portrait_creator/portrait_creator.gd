@@ -556,10 +556,12 @@ var _available_hairs: Array[CompressedTexture2D]
 var _gender_button_hover_shadow: StyleBoxFlat
 var _gender_button_pressed_shadow: StyleBoxFlat
 var _gender_button_normal_shadow: StyleBoxFlat
+var _gender_button_base_positions: Dictionary = {}
 
 const GENDER_BUTTON_BRIGHTNESS_NORMAL := 0.85
 const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
 const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
+const GENDER_BUTTON_SELECTED_OFFSET := Vector2(0, 3)
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
 const BEARD_STYLE_ENABLED_MODULATE := Color(1, 1, 1, 1)
 const BEARD_STYLE_DISABLED_MODULATE := Color(0.55, 0.55, 0.55, 1)
@@ -720,6 +722,7 @@ func _setup_gender_button(button: Button) -> void:
 
 	button.self_modulate = Color(GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, 1.0)
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_gender_button_base_positions[button] = button.position
 
 	button.mouse_entered.connect(_on_gender_button_hover.bind(button))
 	button.mouse_exited.connect(_on_gender_button_unhover.bind(button))
