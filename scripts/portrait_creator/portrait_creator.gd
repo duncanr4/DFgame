@@ -556,10 +556,12 @@ var _available_hairs: Array[CompressedTexture2D]
 var _gender_button_hover_shadow: StyleBoxFlat
 var _gender_button_pressed_shadow: StyleBoxFlat
 var _gender_button_normal_shadow: StyleBoxFlat
+var _gender_button_base_positions: Dictionary = {}
 
 const GENDER_BUTTON_BRIGHTNESS_NORMAL := 0.85
 const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
 const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
+const GENDER_BUTTON_SELECTED_OFFSET := Vector2(0, 3)
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
 const BEARD_STYLE_ENABLED_MODULATE := Color(1, 1, 1, 1)
 const BEARD_STYLE_DISABLED_MODULATE := Color(0.55, 0.55, 0.55, 1)
@@ -593,9 +595,11 @@ func _ready() -> void:
 
 	character_name.text_changed.connect(_on_name_changed)
 	if female_button:
+		female_button.toggle_mode = true
 		female_button.pressed.connect(_set_gender.bind(true))
 		_setup_gender_button(female_button)
 	if male_button:
+		male_button.toggle_mode = true
 		male_button.pressed.connect(_set_gender.bind(false))
 		_setup_gender_button(male_button)
 	if return_button:
@@ -623,6 +627,7 @@ func _ready() -> void:
 	_configure_attribute_reminder_entries()
 	_refresh_random_name()
 	_update_attribute_reminders()
+	_update_gender_button_selection_visuals()
 	_clear_attribute_description()
 
 func _process(_delta: float) -> void:
@@ -717,6 +722,7 @@ func _setup_gender_button(button: Button) -> void:
 
 	button.self_modulate = Color(GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, GENDER_BUTTON_BRIGHTNESS_NORMAL, 1.0)
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_gender_button_base_positions[button] = button.position
 
 	button.mouse_entered.connect(_on_gender_button_hover.bind(button))
 	button.mouse_exited.connect(_on_gender_button_unhover.bind(button))
@@ -747,6 +753,8 @@ func _on_gender_button_pressed(button: Button) -> void:
 	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED)
 
 func _on_gender_button_released(button: Button) -> void:
+	if button.button_pressed:
+		return
 	if button.is_hovered() or button.has_focus():
 		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
 	else:
@@ -763,9 +771,39 @@ func _refresh_random_name() -> void:
 
 func _set_gender(is_female: bool) -> void:
 	_is_female = is_female
+	_update_gender_button_selection_visuals()
 	_update_beard_style_availability()
 	character_name.text = _generate_full_name()
 	_update_attribute_reminders()
+
+func _update_gender_button_selection_visuals() -> void:
+	if female_button == null or male_button == null:
+		return
+
+	female_button.button_pressed = _is_female
+	male_button.button_pressed = not _is_female
+
+	_update_gender_button_visual_state(female_button, _is_female)
+	_update_gender_button_visual_state(male_button, not _is_female)
+
+func _update_gender_button_visual_state(button: Button, is_selected: bool) -> void:
+	if button == null:
+		return
+	var base_position := button.position
+	if _gender_button_base_positions.has(button):
+		base_position = _gender_button_base_positions[button]
+	else:
+		_gender_button_base_positions[button] = base_position
+
+	if is_selected:
+		button.position = base_position + GENDER_BUTTON_SELECTED_OFFSET
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED)
+	else:
+		button.position = base_position
+		if button.is_hovered() or button.has_focus():
+			_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
+		else:
+			_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL)
 
 func _update_beard_style_availability() -> void:
 	if beard_style == null:
