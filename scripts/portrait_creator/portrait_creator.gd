@@ -789,21 +789,13 @@ func _update_gender_button_selection_visuals() -> void:
 func _update_gender_button_visual_state(button: Button, is_selected: bool) -> void:
 	if button == null:
 		return
-	var base_position := button.position
-	if _gender_button_base_positions.has(button):
-		base_position = _gender_button_base_positions[button]
-	else:
-		_gender_button_base_positions[button] = base_position
 
 	if is_selected:
-		button.position = base_position + GENDER_BUTTON_SELECTED_OFFSET
 		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED)
+	elif button.is_hovered() or button.has_focus():
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
 	else:
-		button.position = base_position
-		if button.is_hovered() or button.has_focus():
-			_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
-		else:
-			_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL)
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL)
 
 func _update_beard_style_availability() -> void:
 	if beard_style == null:
