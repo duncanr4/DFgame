@@ -11,5 +11,3 @@ Font size: 8x12
 Resizing grid to 150x66
 Resizing font to 8x12
 
-Saving bindings to prefs/interface.txt
-Resizing font to 8x12
