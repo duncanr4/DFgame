@@ -593,9 +593,11 @@ func _ready() -> void:
 
 	character_name.text_changed.connect(_on_name_changed)
 	if female_button:
+		female_button.toggle_mode = true
 		female_button.pressed.connect(_set_gender.bind(true))
 		_setup_gender_button(female_button)
 	if male_button:
+		male_button.toggle_mode = true
 		male_button.pressed.connect(_set_gender.bind(false))
 		_setup_gender_button(male_button)
 	if return_button:
@@ -623,6 +625,7 @@ func _ready() -> void:
 	_configure_attribute_reminder_entries()
 	_refresh_random_name()
 	_update_attribute_reminders()
+	_update_gender_button_selection_visuals()
 	_clear_attribute_description()
 
 func _process(_delta: float) -> void:
@@ -747,6 +750,8 @@ func _on_gender_button_pressed(button: Button) -> void:
 	_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED)
 
 func _on_gender_button_released(button: Button) -> void:
+	if button.button_pressed:
+		return
 	if button.is_hovered() or button.has_focus():
 		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
 	else:
@@ -763,9 +768,31 @@ func _refresh_random_name() -> void:
 
 func _set_gender(is_female: bool) -> void:
 	_is_female = is_female
+	_update_gender_button_selection_visuals()
 	_update_beard_style_availability()
 	character_name.text = _generate_full_name()
 	_update_attribute_reminders()
+
+func _update_gender_button_selection_visuals() -> void:
+	if female_button == null or male_button == null:
+		return
+
+	female_button.button_pressed = _is_female
+	male_button.button_pressed = not _is_female
+
+	_update_gender_button_visual_state(female_button, _is_female)
+	_update_gender_button_visual_state(male_button, not _is_female)
+
+func _update_gender_button_visual_state(button: Button, is_selected: bool) -> void:
+	if button == null:
+		return
+
+	if is_selected:
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED)
+	elif button.is_hovered() or button.has_focus():
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_HOVER)
+	else:
+		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_NORMAL)
 
 func _update_beard_style_availability() -> void:
 	if beard_style == null:
