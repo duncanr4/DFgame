@@ -1134,7 +1134,6 @@ popup/item_193/id = 193
 popup/item_194/text = "Highhelm"
 popup/item_194/id = 194
 
-<<<<<<< HEAD
 [node name="MarginContainer" type="MarginContainer" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2" unique_id=1765104491]
 layout_mode = 2
 
@@ -1248,8 +1247,6 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_1uaso")
 icon = ExtResource("17_8ugf3")
 flat = true
 
-=======
->>>>>>> c66e69f8023ba9697f68625f19d41c83a11cad2d
 [node name="AttributeTooltipBackdrop" type="ColorRect" parent="." unique_id=2001887122]
 visible = false
 z_index = 49
