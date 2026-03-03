@@ -26,6 +26,7 @@ static var instance: PortraitCreator
 @export var male_button: Button
 @export var return_button: Button
 @export var create_button: Button
+@export var animated_background: TextureRect
 
 const CLAN_OPTIONS := [
 	"Stonebeard",
@@ -563,12 +564,15 @@ const GENDER_BUTTON_BRIGHTNESS_HOVER := 1.08
 const GENDER_BUTTON_BRIGHTNESS_PRESSED := 1.18
 const GENDER_BUTTON_SELECTED_OFFSET := Vector2(0, 3)
 const GENDER_BUTTON_TWEEN_DURATION := 0.12
+const BACKGROUND_ZOOM_SPEED := 0.01
+const BACKGROUND_ZOOM_AMOUNT := 0.08
 const BEARD_STYLE_ENABLED_MODULATE := Color(1, 1, 1, 1)
 const BEARD_STYLE_DISABLED_MODULATE := Color(0.55, 0.55, 0.55, 1)
 const ROLLING_DICE_SOUND := preload("res://Github Game/sound/sounds/rolling-dice.mp3")
 
 var _hovered_attribute_icon: Control
 var _randomize_sound_player: AudioStreamPlayer
+var _background_zoom := 1.0
 
 func _enter_tree() -> void:
 	instance = self
@@ -629,9 +633,25 @@ func _ready() -> void:
 	_update_attribute_reminders()
 	_update_gender_button_selection_visuals()
 	_clear_attribute_description()
+	_setup_animated_background()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_position_attribute_tooltip()
+	_update_animated_background(delta)
+
+func _setup_animated_background() -> void:
+	if animated_background == null:
+		return
+	animated_background.pivot_offset = animated_background.size * 0.5
+
+func _update_animated_background(delta: float) -> void:
+	if animated_background == null:
+		return
+	if animated_background.pivot_offset == Vector2.ZERO and animated_background.size != Vector2.ZERO:
+		animated_background.pivot_offset = animated_background.size * 0.5
+	var max_zoom := 1.0 + BACKGROUND_ZOOM_AMOUNT
+	_background_zoom = minf(max_zoom, _background_zoom + (BACKGROUND_ZOOM_SPEED * delta))
+	animated_background.scale = Vector2.ONE * _background_zoom
 
 func _configure_attribute_reminder_entries() -> void:
 	_configure_attribute_reminder_entry(beardless_reminder)
