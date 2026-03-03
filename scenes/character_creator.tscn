@@ -17,8 +17,8 @@
 [ext_resource type="Texture2D" uid="uid://b3v3puj777wsv" path="res://resources/images/character_creator/ui/nametype.png" id="14_in210"]
 [ext_resource type="Texture2D" uid="uid://b4jns84p34xsx" path="res://resources/images/character_creator/ui/gender-button-male.png" id="14_yns5i"]
 [ext_resource type="Texture2D" uid="uid://dnsjexh22hslf" path="res://resources/images/character_creator/ui/bodypanel.png" id="15_dk5wx"]
-[ext_resource type="Texture2D" path="res://resources/images/character_creator/portraits/female_fullbody.png" id="15_y6x2m"]
-[ext_resource type="Texture2D" uid="uid://c8egkl7q8rcmm" path="res://resources/images/character_creator/portraits/dwarf_hair_straight.png" id="16_5kcbn"]
+[ext_resource type="Texture2D" uid="uid://isimbv8mawmu" path="res://resources/images/character_creator/portraits/female_fullbody.png" id="15_y6x2m"]
+[ext_resource type="Texture2D" uid="uid://dtaw6nd5pitpm" path="res://resources/images/character_creator/portraits/dwarf_hair_straight.png" id="16_5kcbn"]
 [ext_resource type="Texture2D" uid="uid://cbutrqks1x08q" path="res://resources/images/character_creator/ui/return.png" id="16_dk5wx"]
 [ext_resource type="Texture2D" uid="uid://dgj1gpoublgwt" path="res://resources/images/character_creator/ui/create.png" id="17_8ugf3"]
 [ext_resource type="Texture2D" uid="uid://cma2myns1va2j" path="res://resources/images/character_creator/ui/randombase.png" id="17_s8202"]
@@ -30,20 +30,20 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ja2xc"]
 shader = ExtResource("2_0yffs")
-shader_parameter/images = Array[CompressedTexture2D]([ExtResource("2_6txqo"), ExtResource("3_ucp7b"), ExtResource("4_oy0w6")])
+shader_parameter/images = Array[CompressedTexture2D]([])
 shader_parameter/colors = Array[Vector3]([Vector3(0.07, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x7ufa"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n1i1y"]
 bg_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ix263"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nj4er"]
 bg_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0.45)
 shadow_size = 14
 shadow_offset = Vector2(0, 6)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n1i1y"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1uaso"]
 bg_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0.35)
 shadow_size = 10
@@ -118,6 +118,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+scale = Vector2(1.08, 1.08)
+pivot_offset = Vector2(576, 324)
 texture = ExtResource("6_s8202")
 
 [node name="PanelContainer" type="PanelContainer" parent="." unique_id=2025169358]
@@ -494,22 +496,27 @@ layout_mode = 2
 [node name="TextureRect2" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer2/VBoxContainer/HBoxContainer" unique_id=1311269939]
 self_modulate = Color(0.85, 0.85, 0.85, 1)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_x7ufa")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_ix263")
-theme_override_styles/hover = SubResource("StyleBoxFlat_n1i1y")
-theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_ix263")
-theme_override_styles/focus = SubResource("StyleBoxFlat_n1i1y")
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_n1i1y")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/hover = SubResource("StyleBoxFlat_1uaso")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/focus = SubResource("StyleBoxFlat_1uaso")
+toggle_mode = true
 icon = ExtResource("13_ptvhl")
 flat = true
 
 [node name="TextureRect3" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer2/VBoxContainer/HBoxContainer" unique_id=1433334343]
-self_modulate = Color(0.85, 0.85, 0.85, 1)
+self_modulate = Color(1.18, 1.18, 1.18, 1)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_x7ufa")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_ix263")
-theme_override_styles/hover = SubResource("StyleBoxFlat_n1i1y")
-theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_ix263")
-theme_override_styles/focus = SubResource("StyleBoxFlat_n1i1y")
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_n1i1y")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/hover = SubResource("StyleBoxFlat_1uaso")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/focus = SubResource("StyleBoxFlat_1uaso")
+toggle_mode = true
+button_pressed = true
 icon = ExtResource("14_yns5i")
 flat = true
 
@@ -1037,8 +1044,8 @@ layout_mode = 2
 [node name="TextureRect" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2" unique_id=974652834]
 custom_minimum_size = Vector2(210, 210)
 layout_mode = 2
-expand_mode = 1
 texture = ExtResource("15_dk5wx")
+expand_mode = 1
 stretch_mode = 2
 
 [node name="DwarfBodySprite" type="TextureRect" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/TextureRect" unique_id=201968757]
@@ -1048,10 +1055,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -95.0
-offset_top = -95.0
-offset_right = 95.0
-offset_bottom = 95.0
+offset_left = -105.5
+offset_top = -54.0
+offset_right = 192.0
+offset_bottom = 323.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("15_y6x2m")
@@ -1095,7 +1102,14 @@ size_flags_horizontal = 0
 size_flags_vertical = 8
 
 [node name="Button" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer" unique_id=5505332]
+self_modulate = Color(0.85, 0.85, 0.85, 1)
 layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_n1i1y")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/hover = SubResource("StyleBoxFlat_1uaso")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/focus = SubResource("StyleBoxFlat_1uaso")
 icon = ExtResource("16_dk5wx")
 flat = true
 
@@ -1123,7 +1137,14 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="Button3" type="Button" parent="PanelContainer/VBoxContainer/MarginContainer/HBoxContainer/VBoxContainer2/HBoxContainer2/MarginContainer/VBoxContainer2/HBoxContainer" unique_id=1042695860]
+self_modulate = Color(0.85, 0.85, 0.85, 1)
 layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_n1i1y")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/hover = SubResource("StyleBoxFlat_1uaso")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_nj4er")
+theme_override_styles/focus = SubResource("StyleBoxFlat_1uaso")
 icon = ExtResource("17_8ugf3")
 flat = true
 
