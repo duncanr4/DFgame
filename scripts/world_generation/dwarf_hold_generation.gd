@@ -1667,8 +1667,8 @@ func _pick_required_stair_cell(grid: Dictionary, excluded_cell: Vector2i = Vecto
 			if walkable_cell != excluded_cell:
 				return walkable_cell
 
-	for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		var forced_cell := excluded_cell + offset
+	for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var forced_cell: Vector2i = excluded_cell + offset
 		if forced_cell == excluded_cell:
 			continue
 		if not grid.has(forced_cell):
