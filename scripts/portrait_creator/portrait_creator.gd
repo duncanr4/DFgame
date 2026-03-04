@@ -994,6 +994,7 @@ func _on_create_button_pressed() -> void:
 
 func _on_randomize_button_pressed() -> void:
 	_play_randomize_sound()
+	_set_gender(_rng.randf() < 0.5)
 
 	if profession_choice and profession_choice.item_count > 0:
 		profession_choice.select(_rng.randi_range(0, profession_choice.item_count - 1))
