@@ -2381,6 +2381,7 @@ button:hover:not(:disabled) {
   position: relative;
   width: 280px;
   height: 300px;
+  transform: translateX(16px);
 }
 
 .body-panel-image {
