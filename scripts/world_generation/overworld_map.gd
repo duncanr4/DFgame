@@ -246,6 +246,32 @@ const RIVER_MASK_SUFFIX_LOOKUP := {
 	15: "NSWE"
 }
 const WORLD_FEATURE_REFERENCE_WIDTH := 455.0
+
+
+const _BIOME_TO_ID := {
+	BIOME_WATER: 0,
+	BIOME_MOUNTAIN: 1,
+	BIOME_HILLS: 2,
+	BIOME_MARSH: 3,
+	BIOME_TUNDRA: 4,
+	BIOME_DESERT: 5,
+	BIOME_BADLANDS: 6,
+	BIOME_FOREST: 7,
+	BIOME_JUNGLE: 8,
+	BIOME_GRASSLAND: 9
+}
+const _ID_TO_BIOME: Array[String] = [
+	BIOME_WATER,
+	BIOME_MOUNTAIN,
+	BIOME_HILLS,
+	BIOME_MARSH,
+	BIOME_TUNDRA,
+	BIOME_DESERT,
+	BIOME_BADLANDS,
+	BIOME_FOREST,
+	BIOME_JUNGLE,
+	BIOME_GRASSLAND
+]
 const DWARFHOLD_POPULATION_RACE_OPTIONS := [
 	{"key": "dwarves", "label": "Dwarves", "color": Color("#f4c069")},
 	{"key": "humans", "label": "Humans", "color": Color("#9bb6d8")},
@@ -989,10 +1015,14 @@ var _rainfall_noise: FastNoiseLite
 var _vegetation_noise: FastNoiseLite
 var _tile_data: Dictionary = {}
 var _height_map: Dictionary = {}
+var _height_buffer: PackedFloat32Array = PackedFloat32Array()
 var _height_texture: ImageTexture = null
 var _temperature_map: Dictionary = {}
+var _temperature_buffer: PackedFloat32Array = PackedFloat32Array()
 var _moisture_map: Dictionary = {}
+var _moisture_buffer: PackedFloat32Array = PackedFloat32Array()
 var _biome_map: Dictionary = {}
+var _biome_buffer: PackedByteArray = PackedByteArray()
 var _world_settings: Dictionary = {}
 var _culture_pipeline := CULTURAL_INFLUENCE.new()
 var _landmass_centers: Array[Vector2] = []
@@ -1278,6 +1308,72 @@ func _get_tile_coord_from_global_position(world_pos: Vector2) -> Vector2i:
 
 func _is_valid_map_coord(coord: Vector2i) -> bool:
 	return coord.x >= 0 and coord.y >= 0 and coord.x < map_size.x and coord.y < map_size.y
+
+func _map_cell_count() -> int:
+	return maxi(0, map_size.x * map_size.y)
+
+func _coord_to_index(coord: Vector2i) -> int:
+	return coord.y * map_size.x + coord.x
+
+func _xy_to_index(x: int, y: int) -> int:
+	return y * map_size.x + x
+
+func _index_to_coord(index: int) -> Vector2i:
+	if map_size.x <= 0:
+		return Vector2i.ZERO
+	return Vector2i(index % map_size.x, index / map_size.x)
+
+func _biome_to_id(biome: String) -> int:
+	return int(_BIOME_TO_ID.get(biome, int(_BIOME_TO_ID[BIOME_GRASSLAND])))
+
+func _biome_id_to_string(biome_id: int) -> String:
+	if biome_id < 0 or biome_id >= _ID_TO_BIOME.size():
+		return BIOME_GRASSLAND
+	return _ID_TO_BIOME[biome_id]
+
+func _ensure_map_buffers() -> void:
+	var cell_count := _map_cell_count()
+	if _height_buffer.size() != cell_count:
+		_height_buffer.resize(cell_count)
+	if _temperature_buffer.size() != cell_count:
+		_temperature_buffer.resize(cell_count)
+	if _moisture_buffer.size() != cell_count:
+		_moisture_buffer.resize(cell_count)
+	if _biome_buffer.size() != cell_count:
+		_biome_buffer.resize(cell_count)
+
+func _dictionary_to_float_buffer(source_map: Dictionary, default_value: float = 0.0) -> PackedFloat32Array:
+	var buffer := PackedFloat32Array()
+	var cell_count := _map_cell_count()
+	buffer.resize(cell_count)
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			buffer[_xy_to_index(x, y)] = float(source_map.get(coord, default_value))
+	return buffer
+
+func _dictionary_to_biome_buffer(source_map: Dictionary, default_biome: String = BIOME_GRASSLAND) -> PackedByteArray:
+	var buffer := PackedByteArray()
+	var cell_count := _map_cell_count()
+	buffer.resize(cell_count)
+	for y in range(map_size.y):
+		for x in range(map_size.x):
+			var coord := Vector2i(x, y)
+			var biome := String(source_map.get(coord, default_biome))
+			buffer[_xy_to_index(x, y)] = _biome_to_id(biome)
+	return buffer
+
+func _float_buffer_to_dictionary(buffer: PackedFloat32Array) -> Dictionary:
+	var map: Dictionary = {}
+	for i in range(buffer.size()):
+		map[_index_to_coord(i)] = float(buffer[i])
+	return map
+
+func _biome_buffer_to_dictionary(buffer: PackedByteArray) -> Dictionary:
+	var map: Dictionary = {}
+	for i in range(buffer.size()):
+		map[_index_to_coord(i)] = _biome_id_to_string(int(buffer[i]))
+	return map
 
 func _on_structure_context_menu_id_pressed(action_id: int) -> void:
 	var clicked_tile := _context_menu_tile
@@ -1716,11 +1812,17 @@ func _generate_map() -> void:
 		settlement_layer.clear()
 	_tile_data.clear()
 
-	var height_map: Dictionary = {}
-	var temperature_map: Dictionary = {}
-	var moisture_map: Dictionary = {}
-	var vegetation_map: Dictionary = {}
-	var base_biome_map: Dictionary = {}
+	var cell_count := _map_cell_count()
+	var height_buffer := PackedFloat32Array()
+	height_buffer.resize(cell_count)
+	var temperature_buffer := PackedFloat32Array()
+	temperature_buffer.resize(cell_count)
+	var moisture_buffer := PackedFloat32Array()
+	moisture_buffer.resize(cell_count)
+	var vegetation_buffer := PackedFloat32Array()
+	vegetation_buffer.resize(cell_count)
+	var base_biome_buffer := PackedByteArray()
+	base_biome_buffer.resize(cell_count)
 	var highland_map: Dictionary = {}
 
 	var rng := RandomNumberGenerator.new()
@@ -1784,36 +1886,43 @@ func _generate_map() -> void:
 
 	for y in range(map_size.y):
 		for x in range(map_size.x):
-			var height := _sample_height(continent_noise, detail_noise, ridge_noise, x, y)
-			var coord := Vector2i(x, y)
-			height_map[coord] = height
+			var idx := _xy_to_index(x, y)
+			height_buffer[idx] = _sample_height(continent_noise, detail_noise, ridge_noise, x, y)
 		if y > 0 and y % GENERATION_YIELD_ROW_INTERVAL == 0:
 			await _yield_generation_wave()
 
-	_smooth_height_map(height_map, 1, 0.35)
-	_ensure_landmass_presence(height_map)
+	_smooth_height_buffer(height_buffer, 1, 0.35)
+	_ensure_landmass_presence_buffer(height_buffer)
+	var height_map_for_biome := _float_buffer_to_dictionary(height_buffer)
 
 	for y in range(map_size.y):
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
-			var height: float = height_map[coord]
+			var idx := _xy_to_index(x, y)
+			var height := float(height_buffer[idx])
 			var temperature := _sample_temperature(x, y, height)
 			var moisture := _sample_moisture(x, y, height)
 			var vegetation := _sample_vegetation(x, y, height, moisture, temperature)
-			temperature_map[coord] = temperature
-			moisture_map[coord] = moisture
-			vegetation_map[coord] = vegetation
-			base_biome_map[coord] = _assign_base_biome(coord, height, temperature, moisture, height_map)
+			temperature_buffer[idx] = temperature
+			moisture_buffer[idx] = moisture
+			vegetation_buffer[idx] = vegetation
+			base_biome_buffer[idx] = _biome_to_id(_assign_base_biome(coord, height, temperature, moisture, height_map_for_biome))
 		if y > 0 and y % GENERATION_YIELD_ROW_INTERVAL == 0:
 			await _yield_generation_wave()
 
-	_guarantee_minimum_landmass(height_map, temperature_map, moisture_map, base_biome_map)
+	_guarantee_minimum_landmass_buffer(height_buffer, temperature_buffer, moisture_buffer, base_biome_buffer)
+	var height_map := _float_buffer_to_dictionary(height_buffer)
+	var temperature_map := _float_buffer_to_dictionary(temperature_buffer)
+	var moisture_map := _float_buffer_to_dictionary(moisture_buffer)
+	var vegetation_map := _float_buffer_to_dictionary(vegetation_buffer)
+	var base_biome_map := _biome_buffer_to_dictionary(base_biome_buffer)
 	_landmass_masks = _generate_landmass_masks_from_biome_map(base_biome_map)
 
 	_smooth_biomes(base_biome_map, 2)
 	if _count_biome(base_biome_map, BIOME_DESERT) == 0:
 		_seed_desert_biomes(base_biome_map, temperature_map, moisture_map, height_map)
 		_smooth_biomes(base_biome_map, 1)
+	base_biome_buffer = _dictionary_to_biome_buffer(base_biome_map)
 	var tree_biome_map: Dictionary = base_biome_map.duplicate()
 	var tree_map := _apply_tree_overlays(
 		tree_biome_map,
@@ -1824,7 +1933,7 @@ func _generate_map() -> void:
 		rng
 	)
 	highland_map = _build_highland_overlays(base_biome_map, height_map)
-	var river_map := _build_river_map(height_map, moisture_map, base_biome_map, rng)
+	var river_map := _build_river_map_buffers(height_buffer, moisture_buffer, base_biome_buffer, rng)
 	var edge_connected_water := _compute_edge_connected_water_mask(base_biome_map)
 	var river_tiles := _apply_river_tiles(river_map, base_biome_map, highland_map, tree_map, edge_connected_water)
 	var biome_map: Dictionary = tree_biome_map.duplicate()
@@ -1865,11 +1974,15 @@ func _generate_map() -> void:
 	_rebuild_labels_overlay()
 	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_log_generation_stage("settlements and culture", generation_started_ms)
-	_height_map = height_map.duplicate()
+	_height_buffer = height_buffer
+	_temperature_buffer = temperature_buffer
+	_moisture_buffer = moisture_buffer
+	_biome_buffer = _dictionary_to_biome_buffer(biome_map)
+	_height_map = _float_buffer_to_dictionary(_height_buffer)
+	_temperature_map = _float_buffer_to_dictionary(_temperature_buffer)
+	_moisture_map = _float_buffer_to_dictionary(_moisture_buffer)
+	_biome_map = _biome_buffer_to_dictionary(_biome_buffer)
 	_update_height_texture()
-	_temperature_map = temperature_map.duplicate()
-	_moisture_map = moisture_map.duplicate()
-	_biome_map = biome_map.duplicate()
 	_mark_all_overlays_dirty()
 	_ensure_overlay_texture("elevation")
 	if _temperature_overlay_enabled:
@@ -1963,6 +2076,83 @@ func _apply_overlays_and_metadata(
 				"resources": _resources_for_biome(biome),
 				"region_name": region_name
 			}
+
+
+func _build_river_map_buffers(
+	height_buffer: PackedFloat32Array,
+	moisture_buffer: PackedFloat32Array,
+	base_biome_buffer: PackedByteArray,
+	rng: RandomNumberGenerator
+) -> Dictionary:
+	var frequency_normalized := clampf(river_frequency, 0.0, 1.0)
+	var frequency_multiplier := lerpf(0.45, 1.75, frequency_normalized)
+	var weight_threshold := 0.12 * lerpf(1.45, 0.45, frequency_normalized)
+	var major_river_threshold := lerpf(0.45, 0.28, frequency_normalized)
+	var candidates: Array[Dictionary] = []
+	for y in range(1, map_size.y - 1):
+		for x in range(1, map_size.x - 1):
+			var idx := _xy_to_index(x, y)
+			if _biome_id_to_string(int(base_biome_buffer[idx])) == BIOME_WATER:
+				continue
+			var elev := float(height_buffer[idx])
+			if elev <= water_level + 0.02:
+				continue
+			var sink := clampf(1.0 - float(moisture_buffer[idx]), 0.0, 1.0)
+			var height_factor := maxf(0.0, elev - water_level)
+			var randomness := 0.35 + rng.randf() * 0.65
+			var weight := (height_factor * 0.7 + sink * 0.3) * randomness
+			if weight > weight_threshold:
+				candidates.append({"idx": idx, "weight": weight})
+	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("weight", 0.0)) > float(b.get("weight", 0.0))
+	)
+	var base_sources := maxi(8, int(floor(float(map_size.x * map_size.y) / 3200.0)))
+	var source_density_multiplier := lerpf(1.8, 3.1, frequency_normalized)
+	var max_sources := maxi(4, int(round(float(base_sources) * frequency_multiplier * source_density_multiplier)))
+	var ocean_distance := _build_ocean_distance_map(_biome_buffer_to_dictionary(base_biome_buffer))
+	var ocean_influence := lerpf(0.008, 0.02, frequency_normalized)
+	var river_map: Dictionary = {}
+	for i in range(mini(candidates.size(), max_sources)):
+		var candidate := candidates[i] as Dictionary
+		var idx := int(candidate.get("idx", 0))
+		var coord := _index_to_coord(idx)
+		var steps := 0
+		var strength := 2 if float(candidate.get("weight", 0.0)) > major_river_threshold else 1
+		while steps < map_size.x + map_size.y:
+			river_map[coord] = mini(4, int(river_map.get(coord, 0)) + strength)
+			steps += 1
+			var lowest_coord := coord
+			var current_idx := _coord_to_index(coord)
+			var current_base_value := float(height_buffer[current_idx]) - float(moisture_buffer[current_idx]) * 0.02
+			var lowest_score := current_base_value
+			var lowest_base_value := current_base_value
+			var current_ocean_distance := float(ocean_distance.get(coord, map_size.x + map_size.y))
+			for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
+				var def := def_variant as Dictionary
+				var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
+				if not _is_valid_map_coord(neighbor):
+					continue
+				var neighbor_idx := _coord_to_index(neighbor)
+				var neighbor_base_value := float(height_buffer[neighbor_idx]) - float(moisture_buffer[neighbor_idx]) * 0.02
+				var score := neighbor_base_value
+				var neighbor_ocean_distance := float(ocean_distance.get(neighbor, map_size.x + map_size.y))
+				var distance_delta := neighbor_ocean_distance - current_ocean_distance
+				score += distance_delta * ocean_influence
+				if score < lowest_score - 0.000001:
+					lowest_score = score
+					lowest_base_value = neighbor_base_value
+					lowest_coord = neighbor
+				elif absf(score - lowest_score) <= 0.000001 and neighbor_base_value < lowest_base_value:
+					lowest_base_value = neighbor_base_value
+					lowest_coord = neighbor
+			if lowest_coord == coord:
+				break
+			if _biome_id_to_string(int(base_biome_buffer[_coord_to_index(lowest_coord)])) == BIOME_WATER:
+				break
+			coord = lowest_coord
+			if int(river_map.get(coord, 0)) > 0 and steps > 3:
+				break
+	return river_map
 
 
 func _build_river_map(
@@ -2746,6 +2936,39 @@ func _distance_to_nearest_landmass_center(nx: float, ny: float) -> float:
 
 func _smooth_height_map(height_map: Dictionary, passes: int, strength: float) -> void:
 	TERRAIN_GENERATOR.smooth_height_map(height_map, passes, strength, water_level)
+
+
+func _smooth_height_buffer(height_buffer: PackedFloat32Array, passes: int, strength: float) -> void:
+	var height_map := _float_buffer_to_dictionary(height_buffer)
+	_smooth_height_map(height_map, passes, strength)
+	for i in range(height_buffer.size()):
+		height_buffer[i] = float(height_map.get(_index_to_coord(i), water_level))
+
+
+func _ensure_landmass_presence_buffer(height_buffer: PackedFloat32Array) -> void:
+	var height_map := _float_buffer_to_dictionary(height_buffer)
+	_ensure_landmass_presence(height_map)
+	for i in range(height_buffer.size()):
+		height_buffer[i] = float(height_map.get(_index_to_coord(i), water_level))
+
+
+func _guarantee_minimum_landmass_buffer(
+	height_buffer: PackedFloat32Array,
+	temperature_buffer: PackedFloat32Array,
+	moisture_buffer: PackedFloat32Array,
+	base_biome_buffer: PackedByteArray
+) -> void:
+	var height_map := _float_buffer_to_dictionary(height_buffer)
+	var temperature_map := _float_buffer_to_dictionary(temperature_buffer)
+	var moisture_map := _float_buffer_to_dictionary(moisture_buffer)
+	var base_biome_map := _biome_buffer_to_dictionary(base_biome_buffer)
+	_guarantee_minimum_landmass(height_map, temperature_map, moisture_map, base_biome_map)
+	for i in range(height_buffer.size()):
+		var coord := _index_to_coord(i)
+		height_buffer[i] = float(height_map.get(coord, water_level))
+		temperature_buffer[i] = float(temperature_map.get(coord, 0.0))
+		moisture_buffer[i] = float(moisture_map.get(coord, 0.0))
+		base_biome_buffer[i] = _biome_to_id(String(base_biome_map.get(coord, BIOME_GRASSLAND)))
 
 
 func _sample_landmass_mask(nx: float, ny: float) -> float:
@@ -5172,13 +5395,13 @@ func _update_height_texture() -> void:
 		_height_texture = null
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RF)
-	if _height_map.is_empty():
+	if _height_buffer.is_empty():
 		image.fill(Color(water_level, 0.0, 0.0, 1.0))
 	else:
 		for y in range(map_size.y):
 			for x in range(map_size.x):
-				var coord := Vector2i(x, y)
-				var h := clampf(float(_height_map.get(coord, water_level)), 0.0, 1.0)
+				var idx := _xy_to_index(x, y)
+				var h := clampf(float(_height_buffer[idx]), 0.0, 1.0)
 				image.set_pixel(x, y, Color(h, 0.0, 0.0, 1.0))
 	_height_texture = ImageTexture.create_from_image(image)
 
@@ -5439,15 +5662,15 @@ func _build_fallback_overworld_atlas(tile_coords_list: Array[Vector2i]) -> Textu
 func _update_temperature_overlay() -> void:
 	if temperature_overlay == null:
 		return
-	if _temperature_map.is_empty():
+	if _temperature_buffer.is_empty():
 		temperature_overlay.texture = null
 		_overlay_dirty["temperature"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
 		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			var temperature := float(_temperature_map.get(coord, 0.0))
+			var idx := _xy_to_index(x, y)
+			var temperature := float(_temperature_buffer[idx])
 			image.set_pixel(x, y, _temperature_to_color(temperature))
 	var texture := ImageTexture.create_from_image(image)
 	temperature_overlay.texture = texture
@@ -5470,14 +5693,14 @@ func _update_temperature_overlay_visibility() -> void:
 func _update_elevation_overlay() -> void:
 	if elevation_overlay == null:
 		return
-	if _height_map.is_empty():
+	if _height_buffer.is_empty():
 		elevation_overlay.texture = null
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
 		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			var height := float(_height_map.get(coord, 0.0))
+			var idx := _xy_to_index(x, y)
+			var height := float(_height_buffer[idx])
 			image.set_pixel(x, y, _elevation_to_color(height))
 	var texture := ImageTexture.create_from_image(image)
 	elevation_overlay.texture = texture
@@ -5519,15 +5742,15 @@ func _update_elevation_overlay_visibility() -> void:
 func _update_moisture_overlay() -> void:
 	if moisture_overlay == null:
 		return
-	if _moisture_map.is_empty():
+	if _moisture_buffer.is_empty():
 		moisture_overlay.texture = null
 		_overlay_dirty["moisture"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
 		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			var moisture := float(_moisture_map.get(coord, 0.0))
+			var idx := _xy_to_index(x, y)
+			var moisture := float(_moisture_buffer[idx])
 			image.set_pixel(x, y, _moisture_to_color(moisture))
 	var texture := ImageTexture.create_from_image(image)
 	moisture_overlay.texture = texture
@@ -5550,15 +5773,15 @@ func _update_moisture_overlay_visibility() -> void:
 func _update_biome_overlay() -> void:
 	if biome_overlay == null:
 		return
-	if _biome_map.is_empty():
+	if _biome_buffer.is_empty():
 		biome_overlay.texture = null
 		_overlay_dirty["biome"] = false
 		return
 	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RGBA8)
 	for y in range(map_size.y):
 		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			var biome := _biome_map.get(coord, BIOME_GRASSLAND) as String
+			var idx := _xy_to_index(x, y)
+			var biome := _biome_id_to_string(int(_biome_buffer[idx]))
 			image.set_pixel(x, y, _biome_to_overlay_color(biome))
 	var texture := ImageTexture.create_from_image(image)
 	biome_overlay.texture = texture
