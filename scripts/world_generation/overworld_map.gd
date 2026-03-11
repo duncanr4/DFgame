@@ -3894,7 +3894,7 @@ func _place_structure_with_details(coord: Vector2i, tile: Vector2i, structure_id
 	tile_info["structure"] = structure_id
 	for key_variant: Variant in extra.keys():
 		var key := String(key_variant)
-		var value := extra.get(key_variant)
+		var value: Variant = extra.get(key_variant)
 		if key == "region_name":
 			var region_label := String(value).strip_edges()
 			if not region_label.is_empty():
