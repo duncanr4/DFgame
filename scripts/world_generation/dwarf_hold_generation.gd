@@ -2776,6 +2776,9 @@ func _clamp_tooltip_position(desired_position: Vector2) -> Vector2:
 	)
 
 func _run_dev_bfs_queue_benchmark() -> void:
+	if not ENABLE_DEV_BFS_BENCHMARK or not OS.is_debug_build():
+		return
+
 	var size := maxi(8, DEV_BFS_BENCHMARK_GRID_SIZE)
 	var dense_grid: Dictionary = {}
 	for y in range(size):
@@ -2787,11 +2790,11 @@ func _run_dev_bfs_queue_benchmark() -> void:
 	var head_index_total_usec := 0
 	for _iteration in range(maxi(1, DEV_BFS_BENCHMARK_ITERATIONS)):
 		var start_tick := Time.get_ticks_usec()
-		_benchmark_walkable_reachable_pop_front(dense_grid, start_cell)
+		_dev_benchmark_walkable_reachable_pop_front(dense_grid, start_cell)
 		pop_front_total_usec += Time.get_ticks_usec() - start_tick
 
 		start_tick = Time.get_ticks_usec()
-		_benchmark_walkable_reachable_head_index(dense_grid, start_cell)
+		_dev_benchmark_walkable_reachable_head_index(dense_grid, start_cell)
 		head_index_total_usec += Time.get_ticks_usec() - start_tick
 
 	print("[DEV BFS BENCH] pop_front us=%d head_index us=%d (size=%d iterations=%d)" % [
@@ -2802,7 +2805,7 @@ func _run_dev_bfs_queue_benchmark() -> void:
 	])
 
 
-func _benchmark_walkable_reachable_pop_front(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
+func _dev_benchmark_walkable_reachable_pop_front(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
 	var reachable: Dictionary = {start_cell: true}
 	var queue: Array[Vector2i] = [start_cell]
 	while not queue.is_empty():
@@ -2818,7 +2821,7 @@ func _benchmark_walkable_reachable_pop_front(grid: Dictionary, start_cell: Vecto
 	return reachable
 
 
-func _benchmark_walkable_reachable_head_index(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
+func _dev_benchmark_walkable_reachable_head_index(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
 	var reachable: Dictionary = {start_cell: true}
 	var queue: Array[Vector2i] = [start_cell]
 	var head := 0
