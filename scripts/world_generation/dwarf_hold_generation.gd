@@ -237,6 +237,9 @@ const SHATTERED_VISIBLE_ALPHA := 0.0
 const CHEST_SLOT_COLUMNS := 8
 const CHEST_SLOT_ROWS := 4
 const BACKPACK_SLOT_ROWS := 3
+const ENABLE_DEV_BFS_BENCHMARK := false
+const DEV_BFS_BENCHMARK_GRID_SIZE := 220
+const DEV_BFS_BENCHMARK_ITERATIONS := 4
 
 
 const DWARFHOLD_SCENE_SEED_KEY := "dwarfhold_scene_seed"
@@ -505,6 +508,8 @@ func _ready() -> void:
 	_lighting_enabled = lighting_toggle.button_pressed
 	_apply_lighting_state()
 	_clear_chest_selection()
+	if ENABLE_DEV_BFS_BENCHMARK and OS.is_debug_build():
+		_run_dev_bfs_queue_benchmark()
 	_generate_city()
 
 func _process(delta: float) -> void:
@@ -1136,8 +1141,10 @@ func _compute_civic_buildings_by_id(grid: Dictionary) -> Dictionary:
 		var queue: Array[Vector2i] = [start_cell]
 		visited[start_cell] = true
 		var component: Array[Vector2i] = []
-		while not queue.is_empty():
-			var current: Vector2i = queue.pop_front()
+		var head := 0
+		while head < queue.size():
+			var current: Vector2i = queue[head]
+			head += 1
 			component.append(current)
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var neighbor := current + direction
@@ -1193,8 +1200,10 @@ func _count_components_for_tile(grid: Dictionary, tile_type: int) -> int:
 		component_count += 1
 		var queue: Array[Vector2i] = [start_cell]
 		visited[start_cell] = true
-		while not queue.is_empty():
-			var current: Vector2i = queue.pop_front()
+		var head := 0
+		while head < queue.size():
+			var current: Vector2i = queue[head]
+			head += 1
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var neighbor := current + direction
 				if visited.has(neighbor):
@@ -1326,8 +1335,10 @@ func _compute_single_doors(grid: Dictionary) -> Dictionary:
 		var queue: Array[Vector2i] = [start_cell]
 		visited[start_cell] = true
 		var component_cells: Array[Vector2i] = []
-		while not queue.is_empty():
-			var current: Vector2i = queue.pop_front()
+		var head := 0
+		while head < queue.size():
+			var current: Vector2i = queue[head]
+			head += 1
 			component_cells.append(current)
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var neighbor: Vector2i = current + direction
@@ -1406,8 +1417,10 @@ func _collect_walkable_reachable_cells(grid: Dictionary, start_cell: Vector2i) -
 
 	var queue: Array[Vector2i] = [start_cell]
 	reachable[start_cell] = true
-	while not queue.is_empty():
-		var current: Vector2i = queue.pop_front()
+	var head := 0
+	while head < queue.size():
+		var current: Vector2i = queue[head]
+		head += 1
 		for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var neighbor := current + direction
 			if reachable.has(neighbor):
@@ -1466,8 +1479,10 @@ func _collect_walkable_components(grid: Dictionary) -> Array[Array]:
 		var component: Array[Vector2i] = []
 		visited[origin] = true
 
-		while not queue.is_empty():
-			var current: Vector2i = queue.pop_front()
+		var head := 0
+		while head < queue.size():
+			var current: Vector2i = queue[head]
+			head += 1
 			component.append(current)
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var neighbor := current + direction
@@ -1930,8 +1945,10 @@ func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
 		var queue: Array[Vector2i] = [start_cell]
 		var component: Array[Vector2i] = []
 		visited[start_cell] = true
-		while not queue.is_empty():
-			var current: Vector2i = queue.pop_front()
+		var head := 0
+		while head < queue.size():
+			var current: Vector2i = queue[head]
+			head += 1
 			component.append(current)
 			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var neighbor: Vector2i = current + direction
@@ -2262,8 +2279,10 @@ func _build_player_path(from_cell: Vector2i, to_cell: Vector2i) -> Array[Vector2
 	var came_from: Dictionary = {}
 	var found := false
 
-	while not queue.is_empty():
-		var current: Vector2i = queue.pop_front()
+	var head := 0
+	while head < queue.size():
+		var current: Vector2i = queue[head]
+		head += 1
 		if current == to_cell:
 			found = true
 			break
@@ -2755,3 +2774,63 @@ func _clamp_tooltip_position(desired_position: Vector2) -> Vector2:
 		clampf(desired_position.x, 0.0, maxf(panel_size.x - tooltip_size.x, 0.0)),
 		clampf(desired_position.y, 0.0, maxf(panel_size.y - tooltip_size.y, 0.0))
 	)
+
+func _run_dev_bfs_queue_benchmark() -> void:
+	var size := maxi(8, DEV_BFS_BENCHMARK_GRID_SIZE)
+	var dense_grid: Dictionary = {}
+	for y in range(size):
+		for x in range(size):
+			dense_grid[Vector2i(x, y)] = CELL_HALL
+
+	var start_cell := Vector2i(size / 2, size / 2)
+	var pop_front_total_usec := 0
+	var head_index_total_usec := 0
+	for _iteration in range(maxi(1, DEV_BFS_BENCHMARK_ITERATIONS)):
+		var start_tick := Time.get_ticks_usec()
+		_benchmark_walkable_reachable_pop_front(dense_grid, start_cell)
+		pop_front_total_usec += Time.get_ticks_usec() - start_tick
+
+		start_tick = Time.get_ticks_usec()
+		_benchmark_walkable_reachable_head_index(dense_grid, start_cell)
+		head_index_total_usec += Time.get_ticks_usec() - start_tick
+
+	print("[DEV BFS BENCH] pop_front us=%d head_index us=%d (size=%d iterations=%d)" % [
+		pop_front_total_usec,
+		head_index_total_usec,
+		size,
+		maxi(1, DEV_BFS_BENCHMARK_ITERATIONS)
+	])
+
+
+func _benchmark_walkable_reachable_pop_front(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
+	var reachable: Dictionary = {start_cell: true}
+	var queue: Array[Vector2i] = [start_cell]
+	while not queue.is_empty():
+		var current: Vector2i = queue.pop_front()
+		for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var neighbor := current + direction
+			if reachable.has(neighbor):
+				continue
+			if not grid.has(neighbor):
+				continue
+			reachable[neighbor] = true
+			queue.append(neighbor)
+	return reachable
+
+
+func _benchmark_walkable_reachable_head_index(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
+	var reachable: Dictionary = {start_cell: true}
+	var queue: Array[Vector2i] = [start_cell]
+	var head := 0
+	while head < queue.size():
+		var current: Vector2i = queue[head]
+		head += 1
+		for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var neighbor := current + direction
+			if reachable.has(neighbor):
+				continue
+			if not grid.has(neighbor):
+				continue
+			reachable[neighbor] = true
+			queue.append(neighbor)
+	return reachable
