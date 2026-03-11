@@ -272,6 +272,23 @@ const _ID_TO_BIOME: Array[String] = [
 	BIOME_JUNGLE,
 	BIOME_GRASSLAND
 ]
+const TILE_OVERLAY_TREE := 1
+const TILE_OVERLAY_FOREST := 1 << 1
+const TILE_OVERLAY_RIVER := 1 << 2
+const TILE_OVERLAY_VOLCANO := 1 << 3
+const TILE_OVERLAY_ACTIVE_VOLCANO := 1 << 4
+const _BIOME_RESOURCES_BY_ID := {
+	0: ["fish", "salt"],
+	1: ["stone", "iron", "gems"],
+	2: ["stone", "game", "herbs"],
+	3: ["reeds", "peat", "herbs"],
+	4: ["fur", "ice", "hardwood"],
+	5: ["spice", "glass", "salt"],
+	6: ["clay", "copper", "scrub"],
+	7: ["timber", "game", "berries"],
+	8: ["exotic wood", "fruit", "spices"],
+	9: ["grain", "livestock", "herbs"]
+}
 const DWARFHOLD_POPULATION_RACE_OPTIONS := [
 	{"key": "dwarves", "label": "Dwarves", "color": Color("#f4c069")},
 	{"key": "humans", "label": "Humans", "color": Color("#9bb6d8")},
@@ -1014,6 +1031,10 @@ var _temperature_noise: FastNoiseLite
 var _rainfall_noise: FastNoiseLite
 var _vegetation_noise: FastNoiseLite
 var _tile_data: Dictionary = {}
+var _tile_region_names: Dictionary = {}
+var _tile_population_groups: Dictionary = {}
+var _tooltip_cache_coord := Vector2i(-1, -1)
+var _tooltip_cache: Dictionary = {}
 var _height_map: Dictionary = {}
 var _height_buffer: PackedFloat32Array = PackedFloat32Array()
 var _height_texture: ImageTexture = null
@@ -1413,7 +1434,7 @@ func _store_selected_dwarfhold_scene_context(seed_text: String, tile_coord: Vect
 	var settings: Dictionary = game_session.call("get_world_settings")
 	settings[DWARFHOLD_SCENE_SEED_KEY] = seed_text
 	settings[DWARFHOLD_SCENE_TILE_KEY] = {"x": tile_coord.x, "y": tile_coord.y}
-	settings[DWARFHOLD_SCENE_NAME_KEY] = String(details.get("region_name", "")).strip_edges()
+	settings[DWARFHOLD_SCENE_NAME_KEY] = _tile_region_name(tile_coord, details)
 	settings[DWARFHOLD_SCENE_POPULATION_KEY] = maxi(0, int(details.get("population", 0)))
 	game_session.call("set_world_settings", settings)
 
@@ -1422,7 +1443,7 @@ func _dwarfhold_scene_seed_for_tile(tile_coord: Vector2i, details: Dictionary) -
 	if not existing_seed.is_empty():
 		return existing_seed
 
-	var settlement_name := String(details.get("region_name", "Unknown Dwarfhold")).strip_edges()
+	var settlement_name := _tile_region_name(tile_coord, details)
 	if settlement_name.is_empty():
 		settlement_name = "Unknown Dwarfhold"
 	var population := maxi(0, int(details.get("population", 0)))
@@ -1439,7 +1460,7 @@ func _open_structure_details_from_context_menu(tile_coord: Vector2i) -> void:
 		_show_structure_details_modal(tile_coord, details)
 		return
 
-	var settlement_name := String(details.get("region_name", "")).strip_edges()
+	var settlement_name := _tile_region_name(tile_coord, details)
 	if settlement_name.is_empty():
 		return
 	_show_structure_details_modal(tile_coord, details)
@@ -1455,7 +1476,7 @@ func _show_structure_details_modal(tile_coord: Vector2i, details: Dictionary) ->
 	if structure_details_dialog == null:
 		return
 
-	var settlement_name := String(details.get("region_name", "Unknown region")).strip_edges()
+	var settlement_name := _tile_region_name(tile_coord, details)
 	if settlement_name.is_empty():
 		settlement_name = "Unknown region"
 	var settlement_type := String(details.get("settlement_classification", "")).strip_edges()
@@ -1750,6 +1771,26 @@ func _variant_to_clean_string(value: Variant) -> String:
 func _string_or_unknown(value: String) -> String:
 	return value if not value.is_empty() else "Unknown"
 
+func _tile_biome_from_data(tile_data: Dictionary) -> String:
+	return _biome_id_to_string(int(tile_data.get("biome_id", _biome_to_id(BIOME_GRASSLAND))))
+
+func _tile_base_biome_from_data(tile_data: Dictionary) -> String:
+	return _biome_id_to_string(int(tile_data.get("base_biome_id", _biome_to_id(BIOME_GRASSLAND))))
+
+func _tile_hill_biome_from_data(tile_data: Dictionary) -> String:
+	return _biome_id_to_string(int(tile_data.get("hill_biome_id", _biome_to_id(BIOME_GRASSLAND))))
+
+func _tile_has_overlay_flag(tile_data: Dictionary, flag: int) -> bool:
+	return (int(tile_data.get("overlay_flags", 0)) & flag) != 0
+
+func _tile_region_name(coord: Vector2i, tile_data: Dictionary) -> String:
+	if tile_data.has("region_name"):
+		return String(tile_data.get("region_name", "")).strip_edges()
+	return String(_tile_region_names.get(coord, "")).strip_edges()
+
+func _tile_population_groups_for_coord(coord: Vector2i) -> Dictionary:
+	return _tile_population_groups.get(coord, {}) as Dictionary
+
 func _regenerate_map() -> void:
 	_show_loading_screen()
 	await get_tree().process_frame
@@ -1760,6 +1801,32 @@ func _regenerate_map() -> void:
 func _log_generation_stage(stage_name: String, started_ms: int) -> void:
 	var elapsed_ms := Time.get_ticks_msec() - started_ms
 	print("[OverworldMap] %s took %d ms" % [stage_name, elapsed_ms])
+
+func _estimate_dictionary_payload_entries(dict_value: Dictionary) -> int:
+	var entries := 0
+	for value: Variant in dict_value.values():
+		if value is Dictionary:
+			entries += (value as Dictionary).size()
+		elif value is Array:
+			entries += (value as Array).size()
+		else:
+			entries += 1
+	return entries
+
+func _log_tile_metadata_profile(total_ms: int) -> void:
+	var cells := maxi(1, _map_cell_count())
+	var core_entries := _estimate_dictionary_payload_entries(_tile_data)
+	var region_entries := _tile_region_names.size()
+	var population_entries := _estimate_dictionary_payload_entries(_tile_population_groups)
+	print("[OverworldMap] profile size=%dx%d cells=%d total=%dms tile_entries=%d region_entries=%d population_entries=%d" % [
+		map_size.x,
+		map_size.y,
+		cells,
+		total_ms,
+		core_entries,
+		region_entries,
+		population_entries
+	])
 
 func _mark_all_overlays_dirty() -> void:
 	_overlay_dirty["elevation"] = true
@@ -1787,6 +1854,7 @@ func _ensure_overlay_texture(overlay_key: String) -> void:
 			_update_political_boundaries_overlay()
 
 func _generate_map() -> void:
+	var map_generation_started_ms := Time.get_ticks_msec()
 	if map_layer == null:
 		push_error("Overworld map is missing a TileMapLayer named MapLayer.")
 		return
@@ -1811,6 +1879,10 @@ func _generate_map() -> void:
 	if settlement_layer != null:
 		settlement_layer.clear()
 	_tile_data.clear()
+	_tile_region_names.clear()
+	_tile_population_groups.clear()
+	_tooltip_cache_coord = Vector2i(-1, -1)
+	_tooltip_cache.clear()
 
 	var cell_count := _map_cell_count()
 	var height_buffer := PackedFloat32Array()
@@ -2003,6 +2075,7 @@ func _generate_map() -> void:
 		_update_globe_texture()
 	if _is_scene3d_view:
 		_update_scene3d_texture()
+	_log_tile_metadata_profile(Time.get_ticks_msec() - map_generation_started_ms)
 
 func _apply_base_tiles(base_biome_map: Dictionary) -> void:
 	for y in range(map_size.y):
@@ -2053,17 +2126,20 @@ func _apply_overlays_and_metadata(
 					overlay_label = "tree"
 				elif tree_tile == JUNGLE_TREE_TILE:
 					overlay_label = "forest"
+			var overlay_flags := 0
+			if overlay_label == "tree":
+				overlay_flags |= TILE_OVERLAY_TREE
+			elif overlay_label == "forest":
+				overlay_flags |= TILE_OVERLAY_FOREST
+			if has_river:
+				overlay_flags |= TILE_OVERLAY_RIVER
 			_tile_data[coord] = {
-				"base": base_biome,
-				"biome_type": biome,
-				"base_biome": base_biome,
-				"overlay": overlay_label,
-				"hill_overlay": highland_map.get(coord, ""),
-				"river": has_river,
+				"biome_id": _biome_to_id(biome),
+				"base_biome_id": _biome_to_id(base_biome),
+				"overlay_flags": overlay_flags,
+				"hill_biome_id": _biome_to_id(String(highland_map.get(coord, BIOME_GRASSLAND))),
 				"structure": "",
 				"structure_details": null,
-				"cultural_influence": null,
-				"cultural_influence_scores": null,
 				"ambient_structure": null,
 				"surface_variation": _surface_variation_for_coord(coord, base_biome),
 				"water_depth": _water_depth_for_coord(coord, base_biome, height_map),
@@ -2072,10 +2148,10 @@ func _apply_overlays_and_metadata(
 				"desert_proximity": float(desert_proximity_map.get(coord, 0.0)),
 				"forest_canopy_density": float(forest_proximity_map.get(coord, 0.0)),
 				"temperature": temperature_map.get(coord, 0.0),
-				"moisture": moisture_map.get(coord, 0.0),
-				"resources": _resources_for_biome(biome),
-				"region_name": region_name
+				"moisture": moisture_map.get(coord, 0.0)
 			}
+			if not region_name.is_empty():
+				_tile_region_names[coord] = region_name
 
 
 func _build_river_map_buffers(
@@ -2450,7 +2526,10 @@ func _place_volcano_tiles(highland_map: Dictionary, height_map: Dictionary, rng:
 		if _tile_data.has(coord):
 			var tile_info := _tile_data.get(coord, {}) as Dictionary
 			if not tile_info.is_empty():
-				tile_info["overlay"] = "active_volcano" if volcanoes.is_empty() else "volcano"
+				if volcanoes.is_empty():
+					tile_info["overlay_flags"] = int(tile_info.get("overlay_flags", 0)) | TILE_OVERLAY_ACTIVE_VOLCANO
+				else:
+					tile_info["overlay_flags"] = int(tile_info.get("overlay_flags", 0)) | TILE_OVERLAY_VOLCANO
 				_tile_data[coord] = tile_info
 		volcanoes.append(coord)
 
@@ -2463,7 +2542,7 @@ func _apply_oases_and_lava(volcanoes: Array[Vector2i], rng: RandomNumberGenerato
 		var tile_info := _tile_data.get(coord, {}) as Dictionary
 		if tile_info.is_empty():
 			continue
-		var base_biome := String(tile_info.get("base_biome", tile_info.get("base", BIOME_GRASSLAND)))
+		var base_biome := _tile_base_biome_from_data(tile_info)
 		var base_tile := map_layer.get_cell_atlas_coords(coord)
 		if base_biome == BIOME_DESERT and base_tile == SAND_TILE:
 			var has_adjacent_oasis := false
@@ -2498,8 +2577,8 @@ func _apply_oases_and_lava(volcanoes: Array[Vector2i], rng: RandomNumberGenerato
 					map_layer.set_cell(neighbor, _atlas_source_id, LAVA_TILE)
 					if _tile_data.has(neighbor):
 						var info := _tile_data.get(neighbor, {}) as Dictionary
-						info["base"] = BIOME_BADLANDS
-						info["base_biome"] = BIOME_BADLANDS
+						info["base_biome_id"] = _biome_to_id(BIOME_BADLANDS)
+						info["biome_id"] = _biome_to_id(BIOME_BADLANDS)
 						_tile_data[neighbor] = info
 
 
@@ -2561,10 +2640,10 @@ func _update_terrain_shading_overlay(base_biome_map: Dictionary) -> void:
 		for x in range(map_size.x):
 			var coord := Vector2i(x, y)
 			var tile_meta := _tile_data.get(coord, {}) as Dictionary
-			var base_biome := String(tile_meta.get("base_biome", base_biome_map.get(coord, BIOME_GRASSLAND)))
+			var base_biome := _tile_base_biome_from_data(tile_meta)
 			var color := Color(0, 0, 0, 0)
 			color = _apply_surface_noise_shading_to_color(color, base_biome, float(tile_meta.get("surface_variation", 0.0)))
-			color = _apply_coastal_shading_to_color(color, base_biome, String(tile_meta.get("biome_type", base_biome)), tile_meta)
+			color = _apply_coastal_shading_to_color(color, base_biome, _tile_biome_from_data(tile_meta), tile_meta)
 			shading_image.set_pixel(x, y, color)
 	var shading_texture := ImageTexture.create_from_image(shading_image)
 	terrain_shading_overlay.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -3467,10 +3546,9 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 				settlement_name = DWARFHOLD_NAMES[rng.randi_range(0, DWARFHOLD_NAMES.size() - 1)]
 			elif civilization == "lizardmen":
 				settlement_name = _generate_lizardmen_city_name(rng)
-			tile_info["region_name"] = settlement_name
+			_tile_region_names[chosen] = settlement_name
 			var civilization_label := String(CIVILIZATION_LABELS.get(civilization, civilization.capitalize()))
-			tile_info["major_population_groups"] = [civilization_label]
-			tile_info["minor_population_groups"] = []
+			_tile_population_groups[chosen] = {"major_population_groups": [civilization_label], "minor_population_groups": []}
 			tile_info["settlement_type"] = settlement_type
 			if settlement_type == "dwarfhold":
 				tile_info.merge(_generate_dwarfhold_details(settlement_name, chosen, tile, rng), true)
@@ -3496,8 +3574,10 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 					tile_info["population_breakdown"] = population_breakdown
 					tile_info["population_timeline"] = population_timeline
 					var labels := _labels_from_population_breakdown(population_breakdown)
-					tile_info["major_population_groups"] = labels.get("major", [civilization_label])
-					tile_info["minor_population_groups"] = labels.get("minor", [])
+					_tile_population_groups[chosen] = {
+						"major_population_groups": labels.get("major", [civilization_label]),
+						"minor_population_groups": labels.get("minor", [])
+					}
 			_tile_data[chosen] = tile_info
 
 
@@ -3609,7 +3689,7 @@ func _place_hostile_camps(
 		var coord := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
 		if _is_too_close(coord, occupied, min_distance):
 			continue
-		var camp_id := _select_camp_type_from_biome(String(candidate.get("base_biome", BIOME_GRASSLAND)), rng)
+		var camp_id := _select_camp_type_from_biome(_tile_base_biome_from_data(_tile_data.get(coord, {}) as Dictionary), rng)
 		var camp_def: Dictionary = {}
 		for def: Dictionary in camp_types:
 			if String(def.get("id", "")) == camp_id:
@@ -3674,10 +3754,10 @@ func _place_mines_hillholds_and_dams(
 		if _is_coord_occupied(coord, occupied):
 			continue
 		var tile_info := _tile_data.get(coord, {}) as Dictionary
-		if tile_info.is_empty() or bool(tile_info.get("river", false)):
+		if tile_info.is_empty() or _tile_has_overlay_flag(tile_info, TILE_OVERLAY_RIVER):
 			continue
-		var base_biome := String(tile_info.get("base_biome", tile_info.get("base", BIOME_GRASSLAND)))
-		var hill_overlay := String(tile_info.get("hill_overlay", ""))
+		var base_biome := _tile_base_biome_from_data(tile_info)
+		var hill_overlay := _tile_hill_biome_from_data(tile_info)
 		if base_biome == BIOME_MOUNTAIN or hill_overlay == BIOME_MOUNTAIN:
 			mountain_candidates.append({"coord": coord, "score": float(height_map.get(coord, 0.0)) + rng.randf() * 0.1})
 		elif hill_overlay == BIOME_HILLS:
@@ -3729,8 +3809,8 @@ func _place_mines_hillholds_and_dams(
 					continue
 				var left := Vector2i(x - 1, y)
 				var right := Vector2i(x + 1, y)
-				var left_hill := String((_tile_data.get(left, {}) as Dictionary).get("hill_overlay", ""))
-				var right_hill := String((_tile_data.get(right, {}) as Dictionary).get("hill_overlay", ""))
+				var left_hill := _tile_hill_biome_from_data((_tile_data.get(left, {}) as Dictionary))
+				var right_hill := _tile_hill_biome_from_data((_tile_data.get(right, {}) as Dictionary))
 				if left_hill != BIOME_MOUNTAIN or right_hill != BIOME_MOUNTAIN:
 					continue
 				if placed_dwarf_sites.is_empty() or _is_too_close(coord, placed_dwarf_sites, 12.0):
@@ -3753,9 +3833,9 @@ func _place_clergy_and_taverns(
 		if _is_coord_occupied(coord, occupied):
 			continue
 		var tile_info := _tile_data.get(coord, {}) as Dictionary
-		if tile_info.is_empty() or bool(tile_info.get("river", false)):
+		if tile_info.is_empty() or _tile_has_overlay_flag(tile_info, TILE_OVERLAY_RIVER):
 			continue
-		var base := String(tile_info.get("base_biome", tile_info.get("base", BIOME_GRASSLAND)))
+		var base := _tile_base_biome_from_data(tile_info)
 		if base == BIOME_WATER or base == BIOME_MARSH:
 			continue
 		var score := float(moisture_map.get(coord, 0.5)) + rng.randf() * 0.2
@@ -3813,7 +3893,19 @@ func _place_structure_with_details(coord: Vector2i, tile: Vector2i, structure_id
 	var tile_info := _tile_data.get(coord, {}) as Dictionary
 	tile_info["structure"] = structure_id
 	for key_variant: Variant in extra.keys():
-		tile_info[key_variant] = extra.get(key_variant)
+		var key := String(key_variant)
+		var value := extra.get(key_variant)
+		if key == "region_name":
+			var region_label := String(value).strip_edges()
+			if not region_label.is_empty():
+				_tile_region_names[coord] = region_label
+			continue
+		if key == "major_population_groups" or key == "minor_population_groups":
+			var existing := _tile_population_groups_for_coord(coord)
+			existing[key] = value
+			_tile_population_groups[coord] = existing
+			continue
+		tile_info[key_variant] = value
 	_tile_data[coord] = tile_info
 
 
@@ -3968,7 +4060,7 @@ func _assign_cultural_groups(
 		settlements,
 		factions,
 		func(_coord: Vector2i, tile_data: Dictionary) -> bool:
-			var base := String(tile_data.get("base_biome", tile_data.get("base", tile_data.get("biome_type", BIOME_GRASSLAND))))
+			var base := _tile_base_biome_from_data(tile_data)
 			return base != BIOME_WATER,
 		map_seed,
 		wood_elf_territory_info
@@ -3978,7 +4070,7 @@ func _assign_cultural_groups(
 		map_size.y,
 		_tile_data,
 		func(_coord: Vector2i, tile_data: Dictionary) -> bool:
-			var base := String(tile_data.get("base_biome", tile_data.get("base", tile_data.get("biome_type", BIOME_GRASSLAND))))
+			var base := _tile_base_biome_from_data(tile_data)
 			return base != BIOME_WATER,
 		map_seed,
 		CULTURE_TYPES.AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE
@@ -3990,15 +4082,17 @@ func _assign_cultural_groups(
 		var tooltip_data := pipeline.build_tooltip_data(tile_info)
 		if not tooltip_data.is_empty():
 			tile_info["cultural_group"] = String(tooltip_data.get("label", ""))
-			tile_info["major_population_groups"] = tooltip_data.get("major_population_groups", [])
-			tile_info["minor_population_groups"] = tooltip_data.get("minor_population_groups", [])
+			_tile_population_groups[coord] = {
+				"major_population_groups": tooltip_data.get("major_population_groups", []),
+				"minor_population_groups": tooltip_data.get("minor_population_groups", [])
+			}
 		var ambient_structure: Variant = tile_info.get("ambient_structure", null)
 		if ambient_structure is Dictionary:
 			var ambient_dict := ambient_structure as Dictionary
 			tile_info["structure"] = String(ambient_dict.get("id", "ambient"))
 			if bool(ambient_dict.get("replace_tree_overlay", false)) and tree_layer != null:
 				tree_layer.erase_cell(coord)
-				tile_info["overlay"] = ""
+				tile_info["overlay_flags"] = int(tile_info.get("overlay_flags", 0)) & ~TILE_OVERLAY_TREE & ~TILE_OVERLAY_FOREST
 			if settlement_layer != null and not tile_info.has("settlement_type") and ambient_dict.has("tile"):
 				settlement_layer.set_cell(coord, _atlas_source_id, ambient_dict.get("tile", TOWN_TILE) as Vector2i)
 		_tile_data[coord] = tile_info
@@ -4324,28 +4418,11 @@ func _is_within_tiles_of_volcano(coord: Vector2i, radius: int) -> bool:
 				return true
 	return false
 
-func _resources_for_biome(biome: String) -> Array[String]:
-	match biome:
-		BIOME_WATER:
-			return ["fish", "salt"]
-		BIOME_MOUNTAIN:
-			return ["stone", "iron", "gems"]
-		BIOME_HILLS:
-			return ["stone", "game", "herbs"]
-		BIOME_MARSH:
-			return ["reeds", "peat", "herbs"]
-		BIOME_TUNDRA:
-			return ["fur", "ice", "hardwood"]
-		BIOME_DESERT:
-			return ["spice", "glass", "salt"]
-		BIOME_BADLANDS:
-			return ["clay", "copper", "scrub"]
-		BIOME_FOREST:
-			return ["timber", "game", "berries"]
-		BIOME_JUNGLE:
-			return ["exotic wood", "fruit", "spices"]
-		_:
-			return ["grain", "livestock", "herbs"]
+func _resources_for_biome_id(biome_id: int) -> Array[String]:
+	var resolved: Array[String] = []
+	for entry: Variant in _BIOME_RESOURCES_BY_ID.get(biome_id, _BIOME_RESOURCES_BY_ID.get(_biome_to_id(BIOME_GRASSLAND), [])):
+		resolved.append(String(entry))
+	return resolved
 
 func _describe_climate(temperature: float, moisture: float) -> String:
 	var temp_label := "Mild"
@@ -5030,13 +5107,11 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	if tooltip_panel == null:
 		return
 	var data: Dictionary = _tile_data.get(coord, {})
-	var biome := String(data.get("biome_type", ""))
+	var biome := _tile_biome_from_data(data)
 	var temperature := float(data.get("temperature", 0.0))
 	var moisture := float(data.get("moisture", 0.0))
-	var resources: Array[String] = []
-	for entry: Variant in data.get("resources", []):
-		resources.append(String(entry))
-	var region_name := String(data.get("region_name", "")).strip_edges()
+	var resources := _resources_for_biome_id(int(data.get("biome_id", _biome_to_id(BIOME_GRASSLAND))))
+	var region_name := _tile_region_name(coord, data)
 	var biome_label := _humanize_biome(biome)
 	if region_name.is_empty():
 		if biome_label.is_empty():
@@ -5064,7 +5139,8 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 	)
 
 	var culture_tooltip := _culture_pipeline.build_tooltip_data(data)
-	var major_population_groups := _variant_array_to_strings(data.get("major_population_groups", []))
+	var population_groups := _tile_population_groups_for_coord(coord)
+	var major_population_groups := _variant_array_to_strings(population_groups.get("major_population_groups", []))
 	if major_population_groups.is_empty() and not culture_tooltip.is_empty():
 		major_population_groups = _variant_array_to_strings(culture_tooltip.get("major_population_groups", []))
 	major_population_groups = _dedupe_trimmed_strings(major_population_groups)
@@ -5073,7 +5149,7 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		_format_resource_list(major_population_groups),
 		not major_population_groups.is_empty()
 	)
-	var minor_population_groups := _variant_array_to_strings(data.get("minor_population_groups", []))
+	var minor_population_groups := _variant_array_to_strings(population_groups.get("minor_population_groups", []))
 	if minor_population_groups.is_empty() and not culture_tooltip.is_empty():
 		minor_population_groups = _variant_array_to_strings(culture_tooltip.get("minor_population_groups", []))
 	minor_population_groups = _dedupe_trimmed_strings(minor_population_groups)
@@ -5203,6 +5279,8 @@ func _refresh_map_tooltip(coord: Vector2i) -> void:
 		if tooltip_population_pie_chart != null and tooltip_population_pie_chart.has_method("set_slices"):
 			tooltip_population_pie_chart.call("set_slices", [])
 	tooltip_panel.size = tooltip_panel.get_combined_minimum_size()
+	_tooltip_cache_coord = coord
+	_tooltip_cache = {"region_name": region_name}
 
 func _position_map_tooltip() -> void:
 	if tooltip_panel == null:
@@ -5874,7 +5952,7 @@ func _rebuild_labels_overlay() -> void:
 		var settlement_type := String(tile_info.get("settlement_type", "")).strip_edges().to_lower()
 		if settlement_type.is_empty():
 			continue
-		var region_name := String(tile_info.get("region_name", "")).strip_edges()
+		var region_name := _tile_region_name(coord, tile_info)
 		if region_name.is_empty():
 			continue
 		var base_font_size := _label_font_size_for_settlement(settlement_type)
