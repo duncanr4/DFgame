@@ -1,5 +1,7 @@
 extends Control
 
+const WorldSettings = preload("res://scripts/world_generation/world_settings.gd")
+
 const MAP_SIZES := [
 	{
 		"key": "mini",
@@ -261,22 +263,16 @@ func _store_world_settings() -> void:
 	if world_seed.is_empty():
 		world_seed = _generate_seed()
 		seed_input.text = world_seed
-	var settings := {
-		"map_size": map_size["name"],
+	var settings := WorldSettings.merge_with_defaults({
 		"map_size_key": map_size["key"],
-		"map_dimensions": map_size["size"],
 		"world_layout": world_layout_select.get_item_text(world_layout_select.selected),
 		"world_seed": world_seed,
 		"world_name": world_name_input.text.strip_edges(),
 		"chronology": {
 			"year": int(year_input.value),
-			"age": "Age %d" % int(age_input.value)
-		},
-		"terrain": {"forest": 50, "mountain": 50, "river": 50},
-		"terrain_ratios": {"forest": 0.5, "mountain": 0.5, "river": 0.5},
-		"settlements": {"humans": 50, "dwarves": 50, "wood_elves": 50, "lizardmen": 25},
-		"settlement_ratios": {"humans": 0.5, "dwarves": 0.5, "wood_elves": 0.5, "lizardmen": 0.25}
-	}
+			"age": int(age_input.value)
+		}
+	})
 	var game_session := get_node_or_null("/root/GameSession")
 	if game_session && game_session.has_method("set_world_settings"):
 		game_session.call("set_world_settings", settings)
@@ -289,7 +285,7 @@ func _apply_cached_world_settings() -> void:
 	if settings.is_empty():
 		return
 
-	var map_size_key := str(settings.get("map_size_key", "mini"))
+	var map_size_key := str(settings.get("map_size_key", "normal"))
 	for i in MAP_SIZES.size():
 		var map_size_option: Dictionary = MAP_SIZES[i]
 		if String(map_size_option.get("key", "")) == map_size_key:
