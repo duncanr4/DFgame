@@ -2779,13 +2779,13 @@ func _run_dev_bfs_queue_benchmark() -> void:
 	if not ENABLE_DEV_BFS_BENCHMARK or not OS.is_debug_build():
 		return
 
-	var size := maxi(8, DEV_BFS_BENCHMARK_GRID_SIZE)
+	var benchmark_grid_size := maxi(8, DEV_BFS_BENCHMARK_GRID_SIZE)
 	var dense_grid: Dictionary = {}
-	for y in range(size):
-		for x in range(size):
+	for y in range(benchmark_grid_size):
+		for x in range(benchmark_grid_size):
 			dense_grid[Vector2i(x, y)] = CELL_HALL
 
-	var start_cell := Vector2i(size / 2, size / 2)
+	var start_cell := Vector2i(benchmark_grid_size / 2, benchmark_grid_size / 2)
 	var pop_front_total_usec := 0
 	var head_index_total_usec := 0
 	for _iteration in range(maxi(1, DEV_BFS_BENCHMARK_ITERATIONS)):
@@ -2800,7 +2800,7 @@ func _run_dev_bfs_queue_benchmark() -> void:
 	print("[DEV BFS BENCH] pop_front us=%d head_index us=%d (size=%d iterations=%d)" % [
 		pop_front_total_usec,
 		head_index_total_usec,
-		size,
+		benchmark_grid_size,
 		maxi(1, DEV_BFS_BENCHMARK_ITERATIONS)
 	])
 
