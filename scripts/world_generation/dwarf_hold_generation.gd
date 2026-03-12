@@ -1,5 +1,10 @@
 extends Control
 
+const DwarfHoldStateModel = preload("res://scripts/world_generation/dwarf_hold_state_model.gd")
+const DwarfHoldGenerationRules = preload("res://scripts/world_generation/dwarf_hold_generation_rules.gd")
+const DwarfHoldUiInputHandler = preload("res://scripts/world_generation/dwarf_hold_ui_input_handler.gd")
+const DwarfHoldActorVisuals = preload("res://scripts/world_generation/dwarf_hold_actor_visuals.gd")
+
 const CELL_ROCK := 0
 const CELL_HALL := 1
 const CELL_HOUSE := 2
@@ -174,12 +179,8 @@ var _hover_tooltip_layer: TileMapLayer
 var _last_move_direction := Vector2i.ZERO
 var _move_repeat_timer := 0.0
 var _npc_states: Array[Dictionary] = []
-var _generated_levels: Array[Dictionary] = []
-var _current_level_index := 0
-var _active_level_stairs: Dictionary = {}
+var _hold_state := DwarfHoldStateModel.new()
 var _pending_player_spawn_cell := Vector2i(2147483647, 2147483647)
-var _selected_hold_population := 0
-var _target_resident_npcs := 0
 
 const TAVERN_SPRITE_COLUMNS := 12
 const TAVERN_SPRITE_ROWS := 8
@@ -522,14 +523,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _is_text_input_focused():
 		return
-	if _is_move_pressed(event, "ui_left", KEY_A):
-		_handle_player_move_input(Vector2i.LEFT)
-	elif _is_move_pressed(event, "ui_right", KEY_D):
-		_handle_player_move_input(Vector2i.RIGHT)
-	elif _is_move_pressed(event, "ui_up", KEY_W):
-		_handle_player_move_input(Vector2i.UP)
-	elif _is_move_pressed(event, "ui_down", KEY_S):
-		_handle_player_move_input(Vector2i.DOWN)
+	var move_direction := DwarfHoldUiInputHandler.move_direction_from_event(event)
+	if move_direction != Vector2i.ZERO:
+		_handle_player_move_input(move_direction)
 
 func _handle_player_move_input(direction: Vector2i) -> void:
 	_request_player_move_to_cell(_player_cell + direction)
@@ -559,15 +555,7 @@ func _update_player_hold_movement(delta: float) -> void:
 		_move_repeat_timer += PLAYER_MOVE_REPEAT_INTERVAL
 
 func _current_move_input_direction() -> Vector2i:
-	if Input.is_action_pressed("ui_left"):
-		return Vector2i.LEFT
-	if Input.is_action_pressed("ui_right"):
-		return Vector2i.RIGHT
-	if Input.is_action_pressed("ui_up"):
-		return Vector2i.UP
-	if Input.is_action_pressed("ui_down"):
-		return Vector2i.DOWN
-	return Vector2i.ZERO
+	return DwarfHoldUiInputHandler.current_move_input_direction()
 
 func _reset_player_hold_state() -> void:
 	_last_move_direction = Vector2i.ZERO
@@ -711,9 +699,7 @@ func _apply_cached_dwarfhold_scene_seed() -> void:
 	if game_session == null or not game_session.has_method("get_world_settings"):
 		return
 	var settings: Dictionary = game_session.call("get_world_settings")
-	var scene_seed := String(settings.get(DWARFHOLD_SCENE_SEED_KEY, "")).strip_edges()
-	_selected_hold_population = maxi(0, int(settings.get(DWARFHOLD_SCENE_POPULATION_KEY, 0)))
-	_target_resident_npcs = int(ceil(float(_selected_hold_population) / 10.0))
+	var scene_seed := _hold_state.apply_world_settings(settings, DWARFHOLD_SCENE_SEED_KEY, DWARFHOLD_SCENE_POPULATION_KEY)
 	if scene_seed.is_empty():
 		return
 	seed_input.text = scene_seed
@@ -722,10 +708,10 @@ func _on_generate_pressed() -> void:
 	_generate_city()
 
 func _on_depth_down_pressed() -> void:
-	_show_level(_current_level_index - 1)
+	_show_level(_hold_state.current_level_index - 1)
 
 func _on_depth_up_pressed() -> void:
-	_show_level(_current_level_index + 1)
+	_show_level(_hold_state.current_level_index + 1)
 
 func _generate_city() -> void:
 	var seed_text := seed_input.text.strip_edges()
@@ -735,14 +721,14 @@ func _generate_city() -> void:
 		seed_input.text = seed_text
 
 	_rng.seed = hash(seed_text)
-	_generated_levels.clear()
+	_hold_state.generated_levels.clear()
 
 	var minimum_levels := mini(underground_level_count_range.x, underground_level_count_range.y)
 	var maximum_levels := maxi(underground_level_count_range.x, underground_level_count_range.y)
 	var level_count := maxi(1, _rng.randi_range(minimum_levels, maximum_levels))
 	for level_index in range(level_count):
 		var level_seed := "%s::depth_%d" % [seed_text, level_index]
-		_generated_levels.append(_generate_single_level(level_seed, level_index, level_count))
+		_hold_state.generated_levels.append(_generate_single_level(level_seed, level_index, level_count))
 
 	_show_level(0)
 
@@ -895,14 +881,14 @@ func _generate_single_level(level_seed: String, level_index: int, level_count: i
 	}
 
 func _show_level(target_level_index: int) -> void:
-	if _generated_levels.is_empty():
+	if _hold_state.generated_levels.is_empty():
 		depth_down_button.disabled = true
 		depth_up_button.disabled = true
 		depth_label.text = "Level 0 / 0"
 		return
 
-	_current_level_index = clampi(target_level_index, 0, _generated_levels.size() - 1)
-	var level_data := _generated_levels[_current_level_index] as Dictionary
+	_hold_state.current_level_index = clampi(target_level_index, 0, _hold_state.generated_levels.size() - 1)
+	var level_data := _hold_state.generated_levels[_hold_state.current_level_index] as Dictionary
 	var grid := level_data.get("grid", {}) as Dictionary
 	_door_cells = level_data.get("door_cells", {}) as Dictionary
 	_latest_grid = grid
@@ -910,42 +896,33 @@ func _show_level(target_level_index: int) -> void:
 	_latest_requested_zone_counts = level_data.get("requested_zone_counts", {}) as Dictionary
 	_latest_civic_buildings_by_id = level_data.get("civic_buildings_by_id", {}) as Dictionary
 	_latest_civic_building_type_map = level_data.get("civic_building_type_map", {}) as Dictionary
-	_active_level_stairs = level_data.get("stair_cells", {}) as Dictionary
+	_hold_state.active_level_stairs = level_data.get("stair_cells", {}) as Dictionary
 
 	_chest_inventories.clear()
 	_clear_chest_selection()
-	_render_city(grid, _active_level_stairs)
+	_render_city(grid, _hold_state.active_level_stairs)
 	_spawn_tavern_characters(grid)
 	_update_summary(grid, seed_input.text.strip_edges())
 	_update_zone_overlay()
 	_update_depth_controls()
 
 func _update_depth_controls() -> void:
-	var level_count := _generated_levels.size()
+	var level_count := _hold_state.generated_levels.size()
 	if level_count <= 0:
 		depth_down_button.disabled = true
 		depth_up_button.disabled = true
 		depth_label.text = "Level 0 / 0"
 		return
-	depth_down_button.disabled = _current_level_index <= 0
-	depth_up_button.disabled = _current_level_index >= level_count - 1
-	depth_label.text = "Level %d / %d" % [_current_level_index + 1, level_count]
+	depth_down_button.disabled = _hold_state.current_level_index <= 0
+	depth_up_button.disabled = _hold_state.current_level_index >= level_count - 1
+	depth_label.text = "Level %d / %d" % [_hold_state.current_level_index + 1, level_count]
 
 
 func _pick_seeded_zone_target(count_range: Vector2i) -> int:
-	var minimum := mini(count_range.x, count_range.y)
-	var maximum := maxi(count_range.x, count_range.y)
-	return _rng.randi_range(minimum, maximum)
+	return DwarfHoldGenerationRules.pick_seeded_zone_target(_rng, count_range)
 
 func _target_npcs_for_level(level_index: int, level_count: int) -> int:
-	if _target_resident_npcs <= 0:
-		return 0
-	var safe_level_count := maxi(level_count, 1)
-	var base_target := _target_resident_npcs / safe_level_count
-	var remainder := _target_resident_npcs % safe_level_count
-	if level_index < remainder:
-		return base_target + 1
-	return base_target
+	return _hold_state.target_npcs_for_level(level_index, level_count)
 
 func _pick_civic_building_type() -> String:
 	var total_weight := 0.0
@@ -2029,23 +2006,22 @@ func _is_component_wall_adjacent(cell: Vector2i, occupied: Dictionary) -> bool:
 	return false
 
 func _on_city_panel_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		var mouse_button := event as InputEventMouseButton
-		if mouse_button.button_index == MOUSE_BUTTON_MIDDLE or mouse_button.button_index == MOUSE_BUTTON_RIGHT:
-			_is_panning = mouse_button.pressed
-		if mouse_button.pressed:
-			if mouse_button.button_index == MOUSE_BUTTON_LEFT:
-				_handle_player_click_action(mouse_button.position)
-			if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP:
-				_apply_zoom(ZOOM_STEP, mouse_button.position)
-			elif mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				_apply_zoom(-ZOOM_STEP, mouse_button.position)
-	if event is InputEventMouseMotion and _is_panning:
-		var motion := event as InputEventMouseMotion
-		_pan_offset += motion.relative
-		_update_city_layer_transform()
-	if event is InputEventMouse:
-		_update_hover_tooltip((event as InputEventMouse).position)
+	_is_panning = DwarfHoldUiInputHandler.handle_city_panel_event(
+		event,
+		Callable(self, "_handle_player_click_action"),
+		Callable(self, "_apply_zoom"),
+		Callable(self, "_update_hover_tooltip"),
+		Callable(self, "_set_is_panning"),
+		_is_panning,
+		Callable(self, "_pan_city_view"),
+		Callable(self, "_update_city_layer_transform")
+	)
+
+func _set_is_panning(value: bool) -> void:
+	_is_panning = value
+
+func _pan_city_view(delta: Vector2) -> void:
+	_pan_offset += delta
 
 func _apply_zoom(zoom_delta: float, focus_position: Vector2) -> void:
 	var previous_zoom := _zoom_level
@@ -2142,52 +2118,20 @@ func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
 	return cells
 
 func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
-	var sprite := Sprite2D.new()
-	sprite.texture = _placeholder_actor_texture
-	sprite.region_enabled = false
-	sprite.centered = true
-	sprite.modulate = _placeholder_actor_color(character_slot)
-	sprite.scale = Vector2(float(tile_size.x), float(tile_size.y)) * 0.45
-	return sprite
+	return DwarfHoldActorVisuals.create_tavern_character_sprite(_placeholder_actor_texture, character_slot, tile_size)
 
 func _create_player_character_sprite() -> Sprite2D:
-	if _shattered_player_texture == null:
-		var fallback_sprite := _create_tavern_character_sprite(0)
-		fallback_sprite.modulate = Color(0.98, 0.95, 0.70, 1.0)
-		return fallback_sprite
-
-	var sprite := Sprite2D.new()
-	sprite.texture = _shattered_player_texture
-	sprite.region_enabled = true
-	sprite.centered = true
-	sprite.modulate = Color.WHITE
-	var source_size := _shattered_player_texture.get_size()
-	var source_tile_size := Vector2i(16, 16)
-	if source_size.x > 0 and source_size.y > 0:
-		source_tile_size.x = maxi(1, mini(16, source_size.x))
-		source_tile_size.y = maxi(1, mini(16, source_size.y))
-	sprite.region_rect = Rect2(Vector2.ZERO, Vector2(source_tile_size))
-	sprite.scale = Vector2(float(tile_size.x) / float(source_tile_size.x), float(tile_size.y) / float(source_tile_size.y)) * 0.9
-	return sprite
+	return DwarfHoldActorVisuals.create_player_character_sprite(
+		_shattered_player_texture,
+		tile_size,
+		Callable(self, "_create_tavern_character_sprite")
+	)
 
 func _create_placeholder_actor_texture() -> Texture2D:
-	var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
-	image.fill(Color.WHITE)
-	return ImageTexture.create_from_image(image)
+	return DwarfHoldActorVisuals.create_placeholder_actor_texture()
 
 func _placeholder_actor_color(character_slot: int) -> Color:
-	var palette := [
-		Color(0.92, 0.82, 0.55, 1.0),
-		Color(0.75, 0.34, 0.30, 1.0),
-		Color(0.31, 0.61, 0.84, 1.0),
-		Color(0.38, 0.72, 0.44, 1.0),
-		Color(0.74, 0.49, 0.84, 1.0),
-		Color(0.90, 0.66, 0.26, 1.0),
-		Color(0.41, 0.75, 0.74, 1.0),
-		Color(0.62, 0.62, 0.67, 1.0)
-	]
-	var index := posmod(character_slot, palette.size())
-	return palette[index]
+	return DwarfHoldActorVisuals.placeholder_actor_color(character_slot)
 
 func _handle_player_click_action(mouse_position: Vector2) -> void:
 	if _player_sprite == null or not _player_control_enabled:
@@ -2229,17 +2173,17 @@ func _request_player_move_to_cell(target_cell: Vector2i) -> void:
 		_update_player_turn_movement(0.0)
 
 func _try_use_stairs_at_player_cell() -> bool:
-	if _generated_levels.is_empty() or _current_level_index < 0 or _current_level_index >= _generated_levels.size():
+	if _hold_state.generated_levels.is_empty() or _hold_state.current_level_index < 0 or _hold_state.current_level_index >= _hold_state.generated_levels.size():
 		return false
 
 	var stair_direction := _stair_direction_at_cell(_player_cell)
-	if stair_direction == "down" and _current_level_index < _generated_levels.size() - 1:
-		var destination_index := _current_level_index + 1
+	if stair_direction == "down" and _hold_state.current_level_index < _hold_state.generated_levels.size() - 1:
+		var destination_index := _hold_state.current_level_index + 1
 		_pending_player_spawn_cell = _resolve_stair_spawn_cell(destination_index, "up", _player_cell)
 		_show_level(destination_index)
 		return true
-	if stair_direction == "up" and _current_level_index > 0:
-		var destination_index := _current_level_index - 1
+	if stair_direction == "up" and _hold_state.current_level_index > 0:
+		var destination_index := _hold_state.current_level_index - 1
 		_pending_player_spawn_cell = _resolve_stair_spawn_cell(destination_index, "down", _player_cell)
 		_show_level(destination_index)
 		return true
@@ -2257,9 +2201,9 @@ func _stair_direction_at_cell(cell: Vector2i) -> String:
 	return ""
 
 func _resolve_stair_spawn_cell(level_index: int, preferred_stair: String, fallback_cell: Vector2i) -> Vector2i:
-	if level_index < 0 or level_index >= _generated_levels.size():
+	if level_index < 0 or level_index >= _hold_state.generated_levels.size():
 		return fallback_cell
-	var level_data := _generated_levels[level_index] as Dictionary
+	var level_data := _hold_state.generated_levels[level_index] as Dictionary
 	var stairs := level_data.get("stair_cells", {}) as Dictionary
 	if stairs.has(preferred_stair):
 		return stairs[preferred_stair] as Vector2i
@@ -2408,47 +2352,16 @@ func _update_npc_movement(delta: float) -> void:
 		state["frame_elapsed"] = frame_elapsed
 
 func _pick_random_wander_direction() -> Vector2:
-	var directions: Array[Vector2] = [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]
-	return directions[_rng.randi_range(0, directions.size() - 1)]
+	return DwarfHoldGenerationRules.pick_random_wander_direction(_rng)
 
 func _create_placeholder_tavern_character_texture() -> Texture2D:
-	var frame_size := Vector2i(16, 16)
-	var texture_size := Vector2i(TAVERN_SPRITE_COLUMNS * frame_size.x, TAVERN_SPRITE_ROWS * frame_size.y)
-	var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0.0, 0.0, 0.0, 0.0))
-
-	var base_palette := [
-		Color(0.86, 0.29, 0.29, 1.0),
-		Color(0.31, 0.73, 0.38, 1.0),
-		Color(0.29, 0.53, 0.86, 1.0),
-		Color(0.85, 0.69, 0.25, 1.0),
-		Color(0.71, 0.36, 0.84, 1.0),
-		Color(0.23, 0.76, 0.77, 1.0),
-		Color(0.88, 0.47, 0.16, 1.0),
-		Color(0.52, 0.61, 0.22, 1.0)
-	]
-
-	for slot in TAVERN_CHARACTER_SLOT_COUNT:
-		var slot_column := slot % 4
-		var slot_row := slot / 4
-		var base_color: Color = base_palette[slot % base_palette.size()]
-		for facing in TAVERN_CHARACTER_ROWS:
-			for frame in TAVERN_CHARACTER_COLUMNS:
-				var atlas_column := slot_column * TAVERN_CHARACTER_COLUMNS + frame
-				var atlas_row := slot_row * TAVERN_CHARACTER_ROWS + facing
-				var top_left := Vector2i(atlas_column * frame_size.x, atlas_row * frame_size.y)
-
-				var brightness := 0.85 + (0.07 * frame) + (0.03 * facing)
-				var fill_color := base_color * brightness
-				fill_color.a = 1.0
-				image.fill_rect(Rect2i(top_left, frame_size), fill_color)
-
-				var eye_y := top_left.y + 4
-				image.set_pixel(top_left.x + 5, eye_y, Color(0.1, 0.1, 0.1, 1.0))
-				image.set_pixel(top_left.x + 10, eye_y, Color(0.1, 0.1, 0.1, 1.0))
-				image.fill_rect(Rect2i(top_left + Vector2i(4, 11), Vector2i(8, 2)), Color(0.14, 0.14, 0.14, 1.0))
-
-	return ImageTexture.create_from_image(image)
+	return DwarfHoldActorVisuals.create_placeholder_tavern_character_texture(
+		TAVERN_SPRITE_COLUMNS,
+		TAVERN_SPRITE_ROWS,
+		TAVERN_CHARACTER_ROWS,
+		TAVERN_CHARACTER_COLUMNS,
+		TAVERN_CHARACTER_SLOT_COUNT
+	)
 
 func _is_walkable_cell(cell: Vector2i) -> bool:
 	if _latest_grid.is_empty():
@@ -2646,13 +2559,13 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var requested_houses := int(_latest_requested_zone_counts.get("houses", 0))
 	var requested_buildings := int(_latest_requested_zone_counts.get("buildings", 0))
 	var requested_plazas := int(_latest_requested_zone_counts.get("plazas", 0))
-	var expected_npcs := int(ceil(float(_selected_hold_population) / 10.0))
+	var expected_npcs := int(ceil(float(_hold_state.selected_hold_population) / 10.0))
 
 	var building_subtype_summary := _building_subtype_summary_text()
 	city_summary.text = "Seed %s\nDepth: %d / %d\nBounds: %dx%d (origin %d, %d)\nHalls: %d/%d | Houses: %d/%d | Buildings: %d/%d | Plazas: %d/%d" % [
 		seed_text,
-		_current_level_index + 1,
-		maxi(_generated_levels.size(), 1),
+		_hold_state.current_level_index + 1,
+		maxi(_hold_state.generated_levels.size(), 1),
 		bounds.size.x,
 		bounds.size.y,
 		bounds.position.x,
@@ -2667,7 +2580,7 @@ func _update_summary(grid: Dictionary, seed_text: String) -> void:
 		requested_plazas
 	]
 	if expected_npcs > 0:
-		city_summary.text += "\nHold Population: %d (target residents in-scene: %d at 10:1)" % [_selected_hold_population, expected_npcs]
+		city_summary.text += "\nHold Population: %d (target residents in-scene: %d at 10:1)" % [_hold_state.selected_hold_population, expected_npcs]
 	if not building_subtype_summary.is_empty():
 		city_summary.text += "\nBuilding Types: %s" % building_subtype_summary
 
