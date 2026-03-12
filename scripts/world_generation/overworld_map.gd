@@ -76,6 +76,10 @@ const WORLD_NAMING := preload("res://scripts/world_generation/world_naming.gd")
 const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
 const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
 const CULTURAL_INFLUENCE := preload("res://scripts/world_generation/cultural_influence.gd")
+const OVERWORLD_GENERATION := preload("res://scripts/world_generation/overworld_generation.gd")
+const OVERWORLD_RENDERING := preload("res://scripts/world_generation/overworld_rendering.gd")
+const OVERWORLD_INTERACTION := preload("res://scripts/world_generation/overworld_interaction.gd")
+const OVERWORLD_CONTENT := preload("res://scripts/world_generation/overworld_content.gd")
 
 const ATLAS_TEXTURE := TILE_ATLAS_DEFS.ATLAS_TEXTURE
 const SAND_TILE := TILE_ATLAS_DEFS.SAND_TILE
@@ -163,63 +167,6 @@ const SETTLEMENT_TILES := {
 	"lizardmenCity": [LIZARDMEN_CITY_TILE]
 }
 
-const SETTLEMENT_NAMES := {
-	"dwarves": "Dwarven Hold",
-	"humans": "Town",
-	"wood_elves": "Grove",
-	"lizardmen": "Lizard City"
-}
-const LIZARDMEN_CITY_NAME_PREFIXES: Array[String] = ["Ix", "Zan", "Tla", "Chal", "Maz", "Quet", "Ssz", "Olo", "Yax", "Huac"]
-const LIZARDMEN_CITY_NAME_SUFFIXES: Array[String] = ["atl", "tlan", "co", "maz", "naka", "zotl", "chan", "poc", "quil", "pan"]
-const LIZARDMEN_CITY_NAME_SEPARATORS: Array[String] = ["'", "-"]
-const LIZARDMEN_CITY_EXTRA_SUFFIX_CHANCE := 0.25
-const SETTLEMENT_HISTORY_EVENT_POOL := {
-	"human": [
-		"the entire town militia was conscripted by the Crown to fight in the Goblin Wars.",
-		"townsfolk dragged a corrupt guard captain from office and reclaimed the watch.",
-		"a major famine left nearly half the town dead or gone.",
-		"orc raiders burned the western quarter before the watch rallied.",
-		"merchants brokered a charter guaranteeing grain tithes from the riverlands.",
-		"the Night of Lanterns was first celebrated with bonfires on the green.",
-		"a shrine to Saint Lyra was dedicated, drawing pilgrims from afar.",
-		"the local guild council seized control of civic trade for a generation."
-	],
-	"dwarven": [
-		"an orc war-host lay siege to the gates, but the defenders held firm.",
-		"the dragon Kharazhul scorched the upper terraces before being driven into the deeps.",
-		"Stonebeard Reserve was first brewed in the hold's brass halls.",
-		"stonewrights completed the Deepgate Bastion.",
-		"miners breached an ancient vault filled with glimmering mithril.",
-		"the Ironwrights forged a new charter beneath the basalt vaults.",
-		"the Embervein Clan rose to become the largest clan in the hold."
-	],
-	"dwarven_variant_abandoned": [
-		"the last thane sealed the gates and led the clans to safer halls.",
-		"cataclysmic quakes shattered the underways and toppled the great halls."
-	],
-	"wood_elf": [
-		"the Circle of the Silver Bough sealed a rift to the Feywild.",
-		"wardens drove back ironwood poachers from the sacred trees.",
-		"Rite of the Whispered Glade was first danced beneath the luminous canopy.",
-		"a comet painted the canopy in emerald light.",
-		"dwarven emissaries were welcomed into the grove for counsel.",
-		"the sworn wardens renewed their oath to guard the Heartroot."
-	],
-	"lizardmen": [
-		"the oracles proclaimed the eclipse of twin suns, reshaping temple rites.",
-		"scale-priests led the War of Emerald Spears, sending legions into the jungles.",
-		"pyramid terraces were carved to honor the gods.",
-		"saurus cohorts swore fealty to the ruling temple.",
-		"the temple order warded the vaults against serpent cultists."
-	],
-	"generic": [
-		"an uncanny aurora shimmered overhead for seven nights.",
-		"a council of elders forged new laws to guide the settlement.",
-		"travelers from distant realms brought tales and rare curiosities.",
-		"mysterious lights danced above the hills.",
-		"craftsfolk raised a hall that became the heart of the community."
-	]
-}
 const DWARFHOLD_NEARBY_TOWN_RADIUS := 12.0
 const RIVER_NEIGHBOR_DEFINITIONS := [
 	{"offset": Vector2i(0, -1), "key": "N", "bit": 1},
@@ -1328,10 +1275,10 @@ func _get_tile_coord_from_global_position(world_pos: Vector2) -> Vector2i:
 	return map_layer.local_to_map(local_mouse)
 
 func _is_valid_map_coord(coord: Vector2i) -> bool:
-	return coord.x >= 0 and coord.y >= 0 and coord.x < map_size.x and coord.y < map_size.y
+	return OVERWORLD_INTERACTION.is_valid_map_coord(coord, map_size)
 
 func _map_cell_count() -> int:
-	return maxi(0, map_size.x * map_size.y)
+	return OVERWORLD_GENERATION.map_cell_count(map_size)
 
 func _coord_to_index(coord: Vector2i) -> int:
 	return coord.y * map_size.x + coord.x
@@ -1340,9 +1287,7 @@ func _xy_to_index(x: int, y: int) -> int:
 	return y * map_size.x + x
 
 func _index_to_coord(index: int) -> Vector2i:
-	if map_size.x <= 0:
-		return Vector2i.ZERO
-	return Vector2i(index % map_size.x, index / map_size.x)
+	return OVERWORLD_GENERATION.index_to_coord(index, map_size)
 
 func _biome_to_id(biome: String) -> int:
 	return int(_BIOME_TO_ID.get(biome, int(_BIOME_TO_ID[BIOME_GRASSLAND])))
@@ -1636,7 +1581,7 @@ func _build_settlement_history_timeline(
 		current_year = 1000
 	var founding_year := current_year - maxi(1, founded_years_ago)
 	var history_kind := _resolve_history_kind(details)
-	var event_pool := _resolve_history_event_pool(history_kind)
+	var event_pool := OVERWORLD_CONTENT.resolve_history_event_pool(history_kind)
 
 	var seed_basis := "%s|%s|%s|%s" % [
 		settlement_name,
@@ -1688,18 +1633,6 @@ func _build_settlement_history_timeline(
 	if rows.is_empty():
 		return "No historical records are currently available."
 	return "\n".join(rows)
-
-func _resolve_history_event_pool(history_kind: String) -> Array[String]:
-	var fallback_events: Variant = SETTLEMENT_HISTORY_EVENT_POOL.get("generic", [])
-	var selected_events: Variant = SETTLEMENT_HISTORY_EVENT_POOL.get(history_kind, fallback_events)
-	var source: Variant = selected_events if selected_events is Array else fallback_events
-	var event_pool: Array[String] = []
-	if source is Array:
-		for entry: Variant in source:
-			var text := String(entry).strip_edges()
-			if not text.is_empty():
-				event_pool.append(text)
-	return event_pool
 
 func _resolve_history_kind(details: Dictionary) -> String:
 	var settlement_type := String(details.get("settlement_type", "")).strip_edges().to_lower()
@@ -3580,11 +3513,11 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			var tile_info: Dictionary = {}
 			if _tile_data.has(chosen):
 				tile_info = _tile_data[chosen] as Dictionary
-			var settlement_name: String = String(SETTLEMENT_NAMES.get(civilization, "Settlement"))
+			var settlement_name: String = String(OVERWORLD_CONTENT.SETTLEMENT_NAMES.get(civilization, "Settlement"))
 			if civilization == "dwarves" and not DWARFHOLD_NAMES.is_empty():
 				settlement_name = DWARFHOLD_NAMES[rng.randi_range(0, DWARFHOLD_NAMES.size() - 1)]
 			elif civilization == "lizardmen":
-				settlement_name = _generate_lizardmen_city_name(rng)
+				settlement_name = OVERWORLD_CONTENT.generate_lizardmen_city_name(rng)
 			_tile_region_names[chosen] = settlement_name
 			var civilization_label := String(CIVILIZATION_LABELS.get(civilization, civilization.capitalize()))
 			_tile_population_groups[chosen] = {"major_population_groups": [civilization_label], "minor_population_groups": []}
@@ -4507,18 +4440,6 @@ func _generate_biome_region_name(
 	context_size: int
 ) -> String:
 	return WORLD_NAMING.generate_biome_region_name(biome, water_body_type, rng, context_size)
-
-func _generate_lizardmen_city_name(rng: RandomNumberGenerator) -> String:
-	var prefix := _pick_random_entry(LIZARDMEN_CITY_NAME_PREFIXES, rng, "Ix")
-	var suffix := _pick_random_entry(LIZARDMEN_CITY_NAME_SUFFIXES, rng, "atl")
-	var city_name := "%s%s" % [prefix, suffix]
-	if rng.randf() < 0.5:
-		var separator := _pick_random_entry(LIZARDMEN_CITY_NAME_SEPARATORS, rng, "")
-		city_name = "%s%s%s" % [prefix, separator, suffix]
-	if rng.randf() < LIZARDMEN_CITY_EXTRA_SUFFIX_CHANCE:
-		var extra_suffix := _pick_random_entry(LIZARDMEN_CITY_NAME_SUFFIXES, rng, "pan")
-		city_name += extra_suffix
-	return city_name
 
 func _pick_random_entry(options: Array[String], rng: RandomNumberGenerator, fallback: String = "") -> String:
 	if options.is_empty():
@@ -5798,9 +5719,7 @@ func _update_temperature_overlay() -> void:
 	_update_temperature_overlay_visibility()
 
 func _temperature_to_color(temperature: float) -> Color:
-	var cold := Color(0.2, 0.45, 1.0, 0.45)
-	var hot := Color(1.0, 0.25, 0.1, 0.45)
-	return cold.lerp(hot, clampf(temperature, 0.0, 1.0))
+	return OVERWORLD_RENDERING.temperature_to_color(temperature)
 
 func _update_temperature_overlay_visibility() -> void:
 	if temperature_overlay == null:
@@ -5828,28 +5747,7 @@ func _update_elevation_overlay() -> void:
 	_update_elevation_overlay_visibility()
 
 func _elevation_to_color(height: float) -> Color:
-	var alpha := 0.45
-	var deep_water := Color(0.0, 0.2, 0.55, alpha)
-	var shallow_water := Color(0.1, 0.5, 0.85, alpha)
-	var lowland := Color(0.2, 0.6, 0.35, alpha)
-	var highland := Color(0.6, 0.5, 0.25, alpha)
-	var snow := Color(0.92, 0.92, 0.96, alpha)
-	if height < water_level:
-		var water_ratio := clampf(height / maxf(water_level, 0.001), 0.0, 1.0)
-		return deep_water.lerp(shallow_water, water_ratio)
-	if height < mountain_level:
-		var land_ratio := clampf(
-			(height - water_level) / maxf(mountain_level - water_level, 0.001),
-			0.0,
-			1.0
-		)
-		return lowland.lerp(highland, land_ratio)
-	var mountain_ratio := clampf(
-		(height - mountain_level) / maxf(1.0 - mountain_level, 0.001),
-		0.0,
-		1.0
-	)
-	return highland.lerp(snow, mountain_ratio)
+	return OVERWORLD_RENDERING.elevation_to_color(height, water_level, mountain_level)
 
 func _update_elevation_overlay_visibility() -> void:
 	if elevation_overlay == null:
@@ -5878,9 +5776,7 @@ func _update_moisture_overlay() -> void:
 	_update_moisture_overlay_visibility()
 
 func _moisture_to_color(moisture: float) -> Color:
-	var dry := Color(0.55, 0.35, 0.18, 0.45)
-	var wet := Color(0.15, 0.55, 0.9, 0.45)
-	return dry.lerp(wet, clampf(moisture, 0.0, 1.0))
+	return OVERWORLD_RENDERING.moisture_to_color(moisture)
 
 func _update_moisture_overlay_visibility() -> void:
 	if moisture_overlay == null:
@@ -6176,7 +6072,7 @@ func _add_route_edge(a: Vector2i, b: Vector2i, edge_set: Dictionary) -> void:
 	_route_segments.append(PackedVector2Array([start, end]))
 
 func _map_cell_center(coord: Vector2i) -> Vector2:
-	return (Vector2(coord) + Vector2(0.5, 0.5)) * float(tile_size)
+	return OVERWORLD_INTERACTION.map_cell_center(coord, tile_size)
 
 func _refresh_routes_overlay_lines() -> void:
 	if routes_overlay == null:
@@ -6200,29 +6096,7 @@ func _refresh_routes_overlay_lines() -> void:
 	_update_routes_overlay_visibility()
 
 func _biome_to_overlay_color(biome: String) -> Color:
-	var alpha := 0.45
-	match biome:
-		BIOME_WATER:
-			return Color(0.1, 0.35, 0.75, alpha)
-		BIOME_MOUNTAIN:
-			return Color(0.55, 0.55, 0.6, alpha)
-		BIOME_HILLS:
-			return Color(0.6, 0.45, 0.25, alpha)
-		BIOME_MARSH:
-			return Color(0.2, 0.6, 0.45, alpha)
-		BIOME_TUNDRA:
-			return Color(0.75, 0.8, 0.9, alpha)
-		BIOME_DESERT:
-			return Color(0.9, 0.75, 0.35, alpha)
-		BIOME_BADLANDS:
-			return Color(0.7, 0.35, 0.25, alpha)
-		BIOME_FOREST:
-			return Color(0.2, 0.55, 0.25, alpha)
-		BIOME_JUNGLE:
-			return Color(0.15, 0.45, 0.2, alpha)
-		BIOME_GRASSLAND:
-			return Color(0.35, 0.7, 0.35, alpha)
-	return Color(0.5, 0.5, 0.5, alpha)
+	return OVERWORLD_RENDERING.biome_to_overlay_color(biome)
 
 func _update_biome_overlay_visibility() -> void:
 	if biome_overlay == null:
