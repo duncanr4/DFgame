@@ -1896,6 +1896,8 @@ func _generate_map() -> void:
 	var base_biome_buffer := PackedByteArray()
 	base_biome_buffer.resize(cell_count)
 	var highland_map: Dictionary = {}
+	var generation_memory_before := _current_generation_memory_bytes()
+	var generation_peak_memory := generation_memory_before
 
 	var rng := RandomNumberGenerator.new()
 	var name_rng := RandomNumberGenerator.new()
@@ -1964,6 +1966,7 @@ func _generate_map() -> void:
 			await _yield_generation_wave()
 
 	_smooth_height_buffer(height_buffer, 1, 0.35)
+	generation_peak_memory = _sample_generation_memory_peak(generation_peak_memory, "height smoothing")
 	_ensure_landmass_presence_buffer(height_buffer)
 	var height_map_for_biome := _float_buffer_to_dictionary(height_buffer)
 
@@ -1983,6 +1986,7 @@ func _generate_map() -> void:
 			await _yield_generation_wave()
 
 	_guarantee_minimum_landmass_buffer(height_buffer, temperature_buffer, moisture_buffer, base_biome_buffer)
+	generation_peak_memory = _sample_generation_memory_peak(generation_peak_memory, "climate sampling")
 	var height_map := _float_buffer_to_dictionary(height_buffer)
 	var temperature_map := _float_buffer_to_dictionary(temperature_buffer)
 	var moisture_map := _float_buffer_to_dictionary(moisture_buffer)
@@ -1991,6 +1995,7 @@ func _generate_map() -> void:
 	_landmass_masks = _generate_landmass_masks_from_biome_map(base_biome_map)
 
 	_smooth_biomes(base_biome_map, 2)
+	generation_peak_memory = _sample_generation_memory_peak(generation_peak_memory, "biome smoothing")
 	if _count_biome(base_biome_map, BIOME_DESERT) == 0:
 		_seed_desert_biomes(base_biome_map, temperature_map, moisture_map, height_map)
 		_smooth_biomes(base_biome_map, 1)
@@ -2004,13 +2009,15 @@ func _generate_map() -> void:
 		height_map,
 		rng
 	)
+	generation_peak_memory = _sample_generation_memory_peak(generation_peak_memory, "tree overlays")
 	highland_map = _build_highland_overlays(base_biome_map, height_map)
 	var river_map := _build_river_map_buffers(height_buffer, moisture_buffer, base_biome_buffer, rng)
 	var edge_connected_water := _compute_edge_connected_water_mask(base_biome_map)
 	var river_tiles := _apply_river_tiles(river_map, base_biome_map, highland_map, tree_map, edge_connected_water)
-	var biome_map: Dictionary = tree_biome_map.duplicate()
+	var biome_map: Dictionary = tree_biome_map
 	for coord: Vector2i in highland_map.keys():
 		biome_map[coord] = highland_map[coord]
+	generation_peak_memory = _sample_generation_memory_peak(generation_peak_memory, "highland overlays")
 
 	var generation_started_ms := Time.get_ticks_msec()
 	await _apply_base_tiles(base_biome_map)
@@ -2046,6 +2053,7 @@ func _generate_map() -> void:
 	_rebuild_labels_overlay()
 	_assign_cultural_groups(biome_map, temperature_map, moisture_map, height_map, rng)
 	_log_generation_stage("settlements and culture", generation_started_ms)
+	generation_peak_memory = _sample_generation_memory_peak(generation_peak_memory, "settlements and culture")
 	_height_buffer = height_buffer
 	_temperature_buffer = temperature_buffer
 	_moisture_buffer = moisture_buffer
@@ -2075,6 +2083,8 @@ func _generate_map() -> void:
 		_update_globe_texture()
 	if _is_scene3d_view:
 		_update_scene3d_texture()
+	var generation_memory_after := _current_generation_memory_bytes()
+	print("Overworld generation memory bytes (before/after/peak): %d / %d / %d" % [generation_memory_before, generation_memory_after, generation_peak_memory])
 	_log_tile_metadata_profile(Time.get_ticks_msec() - map_generation_started_ms)
 
 func _apply_base_tiles(base_biome_map: Dictionary) -> void:
@@ -3160,8 +3170,9 @@ func _apply_tree_overlays(
 	rng: RandomNumberGenerator
 ) -> Dictionary:
 	var tree_map: Dictionary = {}
-	var next_map := biome_map.duplicate()
-	var tree_source_map := biome_map.duplicate()
+	var tree_source_map: Dictionary = {}
+	var tree_work_map: Dictionary = {}
+	var original_biomes: Dictionary = {}
 	var tree_density_map: Dictionary = {}
 	var density_threshold := maxf(0.2, forest_threshold * 0.55)
 	for coord: Vector2i in biome_map.keys():
@@ -3199,14 +3210,19 @@ func _apply_tree_overlays(
 		var seed_temperature: float = temperature_map.get(coord, 0.0)
 		var seed_moisture: float = moisture_map.get(coord, 0.0)
 		var seed_biome := _tree_overlay_biome(seed_temperature, seed_moisture)
-		next_map[coord] = seed_biome
+		if not original_biomes.has(coord):
+			original_biomes[coord] = biome_map.get(coord, BIOME_GRASSLAND)
+		biome_map[coord] = seed_biome
 		tree_map[coord] = seed_biome
 		tree_source_map[coord] = seed_biome
 
 	for _spread_pass in range(3):
 		var grown_this_pass := false
+		tree_work_map.clear()
+		for coord: Vector2i in tree_source_map.keys():
+			tree_work_map[coord] = tree_source_map[coord]
 		for coord: Vector2i in tree_density_map.keys():
-			if tree_map.has(coord):
+			if tree_source_map.has(coord):
 				continue
 			var density: float = tree_density_map.get(coord, 0.0)
 			if density <= 0.12:
@@ -3221,19 +3237,24 @@ func _apply_tree_overlays(
 			var temperature: float = temperature_map.get(coord, 0.0)
 			var moisture: float = moisture_map.get(coord, 0.0)
 			var tree_biome := _tree_overlay_biome(temperature, moisture)
-			next_map[coord] = tree_biome
-			tree_map[coord] = tree_biome
+			if not original_biomes.has(coord):
+				original_biomes[coord] = biome_map.get(coord, BIOME_GRASSLAND)
+			biome_map[coord] = tree_biome
+			tree_work_map[coord] = tree_biome
 			grown_this_pass = true
 		if not grown_this_pass:
 			break
-		tree_source_map = next_map.duplicate()
+		var swap := tree_source_map
+		tree_source_map = tree_work_map
+		tree_work_map = swap
+	tree_map = tree_source_map
 
 	var cleaned_tree_map := tree_map.duplicate()
 	for coord: Vector2i in tree_map.keys():
 		if _is_adjacent_to_biomes(coord, biome_map, [BIOME_DESERT, BIOME_BADLANDS]):
 			if rng.randf() < 0.42:
 				cleaned_tree_map.erase(coord)
-				next_map[coord] = biome_map.get(coord, BIOME_GRASSLAND)
+				biome_map[coord] = original_biomes.get(coord, BIOME_GRASSLAND)
 	for coord: Vector2i in cleaned_tree_map.keys():
 		var tree_neighbors := _count_tree_neighbors_in_map(coord, cleaned_tree_map)
 		if tree_neighbors > 0:
@@ -3261,10 +3282,7 @@ func _apply_tree_overlays(
 		for i in range(mini(remove_total, trim_entries.size())):
 			var coord_to_remove: Vector2i = trim_entries[i].get("coord", Vector2i.ZERO)
 			cleaned_tree_map.erase(coord_to_remove)
-			next_map[coord_to_remove] = biome_map.get(coord_to_remove, BIOME_GRASSLAND)
-	biome_map.clear()
-	for coord: Vector2i in next_map.keys():
-		biome_map[coord] = next_map[coord]
+			biome_map[coord_to_remove] = original_biomes.get(coord_to_remove, BIOME_GRASSLAND)
 	return cleaned_tree_map
 
 
@@ -3372,11 +3390,14 @@ func _is_marsh(coord: Vector2i, height: float, moisture: float, height_map: Dict
 
 
 func _smooth_biomes(biome_map: Dictionary, passes: int) -> void:
-	for pass_index in range(passes):
-		var next_map := biome_map.duplicate()
-		for coord: Vector2i in biome_map.keys():
-			var current: String = biome_map.get(coord, BIOME_GRASSLAND)
+	var read_map := biome_map
+	var write_map: Dictionary = {}
+	for _pass_index in range(passes):
+		write_map.clear()
+		for coord: Vector2i in read_map.keys():
+			var current: String = read_map.get(coord, BIOME_GRASSLAND)
 			if current == BIOME_WATER || current == BIOME_MOUNTAIN:
+				write_map[coord] = current
 				continue
 			var neighbor_counts: Dictionary = {}
 			for offset: Vector2i in [
@@ -3390,7 +3411,7 @@ func _smooth_biomes(biome_map: Dictionary, passes: int) -> void:
 				Vector2i(1, 1)
 			]:
 				var neighbor := coord + offset
-				var neighbor_biome: String = biome_map.get(neighbor, current)
+				var neighbor_biome: String = read_map.get(neighbor, current)
 				if neighbor_biome == BIOME_WATER || neighbor_biome == BIOME_MOUNTAIN:
 					continue
 				neighbor_counts[neighbor_biome] = int(neighbor_counts.get(neighbor_biome, 0)) + 1
@@ -3402,10 +3423,28 @@ func _smooth_biomes(biome_map: Dictionary, passes: int) -> void:
 					most_common = biome
 					most_common_count = count
 			if most_common != current and most_common_count >= 0:
-				next_map[coord] = most_common
+				write_map[coord] = most_common
+			else:
+				write_map[coord] = current
+		var swap := read_map
+		read_map = write_map
+		write_map = swap
+	if read_map != biome_map:
 		biome_map.clear()
-		for coord: Vector2i in next_map.keys():
-			biome_map[coord] = next_map[coord]
+		for coord: Vector2i in read_map.keys():
+			biome_map[coord] = read_map[coord]
+
+
+func _current_generation_memory_bytes() -> int:
+	return int(Performance.get_monitor(Performance.MEMORY_STATIC))
+
+
+func _sample_generation_memory_peak(current_peak: int, stage_label: String) -> int:
+	var sampled := _current_generation_memory_bytes()
+	if sampled > current_peak:
+		print("Overworld generation memory peak at %s: %d bytes" % [stage_label, sampled])
+		return sampled
+	return current_peak
 
 
 func _count_biome(biome_map: Dictionary, biome: String) -> int:
