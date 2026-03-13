@@ -268,6 +268,132 @@ const CIVIC_BUILDING_TYPES := {
 			"hall_artery_bonus_weight": 0.7
 		}
 	},
+	"engineering_workshop": {
+		"placement_weight": 0.8,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": ["workbench", "anvil", "desk", "water_bucket"],
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.35
+		}
+	},
+	"leatherworking_shop": {
+		"placement_weight": 0.55,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": ["workbench", "table", "chest", "water_bucket"],
+		"adjacency_preferences": {}
+	},
+	"tailoring_shop": {
+		"placement_weight": 0.5,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": ["table", "stool", "shelf", "chest"],
+		"adjacency_preferences": {}
+	},
+	"enchanting_study": {
+		"placement_weight": 0.42,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": ["sign", "desk", "shelf", "table_alt"],
+		"adjacency_preferences": {}
+	},
+	"alchemy_laboratory": {
+		"placement_weight": 0.5,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": ["water_bucket", "table_alt", "desk", "chest"],
+		"adjacency_preferences": {}
+	},
+	"auction_house": {
+		"placement_weight": 0.45,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": ["desk", "table_alt", "sign", "chest"],
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.15
+		}
+	},
+	"general_goods_shop": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": ["shelf", "table", "chest", "grain_bag"],
+		"adjacency_preferences": {}
+	},
+	"weapon_shop": {
+		"placement_weight": 0.65,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": ["target", "anvil", "workbench", "armor_stand"],
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.25
+		}
+	},
+	"armor_shop": {
+		"placement_weight": 0.62,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": ["armor_stand", "workbench", "chest", "table"],
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.2
+		}
+	},
+	"trade_supply_store": {
+		"placement_weight": 0.6,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": ["grain_bag", "keg", "chest", "table"],
+		"adjacency_preferences": {}
+	},
+	"bank_vaults": {
+		"placement_weight": 0.35,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(4, 3),
+		"decor_tile_pool": ["chest", "desk", "sign", "table_alt"],
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.1
+		}
+	},
+	"tavern": {
+		"placement_weight": 0.9,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": ["keg", "mug", "table_alt", "stool"],
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.2
+		}
+	},
+	"barber_shop": {
+		"placement_weight": 0.35,
+		"preferred_footprint_min": Vector2i(2, 2),
+		"preferred_footprint_max": Vector2i(3, 3),
+		"decor_tile_pool": ["stool", "table", "desk", "water_bucket"],
+		"adjacency_preferences": {}
+	},
+	"guild_hall": {
+		"placement_weight": 0.5,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": ["table", "table_alt", "sign", "chest"],
+		"adjacency_preferences": {
+			"prefers_hall_arteries": true,
+			"hall_artery_bonus_weight": 0.2
+		}
+	},
+	"storage_warehouse": {
+		"placement_weight": 0.7,
+		"preferred_footprint_min": Vector2i(3, 2),
+		"preferred_footprint_max": Vector2i(5, 3),
+		"decor_tile_pool": ["chest", "grain_bag", "keg", "shelf"],
+		"adjacency_preferences": {}
+	},
 	"brewery": {
 		"placement_weight": 1.05,
 		"preferred_footprint_min": Vector2i(2, 2),
