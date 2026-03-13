@@ -57,6 +57,7 @@ extends Node2D
 
 @export_group("Biomes")
 @export_range(0.0, 1.0, 0.01) var tundra_threshold: float = 0.28
+@export_range(0.0, 1.0, 0.01) var snow_latitude_threshold: float = 0.62
 @export_range(0.0, 1.0, 0.01) var desert_threshold: float = 0.25
 @export_range(0.0, 0.4, 0.01) var desert_temperature_bias: float = 0.08
 @export_range(0.0, 0.4, 0.01) var desert_moisture_bias: float = 0.08
@@ -3045,6 +3046,20 @@ func _sample_temperature(x: int, y: int, elevation: float) -> float:
 	return clampf((layered_noise * 0.55 + (1.0 - latitudinal_cold) * 0.45) - elevation_cooling - north_bias, 0.0, 1.0)
 
 
+func _sample_snow_latitude_strength(coord: Vector2i) -> float:
+	var y_ratio := float(coord.y) / maxf(1.0, float(map_size.y - 1))
+	var latitude := absf(y_ratio * 2.0 - 1.0)
+	var latitude_strength := pow(latitude, 1.35)
+	var x := float(coord.x)
+	var y := float(coord.y)
+	var octave_1 := _to_normalized(_temperature_noise.get_noise_2d(x * 0.45, y * 0.45))
+	var octave_2 := _to_normalized(_temperature_noise.get_noise_2d(x * 0.9 + 71.0, y * 0.9 - 37.0))
+	var octave_3 := _to_normalized(_temperature_noise.get_noise_2d(x * 1.8 - 113.0, y * 1.8 + 53.0))
+	var octave_noise := octave_1 * 0.55 + octave_2 * 0.3 + octave_3 * 0.15
+	var band_breakup := (octave_noise - 0.5) * 0.26
+	return clampf(latitude_strength + band_breakup, 0.0, 1.0)
+
+
 func _sample_rainfall(x: int, y: int, elevation: float) -> float:
 	var humidity := _to_normalized(_rainfall_noise.get_noise_2d(float(x), float(y)))
 	var orographic := maxf(0.0, mountain_level - elevation) * 0.25
@@ -3074,7 +3089,12 @@ func _assign_base_biome(
 	moisture: float,
 	height_map: Dictionary
 ) -> String:
-	return BIOME_CLASSIFIER.assign_base_biome(coord, height, temperature, moisture, height_map, _biome_thresholds(), _biome_lookup())
+	var biomes := _biome_lookup()
+	var base_biome := BIOME_CLASSIFIER.assign_base_biome(coord, height, temperature, moisture, height_map, _biome_thresholds(), biomes)
+	if base_biome == String(biomes.get("tundra", BIOME_TUNDRA)):
+		if _sample_snow_latitude_strength(coord) < snow_latitude_threshold:
+			return String(biomes.get("grassland", BIOME_GRASSLAND))
+	return base_biome
 
 
 func _tree_overlay_biome(temperature: float, moisture: float) -> String:
