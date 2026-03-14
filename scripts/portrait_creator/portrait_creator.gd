@@ -810,6 +810,9 @@ func _update_gender_button_visual_state(button: Button, is_selected: bool) -> vo
 	if button == null:
 		return
 
+	var base_position: Vector2 = _gender_button_base_positions.get(button, button.position)
+	button.position = base_position + GENDER_BUTTON_SELECTED_OFFSET if is_selected else base_position
+
 	if is_selected:
 		_animate_gender_button(button, GENDER_BUTTON_BRIGHTNESS_PRESSED)
 	elif button.is_hovered() or button.has_focus():
