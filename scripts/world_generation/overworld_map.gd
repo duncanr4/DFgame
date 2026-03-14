@@ -81,6 +81,9 @@ const OVERWORLD_GENERATION := preload("res://scripts/world_generation/overworld_
 const OVERWORLD_RENDERING := preload("res://scripts/world_generation/overworld_rendering.gd")
 const OVERWORLD_INTERACTION := preload("res://scripts/world_generation/overworld_interaction.gd")
 const OVERWORLD_CONTENT := preload("res://scripts/world_generation/overworld_content.gd")
+const OVERWORLD_TERRAIN_SERVICE := preload("res://scripts/world_generation/overworld_terrain_service.gd")
+const OVERWORLD_SETTLEMENT_SERVICE := preload("res://scripts/world_generation/overworld_settlement_service.gd")
+const OVERWORLD_POPULATION_SERVICE := preload("res://scripts/world_generation/overworld_population_service.gd")
 
 const ATLAS_TEXTURE := TILE_ATLAS_DEFS.ATLAS_TEXTURE
 const SAND_TILE := TILE_ATLAS_DEFS.SAND_TILE
@@ -2249,70 +2252,22 @@ func _build_river_map(
 	return river_map
 
 func _build_ocean_distance_map(base_biome_map: Dictionary) -> Dictionary:
-	var ocean_distance: Dictionary = {}
-	var queue: Array[Vector2i] = []
-	for y in range(map_size.y):
-		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			if String(base_biome_map.get(coord, "")) != BIOME_WATER:
-				continue
-			if x == 0 or y == 0 or x == map_size.x - 1 or y == map_size.y - 1:
-				ocean_distance[coord] = 0.0
-				queue.append(coord)
-	if queue.is_empty():
-		for y in range(map_size.y):
-			for x in range(map_size.x):
-				var coord := Vector2i(x, y)
-				if String(base_biome_map.get(coord, "")) == BIOME_WATER:
-					ocean_distance[coord] = 0.0
-					queue.append(coord)
-	var head := 0
-	while head < queue.size():
-		var current := queue[head]
-		head += 1
-		var base_distance := float(ocean_distance.get(current, 0.0))
-		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
-			var def := def_variant as Dictionary
-			var neighbor := current + (def.get("offset", Vector2i.ZERO) as Vector2i)
-			if not _is_valid_map_coord(neighbor):
-				continue
-			var candidate_distance := base_distance + 1.0
-			if candidate_distance < float(ocean_distance.get(neighbor, INF)):
-				ocean_distance[neighbor] = candidate_distance
-				queue.append(neighbor)
-	return ocean_distance
+	return OVERWORLD_TERRAIN_SERVICE.build_ocean_distance_map(
+		base_biome_map,
+		map_size,
+		BIOME_WATER,
+		RIVER_NEIGHBOR_DEFINITIONS,
+		Callable(self, "_is_valid_map_coord")
+	)
 
 func _compute_edge_connected_water_mask(base_biome_map: Dictionary) -> Dictionary:
-	var mask: Dictionary = {}
-	var queue: Array[Vector2i] = []
-	for x in range(map_size.x):
-		for y: int in [0, map_size.y - 1]:
-			var coord := Vector2i(x, y)
-			if String(base_biome_map.get(coord, "")) != BIOME_WATER or mask.has(coord):
-				continue
-			mask[coord] = true
-			queue.append(coord)
-	for y in range(1, map_size.y - 1):
-		for x: int in [0, map_size.x - 1]:
-			var coord := Vector2i(x, y)
-			if String(base_biome_map.get(coord, "")) != BIOME_WATER or mask.has(coord):
-				continue
-			mask[coord] = true
-			queue.append(coord)
-	var head := 0
-	while head < queue.size():
-		var current := queue[head]
-		head += 1
-		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
-			var def := def_variant as Dictionary
-			var neighbor := current + (def.get("offset", Vector2i.ZERO) as Vector2i)
-			if not _is_valid_map_coord(neighbor):
-				continue
-			if String(base_biome_map.get(neighbor, "")) != BIOME_WATER or mask.has(neighbor):
-				continue
-			mask[neighbor] = true
-			queue.append(neighbor)
-	return mask
+	return OVERWORLD_TERRAIN_SERVICE.compute_edge_connected_water_mask(
+		base_biome_map,
+		map_size,
+		BIOME_WATER,
+		RIVER_NEIGHBOR_DEFINITIONS,
+		Callable(self, "_is_valid_map_coord")
+	)
 
 func _apply_river_tiles(
 	river_map: Dictionary,
@@ -4315,43 +4270,23 @@ func _heap_pop(heap: Array[Dictionary]) -> Dictionary:
 	return root
 
 func _build_settlement_candidates(biome_map: Dictionary) -> Array:
-	var candidates: Array = []
-	for coord: Vector2i in biome_map.keys():
-		var biome := _settlement_biome_label(biome_map.get(coord, BIOME_GRASSLAND))
-		var tree_overlay := Vector2i(-1, -1)
-		if tree_layer != null:
-			tree_overlay = tree_layer.get_cell_atlas_coords(coord)
-		candidates.append({
-			"coord": coord,
-			"biome": biome,
-			"tree_overlay": tree_overlay,
-			"has_forest_tree_overlay": tree_overlay == TREE_TILE,
-			"has_jungle_tree_overlay": tree_overlay == JUNGLE_TREE_TILE
-		})
-	return candidates
+	return OVERWORLD_SETTLEMENT_SERVICE.build_settlement_candidates(
+		biome_map,
+		tree_layer,
+		TREE_TILE,
+		JUNGLE_TREE_TILE,
+		Callable(self, "_settlement_biome_label")
+	)
 
 func _filter_settlement_candidates(
 	candidates: Array,
 	occupied: Array[Vector2i],
 	min_distance: float
 ) -> Array:
-	var filtered: Array = []
-	for candidate: Dictionary in candidates:
-		var coord: Vector2i = Vector2i(-1, -1)
-		if candidate.has("coord"):
-			coord = candidate["coord"] as Vector2i
-		if coord == Vector2i(-1, -1):
-			continue
-		if _is_too_close(coord, occupied, min_distance):
-			continue
-		filtered.append(candidate)
-	return filtered
+	return OVERWORLD_SETTLEMENT_SERVICE.filter_settlement_candidates(candidates, occupied, min_distance)
 
 func _is_too_close(coord: Vector2i, occupied: Array[Vector2i], min_distance: float) -> bool:
-	for other: Vector2i in occupied:
-		if coord.distance_to(other) < min_distance:
-			return true
-	return false
+	return OVERWORLD_SETTLEMENT_SERVICE.is_too_close(coord, occupied, min_distance)
 
 func _settlement_biome_label(biome: String) -> String:
 	match biome:
@@ -4417,41 +4352,10 @@ func _resources_for_biome_id(biome_id: int) -> Array[String]:
 	return resolved
 
 func _describe_climate(temperature: float, moisture: float) -> String:
-	var temp_label := "Mild"
-	if temperature < 0.3:
-		temp_label = "Cold"
-	elif temperature < 0.55:
-		temp_label = "Cool"
-	elif temperature < 0.75:
-		temp_label = "Warm"
-	else:
-		temp_label = "Hot"
-	var moisture_label := "moderate rainfall"
-	if moisture < 0.3:
-		moisture_label = "low rainfall"
-	elif moisture < 0.6:
-		moisture_label = "moderate rainfall"
-	else:
-		moisture_label = "heavy rainfall"
-	return "%s climate with %s" % [temp_label, moisture_label]
+	return OVERWORLD_POPULATION_SERVICE.describe_climate(temperature, moisture)
 
 func _format_resource_list(resources: Array[String]) -> String:
-	var items: Array[String] = []
-	for entry: String in resources:
-		items.append(String(entry))
-	if items.is_empty():
-		return "None"
-	if items.size() == 1:
-		return items[0]
-	if items.size() == 2:
-		return "%s and %s" % [items[0], items[1]]
-	var combined := ""
-	for index in range(items.size()):
-		if index == items.size() - 1:
-			combined += "and %s" % items[index]
-		else:
-			combined += "%s, " % items[index]
-	return combined
+	return OVERWORLD_POPULATION_SERVICE.format_resource_list(resources)
 
 func _generate_biome_region_name(
 	biome: String,

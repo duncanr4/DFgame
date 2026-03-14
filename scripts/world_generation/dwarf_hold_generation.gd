@@ -4,6 +4,9 @@ const DwarfHoldStateModel = preload("res://scripts/world_generation/dwarf_hold_s
 const DwarfHoldGenerationRules = preload("res://scripts/world_generation/dwarf_hold_generation_rules.gd")
 const DwarfHoldUiInputHandler = preload("res://scripts/world_generation/dwarf_hold_ui_input_handler.gd")
 const DwarfHoldActorVisuals = preload("res://scripts/world_generation/dwarf_hold_actor_visuals.gd")
+const DwarfHoldLayoutService = preload("res://scripts/world_generation/dwarf_hold_layout_service.gd")
+const DwarfHoldChestService = preload("res://scripts/world_generation/dwarf_hold_chest_service.gd")
+const DwarfHoldLightingService = preload("res://scripts/world_generation/dwarf_hold_lighting_service.gd")
 
 const CELL_ROCK := 0
 const CELL_HALL := 1
@@ -1051,32 +1054,13 @@ func _target_npcs_for_level(level_index: int, level_count: int) -> int:
 	return _hold_state.target_npcs_for_level(level_index, level_count)
 
 func _pick_civic_building_type() -> String:
-	var total_weight := 0.0
-	for type_name: String in CIVIC_BUILDING_TYPES.keys():
-		var definition := CIVIC_BUILDING_TYPES[type_name] as Dictionary
-		total_weight += float(definition.get("placement_weight", 1.0))
-	if total_weight <= 0.0:
-		return "workshop"
-
-	var cursor := _rng.randf() * total_weight
-	for type_name: String in CIVIC_BUILDING_TYPES.keys():
-		var definition := CIVIC_BUILDING_TYPES[type_name] as Dictionary
-		cursor -= float(definition.get("placement_weight", 1.0))
-		if cursor <= 0.0:
-			return type_name
-	return String(CIVIC_BUILDING_TYPES.keys()[0])
+	return DwarfHoldLayoutService.pick_civic_building_type(_rng, CIVIC_BUILDING_TYPES)
 
 func _roll_civic_footprint(civic_definition: Dictionary) -> Vector2i:
-	var minimum := civic_definition.get("preferred_footprint_min", Vector2i(2, 2)) as Vector2i
-	var maximum := civic_definition.get("preferred_footprint_max", Vector2i(4, 3)) as Vector2i
-	return Vector2i(
-		_rng.randi_range(mini(minimum.x, maximum.x), maxi(minimum.x, maximum.x)),
-		_rng.randi_range(mini(minimum.y, maximum.y), maxi(minimum.y, maximum.y))
-	)
+	return DwarfHoldLayoutService.roll_civic_footprint(_rng, civic_definition)
 
 func _civic_prefers_hall_arteries(civic_definition: Dictionary) -> bool:
-	var adjacency := civic_definition.get("adjacency_preferences", {}) as Dictionary
-	return bool(adjacency.get("prefers_hall_arteries", false))
+	return DwarfHoldLayoutService.civic_prefers_hall_arteries(civic_definition)
 
 func _dig_branching_hall_between_plazas(grid: Dictionary, from_plaza: Dictionary, to_plaza: Dictionary) -> void:
 	var from_center := from_plaza.get("center", Vector2i.ZERO) as Vector2i
@@ -1887,47 +1871,17 @@ func _update_shattered_visibility(grid: Dictionary) -> void:
 			_revealed_cells[cell] = true
 
 func _has_line_of_sight_to_cell(from_cell: Vector2i, to_cell: Vector2i) -> bool:
-	var x0 := from_cell.x
-	var y0 := from_cell.y
-	var x1 := to_cell.x
-	var y1 := to_cell.y
-	var dx := absi(x1 - x0)
-	var dy := -absi(y1 - y0)
-	var sx := 1 if x0 < x1 else -1
-	var sy := 1 if y0 < y1 else -1
-	var err := dx + dy
-
-	while true:
-		if x0 == x1 and y0 == y1:
-			return true
-		var cell := Vector2i(x0, y0)
-		if cell != from_cell and not _is_transparent_lighting_cell(cell):
-			return false
-		var e2 := 2 * err
-		if e2 >= dy:
-			err += dy
-			x0 += sx
-		if e2 <= dx:
-			err += dx
-			y0 += sy
-
-	return true
+	return DwarfHoldLightingService.has_line_of_sight_to_cell(
+		from_cell,
+		to_cell,
+		Callable(self, "_is_transparent_lighting_cell")
+	)
 
 func _is_transparent_lighting_cell(cell: Vector2i) -> bool:
 	return _is_passable_cell_for_actor(cell)
 
 func _ensure_chest_inventory(cell: Vector2i) -> void:
-	if _chest_inventories.has(cell):
-		return
-	var loot_entries: Array[Dictionary] = []
-	var loot_count := _rng.randi_range(2, 4)
-	for _roll in loot_count:
-		var loot_def := CHEST_LOOT_TABLE[_rng.randi_range(0, CHEST_LOOT_TABLE.size() - 1)] as Dictionary
-		loot_entries.append({
-			"name": String(loot_def.get("name", "Supplies")),
-			"quantity": _rng.randi_range(int(loot_def.get("min", 1)), int(loot_def.get("max", 1)))
-		})
-	_chest_inventories[cell] = loot_entries
+	DwarfHoldChestService.ensure_chest_inventory(_chest_inventories, cell, _rng, CHEST_LOOT_TABLE)
 
 func _cell_from_mouse_position(mouse_position: Vector2) -> Vector2i:
 	var local_position := (mouse_position - city_layer.position) / _zoom_level
@@ -2023,17 +1977,7 @@ func _populate_chest_slots(loot_entries: Array) -> void:
 		_chest_slot_panels[i].tooltip_text = "%s x%d" % [item_name, quantity]
 
 func _item_abbreviation(item_name: String) -> String:
-	var words := item_name.split(" ", false)
-	if words.is_empty():
-		return "?"
-	if words.size() == 1:
-		return String(words[0]).substr(0, mini(3, String(words[0]).length())).to_upper()
-	var abbreviation := ""
-	for i in range(mini(words.size(), 2)):
-		var word := String(words[i])
-		if not word.is_empty():
-			abbreviation += word.substr(0, 1).to_upper()
-	return abbreviation
+	return DwarfHoldChestService.item_abbreviation(item_name)
 
 func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
 	var visited: Dictionary = {}
@@ -2235,13 +2179,7 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 	_refresh_lighting(grid)
 
 func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
-	for key: Variant in grid.keys():
-		var cell := key as Vector2i
-		var zone := int(grid[key])
-		if zone == CELL_HALL or zone == CELL_HOUSE or zone == CELL_BUILDING or zone == CELL_PLAZA:
-			cells.append(cell)
-	return cells
+	return DwarfHoldLayoutService.collect_walkable_cells(grid, [CELL_HALL, CELL_HOUSE, CELL_BUILDING, CELL_PLAZA])
 
 func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
 	return DwarfHoldActorVisuals.create_tavern_character_sprite(_placeholder_actor_texture, character_slot, tile_size)
