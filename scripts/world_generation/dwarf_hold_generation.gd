@@ -627,6 +627,7 @@ func _ready() -> void:
 	overlay_toggle.toggled.connect(_on_overlay_toggle_toggled)
 	lighting_toggle.toggled.connect(_on_lighting_toggle_toggled)
 	city_panel.gui_input.connect(_on_city_panel_gui_input)
+	city_panel.mouse_exited.connect(_hide_hover_tooltip)
 	chest_popup_take_all_button.pressed.connect(_on_loot_chest_button_pressed)
 	chest_popup_close_button.pressed.connect(_on_chest_popup_close_button_pressed)
 	chest_popup_close_footer_button.pressed.connect(_on_chest_popup_close_button_pressed)
@@ -2661,7 +2662,6 @@ func _update_hover_tooltip(mouse_position: Vector2) -> void:
 		_hide_hover_tooltip()
 		return
 	if tile_hover_tooltip.visible and hovered_cell == _hover_tooltip_cell and hovered_layer == _hover_tooltip_layer:
-		tile_hover_tooltip.position = _clamp_tooltip_position(mouse_position + Vector2(14, 14))
 		return
 
 	var atlas_coords := hovered_layer.get_cell_atlas_coords(hovered_cell)
@@ -2677,7 +2677,7 @@ func _update_hover_tooltip(mouse_position: Vector2) -> void:
 	tile_hover_label.text = "\n".join(tooltip_lines)
 	tile_hover_tooltip.visible = true
 	tile_hover_tooltip.reset_size()
-	tile_hover_tooltip.position = _clamp_tooltip_position(mouse_position + Vector2(14, 14))
+	tile_hover_tooltip.position = _clamp_tooltip_position(_screen_position_from_cell(hovered_cell) + Vector2(14, 14))
 	_hover_tooltip_cell = hovered_cell
 	_hover_tooltip_layer = hovered_layer
 
