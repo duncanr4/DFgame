@@ -113,13 +113,13 @@ static func _coerce_map_size_key(raw_settings: Dictionary, merged_settings: Dict
 
 	var map_size_name := str(raw_settings.get("map_size", merged_settings.get("map_size", ""))).strip_edges().to_lower()
 	for map_size_key: String in MAP_SIZE_DEFINITIONS.keys():
-		if String(MAP_SIZE_DEFINITIONS[map_size_key].get("name", "")).to_lower() == map_size_name:
+		if (MAP_SIZE_DEFINITIONS[map_size_key] as Dictionary).get("name", "").to_lower() == map_size_name:
 			return map_size_key
 
 	var map_dimensions: Variant = raw_settings.get("map_dimensions", merged_settings.get("map_dimensions", Vector2i.ZERO))
 	if map_dimensions is Vector2i:
 		for dimensions_key: String in MAP_SIZE_DEFINITIONS.keys():
-			if MAP_SIZE_DEFINITIONS[dimensions_key].get("dimensions", Vector2i.ZERO) == map_dimensions:
+			if (MAP_SIZE_DEFINITIONS[dimensions_key] as Dictionary).get("dimensions", Vector2i.ZERO) == map_dimensions:
 				return dimensions_key
 
 	return DEFAULT_WORLD_SETTINGS["map_size_key"]

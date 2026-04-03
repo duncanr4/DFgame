@@ -76,7 +76,7 @@ static func update_npc_movement(
 	rng: RandomNumberGenerator,
 	tavern_npc_speed_range: Vector2,
 	tile_size: Vector2i,
-	is_npc_walkable_cell: Callable,
+	is_npc_walkable_callable: Callable,
 	cell_center_position: Callable
 ) -> void:
 	for state: Dictionary in npc_states:
@@ -90,7 +90,7 @@ static func update_npc_movement(
 			for _attempt in 6:
 				var candidate := pick_random_wander_direction(rng)
 				var candidate_cell := city_layer.local_to_map(sprite.position + candidate * float(tile_size.x))
-				if bool(is_npc_walkable_cell.call(candidate_cell)):
+				if bool(is_npc_walkable_callable.call(candidate_cell)):
 					direction = candidate
 					target = cell_center_position.call(candidate_cell)
 					state["facing_row"] = facing_row_from_direction(candidate)
