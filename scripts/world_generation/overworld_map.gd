@@ -82,8 +82,10 @@ const OVERWORLD_RENDERING := preload("res://scripts/world_generation/overworld_r
 const OVERWORLD_INTERACTION := preload("res://scripts/world_generation/overworld_interaction.gd")
 const OVERWORLD_CONTENT := preload("res://scripts/world_generation/overworld_content.gd")
 const OVERWORLD_TERRAIN_SERVICE := preload("res://scripts/world_generation/overworld_terrain_service.gd")
+const OVERWORLD_TERRAIN_FEATURE_SERVICE := preload("res://scripts/world_generation/overworld_terrain_feature_service.gd")
 const OVERWORLD_SETTLEMENT_SERVICE := preload("res://scripts/world_generation/overworld_settlement_service.gd")
 const OVERWORLD_POPULATION_SERVICE := preload("res://scripts/world_generation/overworld_population_service.gd")
+const OVERWORLD_RIVER_SERVICE := preload("res://scripts/world_generation/overworld_river_service.gd")
 
 const ATLAS_TEXTURE := TILE_ATLAS_DEFS.ATLAS_TEXTURE
 const SAND_TILE := TILE_ATLAS_DEFS.SAND_TILE
@@ -1016,6 +1018,7 @@ var _is_globe_view := false
 var _is_dragging_globe := false
 var _is_scene3d_view := false
 var _is_dragging_scene3d := false
+var _globe_service: OverworldGlobeService = null
 var _elevation_overlay_enabled := false
 var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
@@ -1111,6 +1114,38 @@ func _ready() -> void:
 	_cache_iceberg_layer_parent()
 	_cache_settlement_layer_parent()
 	_cache_overlay_parent()
+	_globe_service = OverworldGlobeService.new(
+		globe_view,
+		globe_camera,
+		globe_mesh,
+		scene3d_view,
+		scene3d_camera,
+		scene3d_mesh,
+		map_viewport,
+		map_viewport_root,
+		overworld_camera,
+		map_layer,
+		tree_layer,
+		river_layer,
+		highland_layer,
+		iceberg_layer,
+		settlement_layer,
+		map_overlays,
+	)
+	_globe_service.map_layer_original_parent = _map_layer_original_parent
+	_globe_service.map_layer_original_index = _map_layer_original_index
+	_globe_service.tree_layer_original_parent = _tree_layer_original_parent
+	_globe_service.tree_layer_original_index = _tree_layer_original_index
+	_globe_service.river_layer_original_parent = _river_layer_original_parent
+	_globe_service.river_layer_original_index = _river_layer_original_index
+	_globe_service.highland_layer_original_parent = _highland_layer_original_parent
+	_globe_service.highland_layer_original_index = _highland_layer_original_index
+	_globe_service.iceberg_layer_original_parent = _iceberg_layer_original_parent
+	_globe_service.iceberg_layer_original_index = _iceberg_layer_original_index
+	_globe_service.settlement_layer_original_parent = _settlement_layer_original_parent
+	_globe_service.settlement_layer_original_index = _settlement_layer_original_index
+	_globe_service.overlays_original_parent = _overlays_original_parent
+	_globe_service.overlays_original_index = _overlays_original_index
 	_configure_globe_viewport()
 	_configure_scene3d_mesh()
 	_set_globe_view(false)
@@ -1580,133 +1615,28 @@ func _build_settlement_history_timeline(
 	settlement_name: String,
 	founded_years_ago: int
 ) -> String:
-	var current_year := int(Time.get_datetime_dict_from_system().get("year", 0))
-	if current_year <= 0:
-		current_year = 1000
-	var founding_year := current_year - maxi(1, founded_years_ago)
-	var history_kind := _resolve_history_kind(details)
-	var event_pool := OVERWORLD_CONTENT.resolve_history_event_pool(history_kind)
-
-	var seed_basis := "%s|%s|%s|%s" % [
-		settlement_name,
-		history_kind,
-		str(founding_year),
-		String(details.get("ruler_name", ""))
-	]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = int(seed_basis.hash())
-
-	var span := maxi(1, founded_years_ago)
-	var middle_event_count := clampi(span / 16, 3, 8)
-
-	var selected_events: Array[String] = []
-	for _index in range(middle_event_count):
-		if event_pool.is_empty():
-			break
-		var selected_index := rng.randi_range(0, event_pool.size() - 1)
-		selected_events.append(event_pool[selected_index])
-
-	var events: Array[Dictionary] = []
-	events.append({
-		"year": founding_year,
-		"description": _build_founding_event_text(history_kind, settlement_name)
-	})
-
-	for index in range(selected_events.size()):
-		var progress := float(index + 1) / float(selected_events.size() + 1)
-		var year := int(round(lerpf(float(founding_year), float(current_year), progress)))
-		events.append({
-			"year": year,
-			"description": selected_events[index]
-		})
-
-	events.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return int(a.get("year", 0)) < int(b.get("year", 0))
-	)
-
-	var rows: Array[String] = []
-	for event: Dictionary in events:
-		var event_year := int(event.get("year", current_year))
-		var years_ago := maxi(0, current_year - event_year)
-		var years_label := "year ago" if years_ago == 1 else "years ago"
-		var year_text := "[color=#d4a64a][b]%d %s[/b][/color]" % [years_ago, years_label]
-		var description := _capitalize_timeline_detail(String(event.get("description", "")).strip_edges())
-		if description.is_empty():
-			continue
-		rows.append("• %s — %s" % [year_text, description])
-	if rows.is_empty():
-		return "No historical records are currently available."
-	return "\n".join(rows)
+	return OverworldHistoryService.build_settlement_history_timeline(details, settlement_name, founded_years_ago)
 
 func _resolve_history_kind(details: Dictionary) -> String:
-	var settlement_type := String(details.get("settlement_type", "")).strip_edges().to_lower()
-	if settlement_type == "town":
-		return "human"
-	if settlement_type == "woodelfgrove":
-		return "wood_elf"
-	if settlement_type == "lizardmencity":
-		return "lizardmen"
-	if settlement_type == "dwarfhold":
-		var class_key := String(details.get("settlement_classification_key", "")).strip_edges().to_lower()
-		if class_key == "abandoned":
-			return "dwarven_variant_abandoned"
-		return "dwarven"
-	return "generic"
+	return OverworldHistoryService.resolve_history_kind(details)
 
 func _build_founding_event_text(history_kind: String, settlement_name: String) -> String:
-	match history_kind:
-		"human":
-			return "%s was founded at a strategic crossroads." % settlement_name
-		"dwarven", "dwarven_variant_abandoned":
-			return "%s was founded by a dwarven clan deep beneath the mountain." % settlement_name
-		"wood_elf":
-			return "%s took root beneath the elder trees." % settlement_name
-		"lizardmen":
-			return "%s was raised as a sacred city of scaled priest-kings." % settlement_name
-		_:
-			return "%s first appears in the oldest surviving chronicles." % settlement_name
+	return OverworldHistoryService.build_founding_event_text(history_kind, settlement_name)
 
 func _capitalize_timeline_detail(detail: String) -> String:
-	if detail.is_empty():
-		return detail
-
-	for index in range(detail.length()):
-		var character := detail.unicode_at(index)
-		if character >= 65 and character <= 90:
-			return detail
-		if character >= 97 and character <= 122:
-			return "%s%s%s" % [detail.substr(0, index), char(character - 32), detail.substr(index + 1)]
-
-	return detail
+	return OverworldHistoryService.capitalize_timeline_detail(detail)
 
 func _variant_array_to_strings(entries: Variant) -> Array[String]:
-	var result: Array[String] = []
-	if entries is Array:
-		for entry: Variant in entries:
-			var value := _variant_to_clean_string(entry)
-			if not value.is_empty():
-				result.append(value)
-	return result
+	return OverworldHistoryService.variant_array_to_strings(entries)
 
 func _dedupe_trimmed_strings(entries: Array[String]) -> Array[String]:
-	var unique: Array[String] = []
-	for entry: String in entries:
-		var value := entry.strip_edges()
-		if value.is_empty() or unique.has(value):
-			continue
-		unique.append(value)
-	return unique
+	return OverworldHistoryService.dedupe_trimmed_strings(entries)
 
 func _variant_to_clean_string(value: Variant) -> String:
-	if value == null:
-		return ""
-	var text := String(value).strip_edges()
-	if text.to_lower() == "null":
-		return ""
-	return text
+	return OverworldHistoryService.variant_to_clean_string(value)
 
 func _string_or_unknown(value: String) -> String:
-	return value if not value.is_empty() else "Unknown"
+	return OverworldHistoryService.string_or_unknown(value)
 
 func _tile_biome_from_data(tile_data: Dictionary) -> String:
 	return _biome_id_to_string(int(tile_data.get("biome_id", _biome_to_id(BIOME_GRASSLAND))))
@@ -2107,75 +2037,7 @@ func _build_river_map_buffers(
 	base_biome_buffer: PackedByteArray,
 	rng: RandomNumberGenerator
 ) -> Dictionary:
-	var frequency_normalized := clampf(river_frequency, 0.0, 1.0)
-	var frequency_multiplier := lerpf(0.45, 1.75, frequency_normalized)
-	var weight_threshold := 0.12 * lerpf(1.45, 0.45, frequency_normalized)
-	var major_river_threshold := lerpf(0.45, 0.28, frequency_normalized)
-	var candidates: Array[Dictionary] = []
-	for y in range(1, map_size.y - 1):
-		for x in range(1, map_size.x - 1):
-			var idx := _xy_to_index(x, y)
-			if _biome_id_to_string(int(base_biome_buffer[idx])) == BIOME_WATER:
-				continue
-			var elev := float(height_buffer[idx])
-			if elev <= water_level + 0.02:
-				continue
-			var sink := clampf(1.0 - float(moisture_buffer[idx]), 0.0, 1.0)
-			var height_factor := maxf(0.0, elev - water_level)
-			var randomness := 0.35 + rng.randf() * 0.65
-			var weight := (height_factor * 0.7 + sink * 0.3) * randomness
-			if weight > weight_threshold:
-				candidates.append({"idx": idx, "weight": weight})
-	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a.get("weight", 0.0)) > float(b.get("weight", 0.0))
-	)
-	var base_sources := maxi(8, int(floor(float(map_size.x * map_size.y) / 3200.0)))
-	var source_density_multiplier := lerpf(1.8, 3.1, frequency_normalized)
-	var max_sources := maxi(4, int(round(float(base_sources) * frequency_multiplier * source_density_multiplier)))
-	var ocean_distance := _build_ocean_distance_map(_biome_buffer_to_dictionary(base_biome_buffer))
-	var ocean_influence := lerpf(0.008, 0.02, frequency_normalized)
-	var river_map: Dictionary = {}
-	for i in range(mini(candidates.size(), max_sources)):
-		var candidate := candidates[i] as Dictionary
-		var idx := int(candidate.get("idx", 0))
-		var coord := _index_to_coord(idx)
-		var steps := 0
-		var strength := 2 if float(candidate.get("weight", 0.0)) > major_river_threshold else 1
-		while steps < map_size.x + map_size.y:
-			river_map[coord] = mini(4, int(river_map.get(coord, 0)) + strength)
-			steps += 1
-			var lowest_coord := coord
-			var current_idx := _coord_to_index(coord)
-			var current_base_value := float(height_buffer[current_idx]) - float(moisture_buffer[current_idx]) * 0.02
-			var lowest_score := current_base_value
-			var lowest_base_value := current_base_value
-			var current_ocean_distance := float(ocean_distance.get(coord, map_size.x + map_size.y))
-			for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
-				var def := def_variant as Dictionary
-				var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
-				if not _is_valid_map_coord(neighbor):
-					continue
-				var neighbor_idx := _coord_to_index(neighbor)
-				var neighbor_base_value := float(height_buffer[neighbor_idx]) - float(moisture_buffer[neighbor_idx]) * 0.02
-				var score := neighbor_base_value
-				var neighbor_ocean_distance := float(ocean_distance.get(neighbor, map_size.x + map_size.y))
-				var distance_delta := neighbor_ocean_distance - current_ocean_distance
-				score += distance_delta * ocean_influence
-				if score < lowest_score - 0.000001:
-					lowest_score = score
-					lowest_base_value = neighbor_base_value
-					lowest_coord = neighbor
-				elif absf(score - lowest_score) <= 0.000001 and neighbor_base_value < lowest_base_value:
-					lowest_base_value = neighbor_base_value
-					lowest_coord = neighbor
-			if lowest_coord == coord:
-				break
-			if _biome_id_to_string(int(base_biome_buffer[_coord_to_index(lowest_coord)])) == BIOME_WATER:
-				break
-			coord = lowest_coord
-			if int(river_map.get(coord, 0)) > 0 and steps > 3:
-				break
-	return river_map
+	return OVERWORLD_RIVER_SERVICE.build_river_map_buffers(height_buffer, moisture_buffer, base_biome_buffer, rng, map_size, water_level, river_frequency)
 
 
 func _build_river_map(
@@ -2184,72 +2046,7 @@ func _build_river_map(
 	base_biome_map: Dictionary,
 	rng: RandomNumberGenerator
 ) -> Dictionary:
-	var frequency_normalized := clampf(river_frequency, 0.0, 1.0)
-	var frequency_multiplier := lerpf(0.45, 1.75, frequency_normalized)
-	var weight_threshold := 0.12 * lerpf(1.45, 0.45, frequency_normalized)
-	var major_river_threshold := lerpf(0.45, 0.28, frequency_normalized)
-	var candidates: Array[Dictionary] = []
-	for y in range(1, map_size.y - 1):
-		for x in range(1, map_size.x - 1):
-			var coord := Vector2i(x, y)
-			if String(base_biome_map.get(coord, "")) == BIOME_WATER:
-				continue
-			var elev := float(height_map.get(coord, water_level))
-			if elev <= water_level + 0.02:
-				continue
-			var sink := clampf(1.0 - float(moisture_map.get(coord, 0.5)), 0.0, 1.0)
-			var height_factor := maxf(0.0, elev - water_level)
-			var randomness := 0.35 + rng.randf() * 0.65
-			var weight := (height_factor * 0.7 + sink * 0.3) * randomness
-			if weight > weight_threshold:
-				candidates.append({"coord": coord, "weight": weight})
-	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a.get("weight", 0.0)) > float(b.get("weight", 0.0))
-	)
-	var base_sources := maxi(8, int(floor(float(map_size.x * map_size.y) / 3200.0)))
-	var source_density_multiplier := lerpf(1.8, 3.1, frequency_normalized)
-	var max_sources := maxi(4, int(round(float(base_sources) * frequency_multiplier * source_density_multiplier)))
-	var ocean_distance := _build_ocean_distance_map(base_biome_map)
-	var ocean_influence := lerpf(0.008, 0.02, frequency_normalized)
-	var river_map: Dictionary = {}
-	for i in range(mini(candidates.size(), max_sources)):
-		var candidate := candidates[i] as Dictionary
-		var coord := candidate.get("coord", Vector2i.ZERO) as Vector2i
-		var steps := 0
-		var strength := 2 if float(candidate.get("weight", 0.0)) > major_river_threshold else 1
-		while steps < map_size.x + map_size.y:
-			river_map[coord] = mini(4, int(river_map.get(coord, 0)) + strength)
-			steps += 1
-			var lowest_coord := coord
-			var current_base_value := float(height_map.get(coord, water_level)) - float(moisture_map.get(coord, 0.5)) * 0.02
-			var lowest_score := current_base_value
-			var lowest_base_value := current_base_value
-			var current_ocean_distance := float(ocean_distance.get(coord, map_size.x + map_size.y))
-			for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
-				var def := def_variant as Dictionary
-				var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
-				if not _is_valid_map_coord(neighbor):
-					continue
-				var neighbor_base_value := float(height_map.get(neighbor, water_level)) - float(moisture_map.get(neighbor, 0.5)) * 0.02
-				var score := neighbor_base_value
-				var neighbor_ocean_distance := float(ocean_distance.get(neighbor, map_size.x + map_size.y))
-				var distance_delta := neighbor_ocean_distance - current_ocean_distance
-				score += distance_delta * ocean_influence
-				if score < lowest_score - 0.000001:
-					lowest_score = score
-					lowest_base_value = neighbor_base_value
-					lowest_coord = neighbor
-				elif absf(score - lowest_score) <= 0.000001 and neighbor_base_value < lowest_base_value:
-					lowest_base_value = neighbor_base_value
-					lowest_coord = neighbor
-			if lowest_coord == coord:
-				break
-			if String(base_biome_map.get(lowest_coord, "")) == BIOME_WATER:
-				break
-			coord = lowest_coord
-			if int(river_map.get(coord, 0)) > 0 and steps > 3:
-				break
-	return river_map
+	return OVERWORLD_RIVER_SERVICE.build_river_map(height_map, moisture_map, base_biome_map, rng, map_size, water_level, river_frequency)
 
 func _build_ocean_distance_map(base_biome_map: Dictionary) -> Dictionary:
 	return OVERWORLD_TERRAIN_SERVICE.build_ocean_distance_map(
@@ -2276,28 +2073,7 @@ func _apply_river_tiles(
 	tree_map: Dictionary,
 	edge_connected_water: Dictionary
 ) -> Dictionary:
-	var river_tiles: Dictionary = {}
-	if river_layer == null:
-		return river_tiles
-	for y in range(map_size.y):
-		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			if int(river_map.get(coord, 0)) <= 0 or String(base_biome_map.get(coord, "")) == BIOME_WATER:
-				river_layer.erase_cell(coord)
-				continue
-			var river_tile := _resolve_river_tile(river_map, coord, base_biome_map, edge_connected_water)
-			if river_tile.x < 0 or river_tile.y < 0:
-				river_layer.erase_cell(coord)
-				continue
-			river_layer.set_cell(coord, _atlas_source_id, river_tile)
-			river_tiles[coord] = true
-			highland_map.erase(coord)
-			if highland_layer != null:
-				highland_layer.erase_cell(coord)
-			tree_map.erase(coord)
-			if tree_layer != null:
-				tree_layer.erase_cell(coord)
-	return river_tiles
+	return OVERWORLD_RIVER_SERVICE.apply_river_tiles(river_map, base_biome_map, highland_map, tree_map, edge_connected_water, river_layer, highland_layer, tree_layer, _atlas_source_id, map_size)
 
 func _resolve_river_tile(
 	river_map: Dictionary,
@@ -2305,230 +2081,30 @@ func _resolve_river_tile(
 	base_biome_map: Dictionary,
 	ocean_mask: Dictionary
 ) -> Vector2i:
-	var strength := int(river_map.get(coord, 0))
-	if strength <= 0:
-		return Vector2i(-1, -1)
-	var mask := 0
-	var river_neighbor_count := 0
-	for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
-		var def := def_variant as Dictionary
-		var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
-		if not _is_valid_map_coord(neighbor):
-			continue
-		if int(river_map.get(neighbor, 0)) > 0:
-			mask |= int(def.get("bit", 0))
-			river_neighbor_count += 1
-	var touches_ocean := false
-	if river_neighbor_count == 1:
-		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
-			var def := def_variant as Dictionary
-			var bit := int(def.get("bit", 0))
-			if (mask & bit) != 0:
-				continue
-			var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
-			if not _is_valid_map_coord(neighbor):
-				continue
-			if ocean_mask.has(neighbor):
-				mask |= bit
-				touches_ocean = true
-	var suffix := String(RIVER_MASK_SUFFIX_LOOKUP.get(mask, "NSWE"))
-	var base_key := "RIVER_%s" % suffix
-	var major_key := "RIVER_MAJOR_%s" % suffix
-	var use_major := strength >= 3 and RIVER_TILES.has(major_key)
-	var tile_key := major_key if use_major else base_key
-	if suffix.length() == 1 and suffix != "0" and not touches_ocean:
-		for def_variant: Variant in RIVER_NEIGHBOR_DEFINITIONS:
-			var def := def_variant as Dictionary
-			if String(def.get("key", "")) != suffix:
-				continue
-			var neighbor := coord + (def.get("offset", Vector2i.ZERO) as Vector2i)
-			if not _is_valid_map_coord(neighbor):
-				break
-			if String(base_biome_map.get(neighbor, "")) != BIOME_WATER:
-				break
-			var mouth_prefix := "RIVER_MAJOR_MOUTH_NARROW_" if use_major else "RIVER_MOUTH_NARROW_"
-			var mouth_key := "%s%s" % [mouth_prefix, suffix]
-			if RIVER_TILES.has(mouth_key):
-				tile_key = mouth_key
-			break
-	if not RIVER_TILES.has(tile_key):
-		tile_key = "RIVER_NSWE"
-	return RIVER_TILES.get(tile_key, Vector2i(-1, -1)) as Vector2i
+	return OVERWORLD_RIVER_SERVICE.resolve_river_tile(river_map, coord, base_biome_map, ocean_mask, map_size)
 
 func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dictionary) -> void:
-	if highland_layer == null:
-		return
-	for y in range(map_size.y):
-		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			if String(highland_map.get(coord, "")) != BIOME_MOUNTAIN:
-				continue
-			var has_mountain_above := y > 0 and String(highland_map.get(Vector2i(x, y - 1), "")) == BIOME_MOUNTAIN
-			var has_mountain_below := y < map_size.y - 1 and String(highland_map.get(Vector2i(x, y + 1), "")) == BIOME_MOUNTAIN
-			var hash_value: int = absi(((x + 1) * 73856093) ^ ((y + 1) * 19349663))
-			if not has_mountain_above and has_mountain_below:
-				highland_layer.set_cell(coord, _atlas_source_id, MOUNTAIN_TOP_A_TILE if hash_value % 2 == 0 else MOUNTAIN_TOP_B_TILE)
-			elif not has_mountain_below and has_mountain_above:
-				highland_layer.set_cell(coord, _atlas_source_id, MOUNTAIN_BOTTOM_A_TILE if hash_value % 2 == 0 else MOUNTAIN_BOTTOM_B_TILE)
-			elif float(height_map.get(coord, 0.0)) >= 0.97:
-				highland_layer.set_cell(coord, _atlas_source_id, MOUNTAIN_PEAK_TILE)
+	OVERWORLD_TERRAIN_FEATURE_SERVICE.apply_mountain_overlay_variants(highland_map, height_map, highland_layer, _atlas_source_id, map_size)
 
 
 func _place_volcano_tiles(highland_map: Dictionary, height_map: Dictionary, rng: RandomNumberGenerator) -> void:
-	_apply_mountain_overlay_variants(highland_map, height_map)
-	var candidates: Array[Dictionary] = []
-	for coord_variant: Variant in highland_map.keys():
-		var coord := coord_variant as Vector2i
-		if String(highland_map.get(coord, "")) != BIOME_MOUNTAIN:
-			continue
-		candidates.append({
-			"coord": coord,
-			"height": float(height_map.get(coord, 0.0)),
-			"score": rng.randf()
-		})
-	if candidates.is_empty():
-		_apply_oases_and_lava([], rng)
-		return
-
-	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var ah := float(a.get("height", 0.0))
-		var bh := float(b.get("height", 0.0))
-		if not is_equal_approx(ah, bh):
-			return ah > bh
-		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
-	)
-	var base_volcano_count := int(round(float(candidates.size()) / 600.0))
-	var rarity_adjusted_target := maxi(1, int(round(float(maxi(1, base_volcano_count)) * 0.15)))
-	var desired_count := clampi(rarity_adjusted_target, 1, mini(candidates.size(), 6))
-	var selection_pool := candidates.slice(0, mini(candidates.size(), maxi(desired_count * 5, desired_count + 3)))
-	var volcanoes: Array[Vector2i] = []
-	var min_distance_sq := 36
-	var attempts := 0
-	var max_attempts := selection_pool.size() * 3
-	while not selection_pool.is_empty() and volcanoes.size() < desired_count and attempts < max_attempts:
-		attempts += 1
-		var pick_index := rng.randi_range(0, selection_pool.size() - 1)
-		var candidate := selection_pool[pick_index] as Dictionary
-		selection_pool.remove_at(pick_index)
-		var coord := candidate.get("coord", Vector2i(-1, -1)) as Vector2i
-		var too_close := false
-		for placed in volcanoes:
-			var dx := coord.x - placed.x
-			var dy := coord.y - placed.y
-			if dx * dx + dy * dy < min_distance_sq:
-				too_close = true
-				break
-		if too_close:
-			continue
-		if highland_layer != null:
-			highland_layer.set_cell(coord, _atlas_source_id, ACTIVE_VOLCANO_TILE if volcanoes.is_empty() else VOLCANO_TILE)
-		if _tile_data.has(coord):
-			var tile_info := _tile_data.get(coord, {}) as Dictionary
-			if not tile_info.is_empty():
-				if volcanoes.is_empty():
-					tile_info["overlay_flags"] = int(tile_info.get("overlay_flags", 0)) | TILE_OVERLAY_ACTIVE_VOLCANO
-				else:
-					tile_info["overlay_flags"] = int(tile_info.get("overlay_flags", 0)) | TILE_OVERLAY_VOLCANO
-				_tile_data[coord] = tile_info
-		volcanoes.append(coord)
-
-	_apply_oases_and_lava(volcanoes, rng)
+	OVERWORLD_TERRAIN_FEATURE_SERVICE.place_volcano_tiles(highland_map, height_map, rng, highland_layer, map_layer, _atlas_source_id, map_size, _tile_data)
 
 
 func _apply_oases_and_lava(volcanoes: Array[Vector2i], rng: RandomNumberGenerator) -> void:
-	for coord_variant: Variant in _tile_data.keys():
-		var coord := coord_variant as Vector2i
-		var tile_info := _tile_data.get(coord, {}) as Dictionary
-		if tile_info.is_empty():
-			continue
-		var base_biome := _tile_base_biome_from_data(tile_info)
-		var base_tile := map_layer.get_cell_atlas_coords(coord)
-		if base_biome == BIOME_DESERT and base_tile == SAND_TILE:
-			var has_adjacent_oasis := false
-			for oy in range(-1, 2):
-				for ox in range(-1, 2):
-					if ox == 0 and oy == 0:
-						continue
-					var neighbor := coord + Vector2i(ox, oy)
-					if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
-						continue
-					if highland_layer != null and highland_layer.get_cell_atlas_coords(neighbor) == OASIS_TILE:
-						has_adjacent_oasis = true
-						break
-				if has_adjacent_oasis:
-					break
-			if not has_adjacent_oasis:
-				var oasis_chance := clampf(0.00025 + float(tile_info.get("moisture", 0.0)) * 0.002, 0.0, 0.08)
-				if rng.randf() < oasis_chance and highland_layer != null and highland_layer.get_cell_atlas_coords(coord) == Vector2i(-1, -1):
-					highland_layer.set_cell(coord, _atlas_source_id, OASIS_TILE)
-
-	for volcano_coord in volcanoes:
-		for oy in range(-1, 2):
-			for ox in range(-1, 2):
-				if ox == 0 and oy == 0:
-					continue
-				var neighbor := volcano_coord + Vector2i(ox, oy)
-				if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
-					continue
-				if map_layer.get_cell_atlas_coords(neighbor) != WATER_TILE:
-					continue
-				if rng.randf() < 0.35:
-					map_layer.set_cell(neighbor, _atlas_source_id, LAVA_TILE)
-					if _tile_data.has(neighbor):
-						var info := _tile_data.get(neighbor, {}) as Dictionary
-						info["base_biome_id"] = _biome_to_id(BIOME_BADLANDS)
-						info["biome_id"] = _biome_to_id(BIOME_BADLANDS)
-						_tile_data[neighbor] = info
+	OVERWORLD_TERRAIN_FEATURE_SERVICE.apply_oases_and_lava(volcanoes, rng, highland_layer, map_layer, _atlas_source_id, map_size, _tile_data)
 
 
 func _build_proximity_map(biome_map: Dictionary, target_biomes: Array[String], max_distance: int) -> Dictionary:
-	var proximity_map: Dictionary = {}
-	if max_distance <= 0 or target_biomes.is_empty():
-		return proximity_map
-	for y in range(map_size.y):
-		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			var nearest := max_distance + 1
-			for oy in range(-max_distance, max_distance + 1):
-				var ny := y + oy
-				if ny < 0 or ny >= map_size.y:
-					continue
-				for ox in range(-max_distance, max_distance + 1):
-					var nx := x + ox
-					if nx < 0 or nx >= map_size.x:
-						continue
-					var sample_coord := Vector2i(nx, ny)
-					if not target_biomes.has(String(biome_map.get(sample_coord, BIOME_GRASSLAND))):
-						continue
-					var distance := maxi(absi(ox), absi(oy))
-					if distance < nearest:
-						nearest = distance
-						if nearest == 0:
-							break
-				if nearest == 0:
-					break
-			if nearest > max_distance:
-				proximity_map[coord] = 0.0
-			else:
-				proximity_map[coord] = clampf(1.0 - float(nearest) / float(max_distance), 0.0, 1.0)
-	return proximity_map
+	return OVERWORLD_TERRAIN_FEATURE_SERVICE.build_proximity_map(biome_map, target_biomes, max_distance, map_size)
 
 
 func _surface_variation_for_coord(coord: Vector2i, base_biome: String) -> float:
-	if base_biome != BIOME_TUNDRA and base_biome != BIOME_DESERT and base_biome != BIOME_BADLANDS:
-		return 0.0
-	var coarse := _to_normalized(_rainfall_noise.get_noise_2d(float(coord.x) * 0.8, float(coord.y) * 0.8))
-	var detail := _to_normalized(_temperature_noise.get_noise_2d(float(coord.x) * 2.3, float(coord.y) * 2.3))
-	return clampf((coarse * 0.65 + detail * 0.35 - 0.5) * 1.6, -1.0, 1.0)
+	return OVERWORLD_TERRAIN_FEATURE_SERVICE.surface_variation_for_coord(coord, base_biome, _rainfall_noise, _temperature_noise)
 
 
 func _water_depth_for_coord(coord: Vector2i, base_biome: String, height_map: Dictionary) -> float:
-	if base_biome != BIOME_WATER:
-		return 0.0
-	var height := float(height_map.get(coord, water_level))
-	if water_level <= 0.001:
-		return 0.0
-	return clampf((water_level - height) / water_level, 0.0, 1.0)
+	return OVERWORLD_TERRAIN_FEATURE_SERVICE.water_depth_for_coord(coord, base_biome, height_map, water_level)
 
 
 func _update_terrain_shading_overlay(base_biome_map: Dictionary) -> void:
@@ -4765,13 +4341,8 @@ func _cache_overlay_parent() -> void:
 		_overlays_original_index = map_overlays.get_index()
 
 func _configure_globe_viewport() -> void:
-	if map_viewport == null:
-		return
-	var viewport_size := Vector2i(map_size.x * tile_size, map_size.y * tile_size)
-	if viewport_size.x <= 0 or viewport_size.y <= 0:
-		return
-	map_viewport.size = viewport_size
-	map_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	if _globe_service != null:
+		_globe_service.configure_globe_viewport(map_size, tile_size)
 
 func _configure_overworld_camera_bounds() -> void:
 	if overworld_camera == null:
@@ -4786,22 +4357,12 @@ func _get_world_rect() -> Rect2:
 	return Rect2(Vector2.ZERO, Vector2(world_width, world_height))
 
 func _set_globe_view(enabled: bool) -> void:
-	_is_globe_view = enabled
-	if globe_view != null:
-		globe_view.visible = enabled
-	if overworld_camera != null:
-		overworld_camera.enabled = not (enabled or _is_scene3d_view)
-		if not enabled and not _is_scene3d_view:
-			overworld_camera.make_current()
-	if globe_camera != null:
-		globe_camera.current = enabled
-	if not enabled:
-		_is_dragging_globe = false
+	if _globe_service != null:
+		_globe_service.set_globe_view(enabled)
+		_is_globe_view = _globe_service.is_globe_view
+		_is_dragging_globe = _globe_service.is_dragging_globe
 	if enabled and not _is_scene3d_view:
-		_move_map_layer_to_viewport()
 		_update_globe_texture()
-	elif not enabled and not _is_scene3d_view:
-		_restore_map_layer_parent()
 	_update_elevation_overlay_visibility()
 	_update_temperature_overlay_visibility()
 	_update_moisture_overlay_visibility()
@@ -4816,22 +4377,12 @@ func _set_globe_view(enabled: bool) -> void:
 	_refresh_scale_bar()
 
 func _set_scene3d_view(enabled: bool) -> void:
-	_is_scene3d_view = enabled
-	if scene3d_view != null:
-		scene3d_view.visible = enabled
-	if overworld_camera != null:
-		overworld_camera.enabled = not (_is_globe_view or enabled)
-		if not _is_globe_view and not enabled:
-			overworld_camera.make_current()
-	if scene3d_camera != null:
-		scene3d_camera.current = enabled
-	if not enabled:
-		_is_dragging_scene3d = false
+	if _globe_service != null:
+		_globe_service.set_scene3d_view(enabled)
+		_is_scene3d_view = _globe_service.is_scene3d_view
+		_is_dragging_scene3d = _globe_service.is_dragging_scene3d
 	if enabled and not _is_globe_view:
-		_move_map_layer_to_viewport()
 		_update_scene3d_texture()
-	elif not enabled and not _is_globe_view:
-		_restore_map_layer_parent()
 	_update_elevation_overlay_visibility()
 	_update_temperature_overlay_visibility()
 	_update_moisture_overlay_visibility()
@@ -4846,43 +4397,8 @@ func _set_scene3d_view(enabled: bool) -> void:
 	_refresh_scale_bar()
 
 func _move_map_layer_to_viewport() -> void:
-	if map_layer == null or map_viewport_root == null:
-		return
-	if map_layer.get_parent() == map_viewport_root:
-		return
-	map_layer.get_parent().remove_child(map_layer)
-	map_viewport_root.add_child(map_layer)
-	map_layer.position = Vector2.ZERO
-	if tree_layer != null:
-		if tree_layer.get_parent() != null:
-			tree_layer.get_parent().remove_child(tree_layer)
-		map_viewport_root.add_child(tree_layer)
-		tree_layer.position = Vector2.ZERO
-	if river_layer != null:
-		if river_layer.get_parent() != null:
-			river_layer.get_parent().remove_child(river_layer)
-		map_viewport_root.add_child(river_layer)
-		river_layer.position = Vector2.ZERO
-	if highland_layer != null:
-		if highland_layer.get_parent() != null:
-			highland_layer.get_parent().remove_child(highland_layer)
-		map_viewport_root.add_child(highland_layer)
-		highland_layer.position = Vector2.ZERO
-	if iceberg_layer != null:
-		if iceberg_layer.get_parent() != null:
-			iceberg_layer.get_parent().remove_child(iceberg_layer)
-		map_viewport_root.add_child(iceberg_layer)
-		iceberg_layer.position = Vector2.ZERO
-	if settlement_layer != null:
-		if settlement_layer.get_parent() != null:
-			settlement_layer.get_parent().remove_child(settlement_layer)
-		map_viewport_root.add_child(settlement_layer)
-		settlement_layer.position = Vector2.ZERO
-	if map_overlays != null:
-		if map_overlays.get_parent() != null:
-			map_overlays.get_parent().remove_child(map_overlays)
-		map_viewport_root.add_child(map_overlays)
-		map_overlays.position = Vector2.ZERO
+	if _globe_service != null:
+		_globe_service.move_map_layer_to_viewport()
 
 func _update_map_tooltip() -> void:
 	if tooltip_panel == null or map_layer == null:
@@ -5115,74 +4631,8 @@ func _hide_map_tooltip() -> void:
 	_hovered_tile = Vector2i(-999, -999)
 
 func _restore_map_layer_parent() -> void:
-	if map_layer == null or _map_layer_original_parent == null:
-		return
-	if map_layer.get_parent() == _map_layer_original_parent:
-		return
-	map_layer.get_parent().remove_child(map_layer)
-	if _map_layer_original_index >= 0:
-		_map_layer_original_parent.add_child(map_layer)
-		_map_layer_original_parent.move_child(map_layer, _map_layer_original_index)
-	else:
-		_map_layer_original_parent.add_child(map_layer)
-	map_layer.position = Vector2.ZERO
-	if tree_layer != null and _tree_layer_original_parent != null:
-		if tree_layer.get_parent() != null:
-			tree_layer.get_parent().remove_child(tree_layer)
-		if _tree_layer_original_index >= 0:
-			_tree_layer_original_parent.add_child(tree_layer)
-			_tree_layer_original_parent.move_child(tree_layer, _tree_layer_original_index)
-		else:
-			_tree_layer_original_parent.add_child(tree_layer)
-		tree_layer.position = Vector2.ZERO
-	if river_layer != null and _river_layer_original_parent != null:
-		if river_layer.get_parent() != null:
-			river_layer.get_parent().remove_child(river_layer)
-		if _river_layer_original_index >= 0:
-			_river_layer_original_parent.add_child(river_layer)
-			_river_layer_original_parent.move_child(river_layer, _river_layer_original_index)
-		else:
-			_river_layer_original_parent.add_child(river_layer)
-		river_layer.position = Vector2.ZERO
-	if highland_layer != null and _highland_layer_original_parent != null:
-		if highland_layer.get_parent() != null:
-			highland_layer.get_parent().remove_child(highland_layer)
-		if _highland_layer_original_index >= 0:
-			_highland_layer_original_parent.add_child(highland_layer)
-			_highland_layer_original_parent.move_child(highland_layer, _highland_layer_original_index)
-		else:
-			_highland_layer_original_parent.add_child(highland_layer)
-		highland_layer.position = Vector2.ZERO
-	if iceberg_layer != null and _iceberg_layer_original_parent != null:
-		if iceberg_layer.get_parent() != null:
-			iceberg_layer.get_parent().remove_child(iceberg_layer)
-		if _iceberg_layer_original_index >= 0:
-			_iceberg_layer_original_parent.add_child(iceberg_layer)
-			_iceberg_layer_original_parent.move_child(iceberg_layer, _iceberg_layer_original_index)
-		else:
-			_iceberg_layer_original_parent.add_child(iceberg_layer)
-		iceberg_layer.position = Vector2.ZERO
-	if settlement_layer != null and _settlement_layer_original_parent != null:
-		if settlement_layer.get_parent() != null:
-			settlement_layer.get_parent().remove_child(settlement_layer)
-		if _settlement_layer_original_index >= 0:
-			_settlement_layer_original_parent.add_child(settlement_layer)
-			_settlement_layer_original_parent.move_child(settlement_layer, _settlement_layer_original_index)
-		else:
-			_settlement_layer_original_parent.add_child(settlement_layer)
-		settlement_layer.position = Vector2.ZERO
-	if map_overlays == null or _overlays_original_parent == null:
-		return
-	if map_overlays.get_parent() == _overlays_original_parent:
-		return
-	if map_overlays.get_parent() != null:
-		map_overlays.get_parent().remove_child(map_overlays)
-	if _overlays_original_index >= 0:
-		_overlays_original_parent.add_child(map_overlays)
-		_overlays_original_parent.move_child(map_overlays, _overlays_original_index)
-	else:
-		_overlays_original_parent.add_child(map_overlays)
-	map_overlays.position = Vector2.ZERO
+	if _globe_service != null:
+		_globe_service.restore_map_layer_parent()
 
 func _handle_globe_input(event: InputEvent) -> bool:
 	var mouse_button_event := event as InputEventMouseButton
