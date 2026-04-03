@@ -126,3 +126,83 @@ const TREE_BIOMES: Array[String] = [BIOME_FOREST, BIOME_JUNGLE, BIOME_TUNDRA]
 const TREE_BASE_BIOMES: Array[String] = [BIOME_GRASSLAND, BIOME_TUNDRA]
 const TREE_VARIANT_FOREST_LONE := "forest_lone"
 const TREE_VARIANT_TUNDRA_LONE := "tundra_lone"
+
+const DWARFHOLD_TILE_ATLAS := {
+	"dirt": Vector2i(0, 2),
+	"workbench": Vector2i(0, 3),
+	"shelf": Vector2i(0, 4),
+	"winepress": Vector2i(0, 5),
+	"grain_bag": Vector2i(0, 6),
+	"stairway_up": Vector2i(0, 7),
+	"wall_right": Vector2i(1, 1),
+	"bed": Vector2i(1, 3),
+	"butcher_table": Vector2i(1, 4),
+	"chest": Vector2i(1, 5),
+	"flour": Vector2i(1, 6),
+	"sign": Vector2i(1, 7),
+	"stone": Vector2i(2, 1),
+	"wall_top": Vector2i(2, 2),
+	"wall_bottom": Vector2i(2, 0),
+	"mushroom_crops": Vector2i(2, 3),
+	"wardrobe": Vector2i(2, 5),
+	"floor": Vector2i(2, 6),
+	"armor_stand": Vector2i(2, 7),
+	"wall_left": Vector2i(3, 1),
+	"table": Vector2i(3, 3),
+	"mug": Vector2i(3, 4),
+	"mushroom_crop_wild": Vector2i(3, 5),
+	"water_bucket": Vector2i(3, 6),
+	"stool": Vector2i(4, 2),
+	"table_alt": Vector2i(5, 2),
+	"door": Vector2i(4, 3),
+	"desk": Vector2i(4, 4),
+	"mushroom_wild": Vector2i(4, 5),
+	"keg": Vector2i(5, 5),
+	"target": Vector2i(6, 3),
+	"anvil": Vector2i(6, 4),
+	"stairway_down": Vector2i(6, 7)
+}
+const DWARFHOLD_PASSABLE_TILE_KEYS := ["floor", "door", "stairway_up", "stairway_down"]
+
+static func validate_atlas_no_duplicates(atlas_name: String, atlas: Dictionary) -> bool:
+	var seen: Dictionary = {}
+	var valid := true
+	for key: String in atlas.keys():
+		var coords: Vector2i = atlas[key]
+		if seen.has(coords):
+			push_warning("Atlas '%s': duplicate coordinate %s shared by '%s' and '%s'" % [atlas_name, coords, seen[coords], key])
+			valid = false
+		else:
+			seen[coords] = key
+	return valid
+
+static func validate_all_atlases() -> bool:
+	var valid := true
+	if not validate_atlas_no_duplicates("DWARFHOLD_TILE_ATLAS", DWARFHOLD_TILE_ATLAS):
+		valid = false
+	var overworld_atlas: Dictionary = {}
+	for key: String in ["SAND_TILE", "GRASS_TILE", "BADLANDS_TILE", "MINE_TILE", "MARSH_TILE",
+			"SNOW_TILE", "TREE_TILE", "TREE_LONE_TILE", "JUNGLE_TREE_TILE", "CUT_TREES_TILE",
+			"AMBIENT_LUMBER_MILL_TILE", "WATER_TILE", "MOUNTAIN_TILE", "MOUNTAIN_TOP_A_TILE",
+			"MOUNTAIN_TOP_B_TILE", "MOUNTAIN_BOTTOM_A_TILE", "MOUNTAIN_BOTTOM_B_TILE",
+			"DAM_TILE", "MOUNTAIN_PEAK_TILE", "STONE_TILE", "DWARFHOLD_TILE",
+			"ABANDONED_DWARFHOLD_TILE", "GREAT_DWARFHOLD_TILE", "DARK_DWARFHOLD_TILE",
+			"HILLHOLD_TILE", "CAVE_TILE", "TOWER_TILE", "EVIL_WIZARDS_TOWER_TILE",
+			"WOOD_ELF_GROVES_TILE", "WOOD_ELF_GROVES_LARGE_TILE", "WOOD_ELF_GROVES_GRAND_TILE",
+			"HILLS_TILE", "HILLS_BADLANDS_TILE", "HILLS_VARIANT_A_TILE", "HILLS_VARIANT_B_TILE",
+			"HILLS_SNOW_TILE", "TOWN_TILE", "PORT_TOWN_TILE", "CASTLE_TILE",
+			"ROADSIDE_TAVERN_TILE", "HAMLET_TILE", "TREE_SNOW_TILE", "ACTIVE_VOLCANO_TILE",
+			"VOLCANO_TILE", "LAVA_TILE", "OASIS_TILE", "HAMLET_SNOW_TILE",
+			"AMBIENT_SLEEPING_DRAGON_TILE", "AMBIENT_HUNTING_LODGE_TILE",
+			"AMBIENT_HOMESTEAD_TILE", "AMBIENT_MOONWELL_TILE", "AMBIENT_FARM_TILE",
+			"FARM_CROPS_TILE", "AMBIENT_FARM_VARIANT_TILE", "AMBIENT_GREAT_TREE_TILE",
+			"AMBIENT_GREAT_TREE_ALT_TILE", "LIZARDMEN_CITY_TILE", "SAINT_SHRINE_TILE",
+			"MONASTERY_TILE", "ORC_CAMP_TILE", "GNOLL_CAMP_TILE", "TROLL_CAMP_TILE",
+			"OGRE_CAMP_TILE", "BANDIT_CAMP_TILE", "TRAVELERS_CAMP_TILE", "DUNGEON_TILE",
+			"CENTAUR_ENCAMPMENT_TILE"]:
+		overworld_atlas[key] = get(key)
+	if not validate_atlas_no_duplicates("OVERWORLD_TILES", overworld_atlas):
+		valid = false
+	if not validate_atlas_no_duplicates("RIVER_TILES", RIVER_TILES):
+		valid = false
+	return valid
