@@ -10,7 +10,7 @@ var _scene3d_camera: Camera3D
 var _scene3d_mesh: MeshInstance3D
 var _map_viewport: SubViewport
 var _map_viewport_root: Node2D
-var _overworld_camera: Node  # OverworldCamera (typed loosely to avoid hard dep)
+var _overworld_camera: Camera2D
 
 # Layer references
 var _map_layer: TileMapLayer
@@ -54,7 +54,7 @@ func _init(
 	scene3d_mesh: MeshInstance3D,
 	map_viewport: SubViewport,
 	map_viewport_root: Node2D,
-	overworld_camera: Node,
+	overworld_camera: Camera2D,
 	map_layer: TileMapLayer,
 	tree_layer: TileMapLayer,
 	river_layer: TileMapLayer,
