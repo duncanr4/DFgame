@@ -37,9 +37,9 @@ const TILE_ATLAS := {
 	"stairway_up": Vector2i(0, 7),
 	"wall_right": Vector2i(1, 1),
 	"bed": Vector2i(1, 3),
-	"butcher_table": Vector2i(1, 3),
+	"butcher_table": Vector2i(1, 4),
 	"chest": Vector2i(1, 5),
-	"flour": Vector2i(1, 5),
+	"flour": Vector2i(1, 6),
 	"sign": Vector2i(1, 7),
 	"stone": Vector2i(2, 1),
 	"wall_top": Vector2i(2, 2),
@@ -73,9 +73,9 @@ const EXPECTED_TILE_COORDS := {
 	"stairway_up": Vector2i(0, 7),
 	"wall_right": Vector2i(1, 1),
 	"bed": Vector2i(1, 3),
-	"butcher_table": Vector2i(1, 3),
+	"butcher_table": Vector2i(1, 4),
 	"chest": Vector2i(1, 5),
-	"flour": Vector2i(1, 5),
+	"flour": Vector2i(1, 6),
 	"sign": Vector2i(1, 7),
 	"stone": Vector2i(2, 1),
 	"wall_top": Vector2i(2, 2),
@@ -1755,7 +1755,7 @@ func _pick_required_stair_cell(grid: Dictionary, excluded_cell: Vector2i = Vecto
 	var stair_candidates := _stair_candidates_for_level(grid)
 	if not stair_candidates.is_empty():
 		var shuffled_candidates := stair_candidates.duplicate()
-		shuffled_candidates.shuffle()
+		_seeded_shuffle(shuffled_candidates)
 		for candidate_variant: Variant in shuffled_candidates:
 			var candidate := candidate_variant as Vector2i
 			if candidate != excluded_cell:
@@ -1764,7 +1764,7 @@ func _pick_required_stair_cell(grid: Dictionary, excluded_cell: Vector2i = Vecto
 	var walkable_cells := _collect_walkable_cells(grid)
 	if not walkable_cells.is_empty():
 		var shuffled_walkable := walkable_cells.duplicate()
-		shuffled_walkable.shuffle()
+		_seeded_shuffle(shuffled_walkable)
 		for walkable_variant: Variant in shuffled_walkable:
 			var walkable_cell := walkable_variant as Vector2i
 			if walkable_cell != excluded_cell:
@@ -1879,7 +1879,9 @@ func _has_line_of_sight_to_cell(from_cell: Vector2i, to_cell: Vector2i) -> bool:
 	)
 
 func _is_transparent_lighting_cell(cell: Vector2i) -> bool:
-	return _is_passable_cell_for_actor(cell)
+	if city_layer.get_cell_source_id(cell) < 0:
+		return false
+	return _is_passable_atlas_tile(city_layer.get_cell_atlas_coords(cell))
 
 func _ensure_chest_inventory(cell: Vector2i) -> void:
 	DwarfHoldChestService.ensure_chest_inventory(_chest_inventories, cell, _rng, CHEST_LOOT_TABLE)
@@ -2058,6 +2060,8 @@ func _ensure_house_has_bed(component: Array[Vector2i], overrides: Dictionary) ->
 func _try_assign_house_decor(overrides: Dictionary, occupied: Dictionary, cell: Vector2i, tile_key: String) -> void:
 	if not occupied.has(cell):
 		return
+	if overrides.has(cell):
+		return
 	overrides[cell] = tile_key
 
 func _find_wall_adjacent_cell(component: Array[Vector2i], occupied: Dictionary, overrides: Dictionary, preferred_cell: Vector2i) -> Vector2i:
@@ -2181,6 +2185,13 @@ func _spawn_tavern_characters(grid: Dictionary) -> void:
 
 func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
 	return DwarfHoldLayoutService.collect_walkable_cells(grid, [CELL_HALL, CELL_HOUSE, CELL_BUILDING, CELL_PLAZA])
+
+func _seeded_shuffle(arr: Array) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j := _rng.randi_range(0, i)
+		var tmp: Variant = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
 
 func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
 	return DwarfHoldActorVisuals.create_tavern_character_sprite(_placeholder_actor_texture, character_slot, tile_size)
@@ -2385,7 +2396,6 @@ func _update_npc_movement(delta: float) -> void:
 				if _is_npc_walkable_cell(candidate_cell):
 					direction = candidate
 					target = _cell_center_position(candidate_cell)
-					state["cell"] = candidate_cell
 					state["facing_row"] = _facing_row_from_direction(candidate)
 					break
 			cooldown = _rng.randf_range(TAVERN_WANDER_COOLDOWN_RANGE.x, TAVERN_WANDER_COOLDOWN_RANGE.y)
@@ -2395,6 +2405,7 @@ func _update_npc_movement(delta: float) -> void:
 			sprite.position = sprite.position.move_toward(target, speed * delta)
 			if sprite.position.distance_to(target) <= 0.5:
 				sprite.position = target
+				state["cell"] = city_layer.local_to_map(target)
 				direction = Vector2.ZERO
 
 		var frame_elapsed := float(state.get("frame_elapsed", 0.0)) + delta
@@ -2468,7 +2479,7 @@ func _actor_sprite_to_cell(sprite: Sprite2D, cell: Vector2i) -> void:
 	sprite.position = _cell_center_position(cell)
 
 func _cell_center_position(cell: Vector2i) -> Vector2:
-	return city_layer.map_to_local(cell) + Vector2(tile_size) * 0.5
+	return city_layer.map_to_local(cell)
 
 func _place_tile(target_layer: TileMapLayer, cell: Vector2i, tile_key: String) -> void:
 	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))
@@ -2488,8 +2499,6 @@ func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 			if _is_hall_border_rock_cell(grid, x, y):
 				return "stone"
 			return ""
-		CELL_HOUSE, CELL_BUILDING:
-			return _wall_or_floor_tile(grid, x, y, cell)
 		_:
 			return "stone"
 

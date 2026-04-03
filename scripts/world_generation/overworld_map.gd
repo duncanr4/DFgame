@@ -1597,7 +1597,7 @@ func _build_settlement_history_timeline(
 	rng.seed = int(seed_basis.hash())
 
 	var span := maxi(1, founded_years_ago)
-	var middle_event_count := clampi(span / 16, 39, 89)
+	var middle_event_count := clampi(span / 16, 3, 8)
 
 	var selected_events: Array[String] = []
 	for _index in range(middle_event_count):
@@ -2070,9 +2070,9 @@ func _apply_overlays_and_metadata(
 			if tree_layer != null and not has_river:
 				var tree_tile := tree_layer.get_cell_atlas_coords(coord)
 				if tree_tile == TREE_TILE or tree_tile == TREE_SNOW_TILE:
-					overlay_label = "tree"
-				elif tree_tile == JUNGLE_TREE_TILE:
 					overlay_label = "forest"
+				elif tree_tile == JUNGLE_TREE_TILE:
+					overlay_label = "tree"
 			var overlay_flags := 0
 			if overlay_label == "tree":
 				overlay_flags |= TILE_OVERLAY_TREE
@@ -2678,84 +2678,7 @@ func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
 
 
 func _generate_landmass_masks_from_biome_map(biome_map: Dictionary) -> Dictionary:
-	var terrain_generator := TERRAIN_GENERATOR.new()
-	if terrain_generator.has_method("generate_landmass_masks_from_biome_map"):
-		return terrain_generator.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
-
-	var land_mask := {}
-	var water_mask := {}
-	var visited := {}
-	var ocean_cells := {}
-	var lake_cells := {}
-
-	for y in range(map_size.y):
-		for x in range(map_size.x):
-			var coord := Vector2i(x, y)
-			if String(biome_map.get(coord, "")) == BIOME_WATER:
-				water_mask[coord] = true
-			else:
-				land_mask[coord] = true
-
-	for coord: Vector2i in water_mask.keys():
-		if visited.has(coord):
-			continue
-		var queue: Array[Vector2i] = [coord]
-		var component: Array[Vector2i] = []
-		var touches_edge := false
-
-		while !queue.is_empty():
-			var current: Vector2i = queue.pop_back()
-			if visited.has(current):
-				continue
-			visited[current] = true
-			component.append(current)
-			if current.x == 0 or current.y == 0 or current.x == map_size.x - 1 or current.y == map_size.y - 1:
-				touches_edge = true
-			for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-				var neighbor: Vector2i = current + offset
-				if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= map_size.x or neighbor.y >= map_size.y:
-					continue
-				if water_mask.has(neighbor) and !visited.has(neighbor):
-					queue.append(neighbor)
-
-		for cell in component:
-			if touches_edge:
-				ocean_cells[cell] = true
-			else:
-				lake_cells[cell] = true
-
-	var sea_island: Array[Vector2i] = []
-	var lake_island: Array[Vector2i] = []
-
-	for coord: Vector2i in land_mask.keys():
-		var adjacent_ocean := false
-		var adjacent_lake := false
-		for offset: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var neighbor: Vector2i = coord + offset
-			if !water_mask.has(neighbor):
-				continue
-			if lake_cells.has(neighbor):
-				adjacent_lake = true
-			else:
-				adjacent_ocean = true
-		if adjacent_lake or adjacent_ocean:
-			if adjacent_lake and !adjacent_ocean:
-				lake_island.append(coord)
-			else:
-				sea_island.append(coord)
-
-	return {
-		"paths": [],
-		"land_mask": land_mask,
-		"water_mask": water_mask,
-		"ocean_cells": ocean_cells,
-		"lake_cells": lake_cells,
-		"coastline": {
-			"sea_island": sea_island,
-			"lake_island": lake_island
-		},
-		"lakes": {"freshwater": lake_cells.keys()}
-	}
+	return TERRAIN_GENERATOR.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
 
 
 func _ensure_landmass_presence(height_map: Dictionary) -> void:
@@ -2881,7 +2804,7 @@ func _sample_height(
 	return float(TERRAIN_GENERATOR.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers))
 
 func _feature_frequency_divisor() -> float:
-	return maxf(1.0, minf(float(map_size.x), WORLD_FEATURE_REFERENCE_WIDTH))
+	return maxf(1.0, float(map_size.x))
 
 
 func _sample_continent_bias(x: int, y: int) -> float:
@@ -3330,7 +3253,7 @@ func _smooth_biomes(biome_map: Dictionary, passes: int) -> void:
 				if count > most_common_count:
 					most_common = biome
 					most_common_count = count
-			if most_common != current and most_common_count >= 0:
+			if most_common != current and most_common_count >= 4:
 				write_map[coord] = most_common
 			else:
 				write_map[coord] = current
@@ -3760,7 +3683,7 @@ func _place_mines_hillholds_and_dams(
 				var right_hill := _tile_hill_biome_from_data((_tile_data.get(right, {}) as Dictionary))
 				if left_hill != BIOME_MOUNTAIN or right_hill != BIOME_MOUNTAIN:
 					continue
-				if placed_dwarf_sites.is_empty() or _is_too_close(coord, placed_dwarf_sites, 12.0):
+				if not placed_dwarf_sites.is_empty() and _is_too_close(coord, placed_dwarf_sites, 12.0):
 					_place_structure_with_details(coord, DAM_TILE, "dam", {"region_name": "Dam"})
 					occupied.append(coord)
 					max_dams -= 1
