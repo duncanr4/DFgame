@@ -2064,7 +2064,7 @@ func _apply_river_tiles(
 	tree_map: Dictionary,
 	edge_connected_water: Dictionary
 ) -> Dictionary:
-	return OverworldRiverService.apply_river_tiles(river_map, base_biome_map, highland_map, tree_map, edge_connected_water, river_layer, highland_layer, tree_layer, _atlas_source_id, map_size)
+	return OverworldRiverService.apply_river_tiles(river_map, base_biome_map, highland_map, tree_map, edge_connected_water, map_size, river_layer, highland_layer, tree_layer, _atlas_source_id)
 
 func _resolve_river_tile(
 	river_map: Dictionary,
