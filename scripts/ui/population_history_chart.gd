@@ -41,14 +41,14 @@ func _get_tooltip(at_position: Vector2) -> String:
 	return "Year %d\nPopulation: %d" % [year, population]
 
 func _chart_area() -> Rect2:
-	var rect := get_rect()
+	var rect_size := size
 	var left_margin := 52.0
 	var right_margin := 10.0
 	var top_margin := 10.0
 	var bottom_margin := 30.0
 	return Rect2(
-		rect.position + Vector2(left_margin, top_margin),
-		rect.size - Vector2(left_margin + right_margin, top_margin + bottom_margin)
+		Vector2(left_margin, top_margin),
+		rect_size - Vector2(left_margin + right_margin, top_margin + bottom_margin)
 	)
 
 func _point_index_at_position(pointer_position: Vector2) -> int:
@@ -108,7 +108,7 @@ func _draw_axis_labels(plot: Rect2, min_value: float, max_value: float) -> void:
 	draw_string(axis_font, Vector2(plot.position.x + plot.size.x * 0.5, plot.end.y + 18.0), "Year", HORIZONTAL_ALIGNMENT_CENTER, 48.0, 12, AXIS_LABEL_COLOR)
 
 func _draw() -> void:
-	var rect := get_rect()
+	var rect := Rect2(Vector2.ZERO, size)
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
 

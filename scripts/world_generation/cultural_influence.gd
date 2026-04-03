@@ -759,7 +759,7 @@ func _ambient_option_matches(option: Dictionary, coord: Vector2i, tiles: Diction
 		return false
 	if bool(option.get("requires_tree_neighbor", false)) and not _has_neighbor_overlay(coord, tiles, "tree"):
 		return false
-	if bool(option.get("disallow_forest_overlay", false)) and _has_neighbor_overlay(coord, tiles, "forest"):
+	if bool(option.get("disallow_forest_overlay", false)) and _has_overlay(coord, tiles, "forest"):
 		return false
 	if bool(option.get("requires_cave_neighbor", false)) and not _has_neighbor_structure(coord, tiles, "cave"):
 		return false

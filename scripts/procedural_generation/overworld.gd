@@ -107,8 +107,8 @@ func apply_world_settings(settings: Dictionary) -> void:
 
 	if settings.has("map_dimensions") and settings["map_dimensions"] is Vector2i:
 		var dims: Vector2i = settings["map_dimensions"]
-		tile_map_size = dims
 		size = dims * 2
+		tile_map_size = dims
 
 	var terrain: Dictionary = settings.get("terrain_ratios", {}) as Dictionary
 	water_ocurrence = clampf(0.16 + float(terrain.get("river", 0.5)) * 0.16, 0.16, 0.5)

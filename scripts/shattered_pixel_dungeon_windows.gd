@@ -90,12 +90,13 @@ func _on_back_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/mainmenu.tscn")
 
 
-func _generate_dungeon() -> void:
+func _generate_dungeon(retry_count: int = 0) -> void:
 	_initialize_maps()
 
 	var rooms: Array[Rect2i] = _generate_room_candidates()
 	if rooms.is_empty():
-		_generate_dungeon()
+		if retry_count < 10:
+			_generate_dungeon(retry_count + 1)
 		return
 
 	_connect_rooms(rooms)
@@ -285,13 +286,13 @@ func _place_decor(rooms: Array[Rect2i]) -> void:
 
 func _adjacent_wall_count(x: int, y: int) -> int:
 	var count := 0
-	if map_tiles[y - 1][x] == TILE_WALL:
+	if y > 0 and map_tiles[y - 1][x] == TILE_WALL:
 		count += 1
-	if map_tiles[y + 1][x] == TILE_WALL:
+	if y < map_tiles.size() - 1 and map_tiles[y + 1][x] == TILE_WALL:
 		count += 1
-	if map_tiles[y][x - 1] == TILE_WALL:
+	if x > 0 and map_tiles[y][x - 1] == TILE_WALL:
 		count += 1
-	if map_tiles[y][x + 1] == TILE_WALL:
+	if x < map_tiles[y].size() - 1 and map_tiles[y][x + 1] == TILE_WALL:
 		count += 1
 	return count
 

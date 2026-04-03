@@ -863,6 +863,8 @@ func _on_clan_selected(_index: int) -> void:
 func _on_name_changed(_new_text: String) -> void:
 	for curr_idx in AMOUNT_OF_IMAGES:
 		_colors[curr_idx].z = 1
+	var shader: ShaderMaterial = target_render.material
+	shader.set_shader_parameter(&"colors", _colors)
 
 func _load_available_beards() -> void:
 	_available_beards.clear()
