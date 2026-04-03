@@ -2,7 +2,6 @@ extends RefCounted
 class_name OverworldRiverService
 
 const TILE_ATLAS_DEFS := preload("res://scripts/world_generation/tile_atlas_defs.gd")
-const OVERWORLD_TERRAIN_SERVICE := preload("res://scripts/world_generation/overworld_terrain_service.gd")
 
 const BIOME_WATER := TILE_ATLAS_DEFS.BIOME_WATER
 const RIVER_TILES := TILE_ATLAS_DEFS.RIVER_TILES
@@ -250,7 +249,7 @@ static func build_river_map(
 
 
 static func build_ocean_distance_map(base_biome_map: Dictionary, map_size: Vector2i) -> Dictionary:
-	return OVERWORLD_TERRAIN_SERVICE.build_ocean_distance_map(
+	return OverworldTerrainService.build_ocean_distance_map(
 		base_biome_map,
 		map_size,
 		BIOME_WATER,
@@ -260,7 +259,7 @@ static func build_ocean_distance_map(base_biome_map: Dictionary, map_size: Vecto
 
 
 static func compute_edge_connected_water_mask(base_biome_map: Dictionary, map_size: Vector2i) -> Dictionary:
-	return OVERWORLD_TERRAIN_SERVICE.compute_edge_connected_water_mask(
+	return OverworldTerrainService.compute_edge_connected_water_mask(
 		base_biome_map,
 		map_size,
 		BIOME_WATER,

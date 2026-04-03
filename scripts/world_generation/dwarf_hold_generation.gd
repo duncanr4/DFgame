@@ -1,13 +1,5 @@
 extends Control
 
-const DwarfHoldStateModel = preload("res://scripts/world_generation/dwarf_hold_state_model.gd")
-const DwarfHoldGenerationRules = preload("res://scripts/world_generation/dwarf_hold_generation_rules.gd")
-const DwarfHoldUiInputHandler = preload("res://scripts/world_generation/dwarf_hold_ui_input_handler.gd")
-const DwarfHoldActorVisuals = preload("res://scripts/world_generation/dwarf_hold_actor_visuals.gd")
-const DwarfHoldLayoutService = preload("res://scripts/world_generation/dwarf_hold_layout_service.gd")
-const DwarfHoldChestService = preload("res://scripts/world_generation/dwarf_hold_chest_service.gd")
-const DwarfHoldLightingService = preload("res://scripts/world_generation/dwarf_hold_lighting_service.gd")
-
 const CELL_ROCK := 0
 const CELL_HALL := 1
 const CELL_HOUSE := 2

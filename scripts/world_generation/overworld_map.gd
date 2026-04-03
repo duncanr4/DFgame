@@ -71,21 +71,12 @@ extends Node2D
 
 const TILE_ATLAS_DEFS := preload("res://scripts/world_generation/tile_atlas_defs.gd")
 const BIOME_CLASSIFIER := preload("res://scripts/world_generation/biome_classifier.gd")
-const TERRAIN_GENERATOR := preload("res://scripts/world_generation/terrain_generator.gd")
 const STRUCTURE_PLACER := preload("res://scripts/world_generation/structure_placer.gd")
 const WORLD_NAMING := preload("res://scripts/world_generation/world_naming.gd")
-const DWARFHOLD_LOGIC := preload("res://scripts/world_generation/dwarfhold_logic.gd")
-const CULTURE_TYPES := preload("res://scripts/world_generation/culture_types.gd")
-const CULTURAL_INFLUENCE := preload("res://scripts/world_generation/cultural_influence.gd")
 const OVERWORLD_GENERATION := preload("res://scripts/world_generation/overworld_generation.gd")
 const OVERWORLD_RENDERING := preload("res://scripts/world_generation/overworld_rendering.gd")
 const OVERWORLD_INTERACTION := preload("res://scripts/world_generation/overworld_interaction.gd")
 const OVERWORLD_CONTENT := preload("res://scripts/world_generation/overworld_content.gd")
-const OVERWORLD_TERRAIN_SERVICE := preload("res://scripts/world_generation/overworld_terrain_service.gd")
-const OVERWORLD_TERRAIN_FEATURE_SERVICE := preload("res://scripts/world_generation/overworld_terrain_feature_service.gd")
-const OVERWORLD_SETTLEMENT_SERVICE := preload("res://scripts/world_generation/overworld_settlement_service.gd")
-const OVERWORLD_POPULATION_SERVICE := preload("res://scripts/world_generation/overworld_population_service.gd")
-const OVERWORLD_RIVER_SERVICE := preload("res://scripts/world_generation/overworld_river_service.gd")
 
 const ATLAS_TEXTURE := TILE_ATLAS_DEFS.ATLAS_TEXTURE
 const SAND_TILE := TILE_ATLAS_DEFS.SAND_TILE
@@ -998,7 +989,7 @@ var _moisture_buffer: PackedFloat32Array = PackedFloat32Array()
 var _biome_map: Dictionary = {}
 var _biome_buffer: PackedByteArray = PackedByteArray()
 var _world_settings: Dictionary = {}
-var _culture_pipeline := CULTURAL_INFLUENCE.new()
+var _culture_pipeline := CulturalInfluence.new()
 var _landmass_centers: Array[Vector2] = []
 var _map_layer_original_parent: Node = null
 var _map_layer_original_index := -1
@@ -2037,7 +2028,7 @@ func _build_river_map_buffers(
 	base_biome_buffer: PackedByteArray,
 	rng: RandomNumberGenerator
 ) -> Dictionary:
-	return OVERWORLD_RIVER_SERVICE.build_river_map_buffers(height_buffer, moisture_buffer, base_biome_buffer, rng, map_size, water_level, river_frequency)
+	return OverworldRiverService.build_river_map_buffers(height_buffer, moisture_buffer, base_biome_buffer, rng, map_size, water_level, river_frequency)
 
 
 func _build_river_map(
@@ -2046,10 +2037,10 @@ func _build_river_map(
 	base_biome_map: Dictionary,
 	rng: RandomNumberGenerator
 ) -> Dictionary:
-	return OVERWORLD_RIVER_SERVICE.build_river_map(height_map, moisture_map, base_biome_map, rng, map_size, water_level, river_frequency)
+	return OverworldRiverService.build_river_map(height_map, moisture_map, base_biome_map, rng, map_size, water_level, river_frequency)
 
 func _build_ocean_distance_map(base_biome_map: Dictionary) -> Dictionary:
-	return OVERWORLD_TERRAIN_SERVICE.build_ocean_distance_map(
+	return OverworldTerrainService.build_ocean_distance_map(
 		base_biome_map,
 		map_size,
 		BIOME_WATER,
@@ -2058,7 +2049,7 @@ func _build_ocean_distance_map(base_biome_map: Dictionary) -> Dictionary:
 	)
 
 func _compute_edge_connected_water_mask(base_biome_map: Dictionary) -> Dictionary:
-	return OVERWORLD_TERRAIN_SERVICE.compute_edge_connected_water_mask(
+	return OverworldTerrainService.compute_edge_connected_water_mask(
 		base_biome_map,
 		map_size,
 		BIOME_WATER,
@@ -2073,7 +2064,7 @@ func _apply_river_tiles(
 	tree_map: Dictionary,
 	edge_connected_water: Dictionary
 ) -> Dictionary:
-	return OVERWORLD_RIVER_SERVICE.apply_river_tiles(river_map, base_biome_map, highland_map, tree_map, edge_connected_water, river_layer, highland_layer, tree_layer, _atlas_source_id, map_size)
+	return OverworldRiverService.apply_river_tiles(river_map, base_biome_map, highland_map, tree_map, edge_connected_water, river_layer, highland_layer, tree_layer, _atlas_source_id, map_size)
 
 func _resolve_river_tile(
 	river_map: Dictionary,
@@ -2081,30 +2072,30 @@ func _resolve_river_tile(
 	base_biome_map: Dictionary,
 	ocean_mask: Dictionary
 ) -> Vector2i:
-	return OVERWORLD_RIVER_SERVICE.resolve_river_tile(river_map, coord, base_biome_map, ocean_mask, map_size)
+	return OverworldRiverService.resolve_river_tile(river_map, coord, base_biome_map, ocean_mask, map_size)
 
 func _apply_mountain_overlay_variants(highland_map: Dictionary, height_map: Dictionary) -> void:
-	OVERWORLD_TERRAIN_FEATURE_SERVICE.apply_mountain_overlay_variants(highland_map, height_map, highland_layer, _atlas_source_id, map_size)
+	OverworldTerrainFeatureService.apply_mountain_overlay_variants(highland_map, height_map, highland_layer, _atlas_source_id, map_size)
 
 
 func _place_volcano_tiles(highland_map: Dictionary, height_map: Dictionary, rng: RandomNumberGenerator) -> void:
-	OVERWORLD_TERRAIN_FEATURE_SERVICE.place_volcano_tiles(highland_map, height_map, rng, highland_layer, map_layer, _atlas_source_id, map_size, _tile_data)
+	OverworldTerrainFeatureService.place_volcano_tiles(highland_map, height_map, rng, highland_layer, map_layer, _atlas_source_id, map_size, _tile_data)
 
 
 func _apply_oases_and_lava(volcanoes: Array[Vector2i], rng: RandomNumberGenerator) -> void:
-	OVERWORLD_TERRAIN_FEATURE_SERVICE.apply_oases_and_lava(volcanoes, rng, highland_layer, map_layer, _atlas_source_id, map_size, _tile_data)
+	OverworldTerrainFeatureService.apply_oases_and_lava(volcanoes, rng, highland_layer, map_layer, _atlas_source_id, map_size, _tile_data)
 
 
 func _build_proximity_map(biome_map: Dictionary, target_biomes: Array[String], max_distance: int) -> Dictionary:
-	return OVERWORLD_TERRAIN_FEATURE_SERVICE.build_proximity_map(biome_map, target_biomes, max_distance, map_size)
+	return OverworldTerrainFeatureService.build_proximity_map(biome_map, target_biomes, max_distance, map_size)
 
 
 func _surface_variation_for_coord(coord: Vector2i, base_biome: String) -> float:
-	return OVERWORLD_TERRAIN_FEATURE_SERVICE.surface_variation_for_coord(coord, base_biome, _rainfall_noise, _temperature_noise)
+	return OverworldTerrainFeatureService.surface_variation_for_coord(coord, base_biome, _rainfall_noise, _temperature_noise)
 
 
 func _water_depth_for_coord(coord: Vector2i, base_biome: String, height_map: Dictionary) -> float:
-	return OVERWORLD_TERRAIN_FEATURE_SERVICE.water_depth_for_coord(coord, base_biome, height_map, water_level)
+	return OverworldTerrainFeatureService.water_depth_for_coord(coord, base_biome, height_map, water_level)
 
 
 func _update_terrain_shading_overlay(base_biome_map: Dictionary) -> void:
@@ -2254,7 +2245,7 @@ func _water_region_type(start_coord: Vector2i, biome_map: Dictionary) -> String:
 
 
 func _generate_landmass_masks_from_biome_map(biome_map: Dictionary) -> Dictionary:
-	return TERRAIN_GENERATOR.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
+	return TerrainGenerator.generate_landmass_masks_from_biome_map(biome_map, map_size, BIOME_WATER)
 
 
 func _ensure_landmass_presence(height_map: Dictionary) -> void:
@@ -2377,42 +2368,42 @@ func _sample_height(
 	x: int,
 	y: int
 ) -> float:
-	return float(TERRAIN_GENERATOR.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers))
+	return float(TerrainGenerator.sample_height(continent_noise, detail_noise, ridge_noise, x, y, _terrain_settings(), _landmass_centers))
 
 func _feature_frequency_divisor() -> float:
 	return maxf(1.0, float(map_size.x))
 
 
 func _sample_continent_bias(x: int, y: int) -> float:
-	return float(TERRAIN_GENERATOR.sample_continent_bias(x, y, _terrain_settings(), _landmass_centers))
+	return float(TerrainGenerator.sample_continent_bias(x, y, _terrain_settings(), _landmass_centers))
 
 
 func _sample_edge_ocean_bias(x: int, y: int) -> float:
-	return float(TERRAIN_GENERATOR.sample_edge_ocean_bias(x, y, _terrain_settings()))
+	return float(TerrainGenerator.sample_edge_ocean_bias(x, y, _terrain_settings()))
 
 
 func _sample_radial_falloff_bias(centered_nx: float, centered_ny: float) -> float:
-	return float(TERRAIN_GENERATOR.sample_radial_falloff_bias(centered_nx, centered_ny, falloff_strength, falloff_power))
+	return float(TerrainGenerator.sample_radial_falloff_bias(centered_nx, centered_ny, falloff_strength, falloff_power))
 
 
 func _sample_landmass_center_bias(centered_nx: float, centered_ny: float) -> float:
-	return float(TERRAIN_GENERATOR.sample_landmass_center_bias(centered_nx, centered_ny, landmass_falloff_scale, falloff_power, _landmass_centers))
+	return float(TerrainGenerator.sample_landmass_center_bias(centered_nx, centered_ny, landmass_falloff_scale, falloff_power, _landmass_centers))
 
 
 func _sample_landmass_mask_bias(nx: float, ny: float) -> float:
-	return float(TERRAIN_GENERATOR.sample_landmass_mask_bias(nx, ny, _terrain_settings()))
+	return float(TerrainGenerator.sample_landmass_mask_bias(nx, ny, _terrain_settings()))
 
 
 func _configure_landmass_centers(rng: RandomNumberGenerator) -> void:
-	_landmass_centers = TERRAIN_GENERATOR.configure_landmass_centers(rng, landmass_center_count, landmass_center_margin) as Array[Vector2]
+	_landmass_centers = TerrainGenerator.configure_landmass_centers(rng, landmass_center_count, landmass_center_margin) as Array[Vector2]
 
 
 func _distance_to_nearest_landmass_center(nx: float, ny: float) -> float:
-	return float(TERRAIN_GENERATOR.distance_to_nearest_landmass_center(nx, ny, _landmass_centers))
+	return float(TerrainGenerator.distance_to_nearest_landmass_center(nx, ny, _landmass_centers))
 
 
 func _smooth_height_map(height_map: Dictionary, passes: int, strength: float) -> void:
-	TERRAIN_GENERATOR.smooth_height_map(height_map, passes, strength, water_level)
+	TerrainGenerator.smooth_height_map(height_map, passes, strength, water_level)
 
 
 func _smooth_height_buffer(height_buffer: PackedFloat32Array, passes: int, strength: float) -> void:
@@ -2449,11 +2440,11 @@ func _guarantee_minimum_landmass_buffer(
 
 
 func _sample_landmass_mask(nx: float, ny: float) -> float:
-	return float(TERRAIN_GENERATOR.sample_landmass_mask(nx, ny, _terrain_settings()))
+	return float(TerrainGenerator.sample_landmass_mask(nx, ny, _terrain_settings()))
 
 
 func _ellipse_distance(nx: float, ny: float, center: Vector2, radius: Vector2) -> float:
-	return float(TERRAIN_GENERATOR.ellipse_distance(nx, ny, center, radius))
+	return float(TerrainGenerator.ellipse_distance(nx, ny, center, radius))
 
 
 func _value_noise(x: float, y: float, seed_value: int) -> float:
@@ -2954,8 +2945,8 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 	var candidates := _build_settlement_candidates(biome_map)
 	var min_distance := 8.0
 
-	for civilization: String in DWARFHOLD_LOGIC.SETTLEMENT_TYPES.keys():
-		var settlement_type := String(DWARFHOLD_LOGIC.SETTLEMENT_TYPES[civilization])
+	for civilization: String in DwarfholdLogic.SETTLEMENT_TYPES.keys():
+		var settlement_type := String(DwarfholdLogic.SETTLEMENT_TYPES[civilization])
 		var ratio := -1.0
 		if ratios.has(civilization):
 			ratio = float(ratios.get(civilization, 0.0))
@@ -2971,7 +2962,7 @@ func _place_settlements(biome_map: Dictionary, rng: RandomNumberGenerator) -> vo
 			var available := _filter_settlement_candidates(candidates, occupied, min_distance)
 			if available.is_empty():
 				break
-			var chosen := DWARFHOLD_LOGIC.choose_tile_for_capital(settlement_type, available, rng)
+			var chosen := DwarfholdLogic.choose_tile_for_capital(settlement_type, available, rng)
 			if chosen == Vector2i(-1, -1):
 				break
 			if _is_too_close(chosen, occupied, min_distance):
@@ -3495,7 +3486,7 @@ func _assign_cultural_groups(
 	height_map: Dictionary,
 	rng: RandomNumberGenerator
 ) -> void:
-	var pipeline := CULTURAL_INFLUENCE.new()
+	var pipeline := CulturalInfluence.new()
 	var settlements := _collect_settlement_sources()
 	var factions := _collect_faction_sources()
 	var wood_elf_territory_info := _resolve_wood_elf_territory()
@@ -3519,7 +3510,7 @@ func _assign_cultural_groups(
 			var base := _tile_base_biome_from_data(tile_data)
 			return base != BIOME_WATER,
 		map_seed,
-		CULTURE_TYPES.AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE
+		CultureTypes.AMBIENT_STRUCTURE_OPTIONS_BY_CULTURE
 	)
 	for coord: Vector2i in _tile_data.keys():
 		var tile_info := _tile_data.get(coord, {}) as Dictionary
@@ -3576,7 +3567,7 @@ func _collect_faction_sources() -> Array[Dictionary]:
 		factions.append({
 			"key": faction_key,
 			"label": String(CIVILIZATION_LABELS.get(faction_key, faction_key.capitalize())),
-			"color": CULTURE_TYPES.DEFAULT_CULTURE_COLORS.get(faction_key, Color.GRAY),
+			"color": CultureTypes.DEFAULT_CULTURE_COLORS.get(faction_key, Color.GRAY),
 			"capital": {"x": coord.x, "y": coord.y, "type": settlement_type},
 			"claim_radius": 12
 		})
@@ -3769,7 +3760,7 @@ func _heap_pop(heap: Array[Dictionary]) -> Dictionary:
 	return root
 
 func _build_settlement_candidates(biome_map: Dictionary) -> Array:
-	return OVERWORLD_SETTLEMENT_SERVICE.build_settlement_candidates(
+	return OverworldSettlementService.build_settlement_candidates(
 		biome_map,
 		tree_layer,
 		TREE_TILE,
@@ -3782,10 +3773,10 @@ func _filter_settlement_candidates(
 	occupied: Array[Vector2i],
 	min_distance: float
 ) -> Array:
-	return OVERWORLD_SETTLEMENT_SERVICE.filter_settlement_candidates(candidates, occupied, min_distance)
+	return OverworldSettlementService.filter_settlement_candidates(candidates, occupied, min_distance)
 
 func _is_too_close(coord: Vector2i, occupied: Array[Vector2i], min_distance: float) -> bool:
-	return OVERWORLD_SETTLEMENT_SERVICE.is_too_close(coord, occupied, min_distance)
+	return OverworldSettlementService.is_too_close(coord, occupied, min_distance)
 
 func _settlement_biome_label(biome: String) -> String:
 	match biome:
@@ -3851,10 +3842,10 @@ func _resources_for_biome_id(biome_id: int) -> Array[String]:
 	return resolved
 
 func _describe_climate(temperature: float, moisture: float) -> String:
-	return OVERWORLD_POPULATION_SERVICE.describe_climate(temperature, moisture)
+	return OverworldPopulationService.describe_climate(temperature, moisture)
 
 func _format_resource_list(resources: Array[String]) -> String:
-	return OVERWORLD_POPULATION_SERVICE.format_resource_list(resources)
+	return OverworldPopulationService.format_resource_list(resources)
 
 func _generate_biome_region_name(
 	biome: String,
