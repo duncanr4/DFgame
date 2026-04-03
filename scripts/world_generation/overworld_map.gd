@@ -32,7 +32,7 @@ extends Node2D
 @export var scene3d_min_camera_distance: float = 2.4
 @export var scene3d_max_camera_distance: float = 9.5
 @export var globe_height_scale: float = 0.0
-@export var scene3d_height_scale: float = 1.0
+@export var scene3d_height_scale: float = 0.1
 @export var scene3d_mountain_compression: float = 0.35
 @export var scene3d_land_blend_power: float = 1.75
 @export var route_overlay_line_color: Color = Color(0.82, 0.68, 0.48, 0.9)
