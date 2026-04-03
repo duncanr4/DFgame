@@ -20,78 +20,9 @@ const CELL_PLAZA := 4
 @export var enable_fog_of_war := true
 @export var underground_level_count_range := Vector2i(3, 7)
 
-const TILE_ATLAS := {
-	"dirt": Vector2i(0, 2),
-	"workbench": Vector2i(0, 3),
-	"shelf": Vector2i(0, 4),
-	"winepress": Vector2i(0, 5),
-	"grain_bag": Vector2i(0, 6),
-	"stairway_up": Vector2i(0, 7),
-	"wall_right": Vector2i(1, 1),
-	"bed": Vector2i(1, 3),
-	"butcher_table": Vector2i(1, 4),
-	"chest": Vector2i(1, 5),
-	"flour": Vector2i(1, 6),
-	"sign": Vector2i(1, 7),
-	"stone": Vector2i(2, 1),
-	"wall_top": Vector2i(2, 2),
-	"wall_bottom": Vector2i(2, 0),
-	"mushroom_crops": Vector2i(2, 3),
-	"wardrobe": Vector2i(2, 5),
-	"floor": Vector2i(2, 6),
-	"armor_stand": Vector2i(2, 7),
-	"wall_left": Vector2i(3, 1),
-	"table": Vector2i(3, 3),
-	"mug": Vector2i(3, 4),
-	"mushroom_crop_wild": Vector2i(3, 5),
-	"water_bucket": Vector2i(3, 6),
-	"stool": Vector2i(4, 2),
-	"table_alt": Vector2i(5, 2),
-	"door": Vector2i(4, 3),
-	"desk": Vector2i(4, 4),
-	"mushroom_wild": Vector2i(4, 5),
-	"keg": Vector2i(5, 5),
-	"target": Vector2i(6, 3),
-	"anvil": Vector2i(6, 4),
-	"stairway_down": Vector2i(6, 7)
-}
-
-const EXPECTED_TILE_COORDS := {
-	"dirt": Vector2i(0, 2),
-	"workbench": Vector2i(0, 3),
-	"shelf": Vector2i(0, 4),
-	"winepress": Vector2i(0, 5),
-	"grain_bag": Vector2i(0, 6),
-	"stairway_up": Vector2i(0, 7),
-	"wall_right": Vector2i(1, 1),
-	"bed": Vector2i(1, 3),
-	"butcher_table": Vector2i(1, 4),
-	"chest": Vector2i(1, 5),
-	"flour": Vector2i(1, 6),
-	"sign": Vector2i(1, 7),
-	"stone": Vector2i(2, 1),
-	"wall_top": Vector2i(2, 2),
-	"wall_bottom": Vector2i(2, 0),
-	"mushroom_crops": Vector2i(2, 3),
-	"wardrobe": Vector2i(2, 5),
-	"floor": Vector2i(2, 6),
-	"armor_stand": Vector2i(2, 7),
-	"wall_left": Vector2i(3, 1),
-	"table": Vector2i(3, 3),
-	"mug": Vector2i(3, 4),
-	"mushroom_crop_wild": Vector2i(3, 5),
-	"water_bucket": Vector2i(3, 6),
-	"stool": Vector2i(4, 2),
-	"table_alt": Vector2i(5, 2),
-	"door": Vector2i(4, 3),
-	"desk": Vector2i(4, 4),
-	"mushroom_wild": Vector2i(4, 5),
-	"keg": Vector2i(5, 5),
-	"target": Vector2i(6, 3),
-	"anvil": Vector2i(6, 4),
-	"stairway_down": Vector2i(6, 7)
-}
-const PASSABLE_TILE_KEYS := ["floor", "door", "stairway_up", "stairway_down"]
+const TILE_ATLAS_DEFS := preload("res://scripts/world_generation/tile_atlas_defs.gd")
+const TILE_ATLAS := TILE_ATLAS_DEFS.DWARFHOLD_TILE_ATLAS
+const PASSABLE_TILE_KEYS := TILE_ATLAS_DEFS.DWARFHOLD_PASSABLE_TILE_KEYS
 const COLLISION_LAYER_WORLD := 1
 
 
@@ -783,16 +714,7 @@ func _configure_tile_layer() -> void:
 	decor_layer.tile_set = tile_set
 
 func _validate_tile_mapping() -> bool:
-	for tile_key: String in EXPECTED_TILE_COORDS.keys():
-		if not TILE_ATLAS.has(tile_key):
-			push_error("Tile mapping missing required key: %s" % tile_key)
-			return false
-		var expected_coords: Vector2i = EXPECTED_TILE_COORDS[tile_key]
-		var actual_coords: Vector2i = TILE_ATLAS[tile_key]
-		if actual_coords != expected_coords:
-			push_error("Tile mapping mismatch for %s. Expected %s but found %s" % [tile_key, expected_coords, actual_coords])
-			return false
-	return true
+	return TILE_ATLAS_DEFS.validate_all_atlases()
 
 func _is_passable_atlas_tile(atlas_coords: Vector2i) -> bool:
 	for tile_key: String in PASSABLE_TILE_KEYS:
