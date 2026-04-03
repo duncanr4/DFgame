@@ -1009,7 +1009,6 @@ var _is_globe_view := false
 var _is_dragging_globe := false
 var _is_scene3d_view := false
 var _is_dragging_scene3d := false
-var _globe_service: OverworldGlobeService = null
 var _elevation_overlay_enabled := false
 var _temperature_overlay_enabled := false
 var _moisture_overlay_enabled := false
@@ -1105,38 +1104,6 @@ func _ready() -> void:
 	_cache_iceberg_layer_parent()
 	_cache_settlement_layer_parent()
 	_cache_overlay_parent()
-	_globe_service = OverworldGlobeService.new(
-		globe_view,
-		globe_camera,
-		globe_mesh,
-		scene3d_view,
-		scene3d_camera,
-		scene3d_mesh,
-		map_viewport,
-		map_viewport_root,
-		overworld_camera,
-		map_layer,
-		tree_layer,
-		river_layer,
-		highland_layer,
-		iceberg_layer,
-		settlement_layer,
-		map_overlays,
-	)
-	_globe_service.map_layer_original_parent = _map_layer_original_parent
-	_globe_service.map_layer_original_index = _map_layer_original_index
-	_globe_service.tree_layer_original_parent = _tree_layer_original_parent
-	_globe_service.tree_layer_original_index = _tree_layer_original_index
-	_globe_service.river_layer_original_parent = _river_layer_original_parent
-	_globe_service.river_layer_original_index = _river_layer_original_index
-	_globe_service.highland_layer_original_parent = _highland_layer_original_parent
-	_globe_service.highland_layer_original_index = _highland_layer_original_index
-	_globe_service.iceberg_layer_original_parent = _iceberg_layer_original_parent
-	_globe_service.iceberg_layer_original_index = _iceberg_layer_original_index
-	_globe_service.settlement_layer_original_parent = _settlement_layer_original_parent
-	_globe_service.settlement_layer_original_index = _settlement_layer_original_index
-	_globe_service.overlays_original_parent = _overlays_original_parent
-	_globe_service.overlays_original_index = _overlays_original_index
 	_configure_globe_viewport()
 	_configure_scene3d_mesh()
 	_set_globe_view(false)
@@ -4332,8 +4299,13 @@ func _cache_overlay_parent() -> void:
 		_overlays_original_index = map_overlays.get_index()
 
 func _configure_globe_viewport() -> void:
-	if _globe_service != null:
-		_globe_service.configure_globe_viewport(map_size, tile_size)
+	if map_viewport == null:
+		return
+	var viewport_size := Vector2i(map_size.x * tile_size, map_size.y * tile_size)
+	if viewport_size.x <= 0 or viewport_size.y <= 0:
+		return
+	map_viewport.size = viewport_size
+	map_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 
 func _configure_overworld_camera_bounds() -> void:
 	if overworld_camera == null:
@@ -4348,12 +4320,22 @@ func _get_world_rect() -> Rect2:
 	return Rect2(Vector2.ZERO, Vector2(world_width, world_height))
 
 func _set_globe_view(enabled: bool) -> void:
-	if _globe_service != null:
-		_globe_service.set_globe_view(enabled)
-		_is_globe_view = _globe_service.is_globe_view
-		_is_dragging_globe = _globe_service.is_dragging_globe
+	_is_globe_view = enabled
+	if globe_view != null:
+		globe_view.visible = enabled
+	if overworld_camera != null:
+		overworld_camera.enabled = not (enabled or _is_scene3d_view)
+		if not enabled and not _is_scene3d_view:
+			overworld_camera.make_current()
+	if globe_camera != null:
+		globe_camera.current = enabled
+	if not enabled:
+		_is_dragging_globe = false
 	if enabled and not _is_scene3d_view:
+		_move_map_layer_to_viewport()
 		_update_globe_texture()
+	elif not enabled and not _is_scene3d_view:
+		_restore_map_layer_parent()
 	_update_elevation_overlay_visibility()
 	_update_temperature_overlay_visibility()
 	_update_moisture_overlay_visibility()
@@ -4368,12 +4350,22 @@ func _set_globe_view(enabled: bool) -> void:
 	_refresh_scale_bar()
 
 func _set_scene3d_view(enabled: bool) -> void:
-	if _globe_service != null:
-		_globe_service.set_scene3d_view(enabled)
-		_is_scene3d_view = _globe_service.is_scene3d_view
-		_is_dragging_scene3d = _globe_service.is_dragging_scene3d
+	_is_scene3d_view = enabled
+	if scene3d_view != null:
+		scene3d_view.visible = enabled
+	if overworld_camera != null:
+		overworld_camera.enabled = not (_is_globe_view or enabled)
+		if not _is_globe_view and not enabled:
+			overworld_camera.make_current()
+	if scene3d_camera != null:
+		scene3d_camera.current = enabled
+	if not enabled:
+		_is_dragging_scene3d = false
 	if enabled and not _is_globe_view:
+		_move_map_layer_to_viewport()
 		_update_scene3d_texture()
+	elif not enabled and not _is_globe_view:
+		_restore_map_layer_parent()
 	_update_elevation_overlay_visibility()
 	_update_temperature_overlay_visibility()
 	_update_moisture_overlay_visibility()
@@ -4388,8 +4380,43 @@ func _set_scene3d_view(enabled: bool) -> void:
 	_refresh_scale_bar()
 
 func _move_map_layer_to_viewport() -> void:
-	if _globe_service != null:
-		_globe_service.move_map_layer_to_viewport()
+	if map_layer == null or map_viewport_root == null:
+		return
+	if map_layer.get_parent() == map_viewport_root:
+		return
+	map_layer.get_parent().remove_child(map_layer)
+	map_viewport_root.add_child(map_layer)
+	map_layer.position = Vector2.ZERO
+	if tree_layer != null:
+		if tree_layer.get_parent() != null:
+			tree_layer.get_parent().remove_child(tree_layer)
+		map_viewport_root.add_child(tree_layer)
+		tree_layer.position = Vector2.ZERO
+	if river_layer != null:
+		if river_layer.get_parent() != null:
+			river_layer.get_parent().remove_child(river_layer)
+		map_viewport_root.add_child(river_layer)
+		river_layer.position = Vector2.ZERO
+	if highland_layer != null:
+		if highland_layer.get_parent() != null:
+			highland_layer.get_parent().remove_child(highland_layer)
+		map_viewport_root.add_child(highland_layer)
+		highland_layer.position = Vector2.ZERO
+	if iceberg_layer != null:
+		if iceberg_layer.get_parent() != null:
+			iceberg_layer.get_parent().remove_child(iceberg_layer)
+		map_viewport_root.add_child(iceberg_layer)
+		iceberg_layer.position = Vector2.ZERO
+	if settlement_layer != null:
+		if settlement_layer.get_parent() != null:
+			settlement_layer.get_parent().remove_child(settlement_layer)
+		map_viewport_root.add_child(settlement_layer)
+		settlement_layer.position = Vector2.ZERO
+	if map_overlays != null:
+		if map_overlays.get_parent() != null:
+			map_overlays.get_parent().remove_child(map_overlays)
+		map_viewport_root.add_child(map_overlays)
+		map_overlays.position = Vector2.ZERO
 
 func _update_map_tooltip() -> void:
 	if tooltip_panel == null or map_layer == null:
@@ -4622,59 +4649,214 @@ func _hide_map_tooltip() -> void:
 	_hovered_tile = Vector2i(-999, -999)
 
 func _restore_map_layer_parent() -> void:
-	if _globe_service != null:
-		_globe_service.restore_map_layer_parent()
+	if map_layer == null or _map_layer_original_parent == null:
+		return
+	if map_layer.get_parent() == _map_layer_original_parent:
+		return
+	map_layer.get_parent().remove_child(map_layer)
+	if _map_layer_original_index >= 0:
+		_map_layer_original_parent.add_child(map_layer)
+		_map_layer_original_parent.move_child(map_layer, _map_layer_original_index)
+	else:
+		_map_layer_original_parent.add_child(map_layer)
+	map_layer.position = Vector2.ZERO
+	if tree_layer != null and _tree_layer_original_parent != null:
+		if tree_layer.get_parent() != null:
+			tree_layer.get_parent().remove_child(tree_layer)
+		if _tree_layer_original_index >= 0:
+			_tree_layer_original_parent.add_child(tree_layer)
+			_tree_layer_original_parent.move_child(tree_layer, _tree_layer_original_index)
+		else:
+			_tree_layer_original_parent.add_child(tree_layer)
+		tree_layer.position = Vector2.ZERO
+	if river_layer != null and _river_layer_original_parent != null:
+		if river_layer.get_parent() != null:
+			river_layer.get_parent().remove_child(river_layer)
+		if _river_layer_original_index >= 0:
+			_river_layer_original_parent.add_child(river_layer)
+			_river_layer_original_parent.move_child(river_layer, _river_layer_original_index)
+		else:
+			_river_layer_original_parent.add_child(river_layer)
+		river_layer.position = Vector2.ZERO
+	if highland_layer != null and _highland_layer_original_parent != null:
+		if highland_layer.get_parent() != null:
+			highland_layer.get_parent().remove_child(highland_layer)
+		if _highland_layer_original_index >= 0:
+			_highland_layer_original_parent.add_child(highland_layer)
+			_highland_layer_original_parent.move_child(highland_layer, _highland_layer_original_index)
+		else:
+			_highland_layer_original_parent.add_child(highland_layer)
+		highland_layer.position = Vector2.ZERO
+	if iceberg_layer != null and _iceberg_layer_original_parent != null:
+		if iceberg_layer.get_parent() != null:
+			iceberg_layer.get_parent().remove_child(iceberg_layer)
+		if _iceberg_layer_original_index >= 0:
+			_iceberg_layer_original_parent.add_child(iceberg_layer)
+			_iceberg_layer_original_parent.move_child(iceberg_layer, _iceberg_layer_original_index)
+		else:
+			_iceberg_layer_original_parent.add_child(iceberg_layer)
+		iceberg_layer.position = Vector2.ZERO
+	if settlement_layer != null and _settlement_layer_original_parent != null:
+		if settlement_layer.get_parent() != null:
+			settlement_layer.get_parent().remove_child(settlement_layer)
+		if _settlement_layer_original_index >= 0:
+			_settlement_layer_original_parent.add_child(settlement_layer)
+			_settlement_layer_original_parent.move_child(settlement_layer, _settlement_layer_original_index)
+		else:
+			_settlement_layer_original_parent.add_child(settlement_layer)
+		settlement_layer.position = Vector2.ZERO
+	if map_overlays == null or _overlays_original_parent == null:
+		return
+	if map_overlays.get_parent() == _overlays_original_parent:
+		return
+	if map_overlays.get_parent() != null:
+		map_overlays.get_parent().remove_child(map_overlays)
+	if _overlays_original_index >= 0:
+		_overlays_original_parent.add_child(map_overlays)
+		_overlays_original_parent.move_child(map_overlays, _overlays_original_index)
+	else:
+		_overlays_original_parent.add_child(map_overlays)
+	map_overlays.position = Vector2.ZERO
 
 func _handle_globe_input(event: InputEvent) -> bool:
-	if _globe_service == null:
-		return false
-	var result := _globe_service.handle_globe_input(event, globe_zoom_step, globe_drag_sensitivity)
-	_is_dragging_globe = _globe_service.is_dragging_globe
-	return result
+	var mouse_button_event := event as InputEventMouseButton
+	if mouse_button_event != null:
+		if mouse_button_event.button_index == MOUSE_BUTTON_LEFT:
+			_is_dragging_globe = mouse_button_event.pressed
+			return true
+		if mouse_button_event.pressed:
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_zoom_globe_camera(-globe_zoom_step)
+				return true
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_globe_camera(globe_zoom_step)
+				return true
+	var mouse_motion_event := event as InputEventMouseMotion
+	if mouse_motion_event != null and _is_dragging_globe:
+		_rotate_globe_from_drag(mouse_motion_event.relative)
+		return true
+	return false
 
 func _handle_scene3d_input(event: InputEvent) -> bool:
-	if _globe_service == null:
-		return false
-	var result := _globe_service.handle_scene3d_input(event, scene3d_zoom_step, scene3d_drag_sensitivity)
-	_is_dragging_scene3d = _globe_service.is_dragging_scene3d
-	return result
+	var mouse_button_event := event as InputEventMouseButton
+	if mouse_button_event != null:
+		if mouse_button_event.button_index == MOUSE_BUTTON_LEFT:
+			_is_dragging_scene3d = mouse_button_event.pressed
+			return true
+		if mouse_button_event.pressed:
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_zoom_scene3d_camera(-scene3d_zoom_step)
+				return true
+			if mouse_button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_scene3d_camera(scene3d_zoom_step)
+				return true
+	var mouse_motion_event := event as InputEventMouseMotion
+	if mouse_motion_event != null and _is_dragging_scene3d:
+		_rotate_scene3d_from_drag(mouse_motion_event.relative)
+		return true
+	return false
 
 func _rotate_globe_from_drag(relative_motion: Vector2) -> void:
-	if _globe_service != null:
-		_globe_service.rotate_globe_from_drag(relative_motion, globe_drag_sensitivity)
+	if globe_mesh == null:
+		return
+	globe_mesh.rotate_y(-relative_motion.x * globe_drag_sensitivity)
+	globe_mesh.rotate_object_local(Vector3.RIGHT, -relative_motion.y * globe_drag_sensitivity)
 
 func _zoom_globe_camera(distance_delta: float) -> void:
-	if _globe_service != null:
-		_globe_service.zoom_globe_camera(distance_delta, globe_min_camera_distance, globe_max_camera_distance)
+	if globe_camera == null:
+		return
+	var camera_origin := globe_camera.transform.origin
+	var current_distance := camera_origin.length()
+	if current_distance <= 0.0001:
+		return
+	var target_distance := clampf(current_distance + distance_delta, globe_min_camera_distance, globe_max_camera_distance)
+	if is_equal_approx(target_distance, current_distance):
+		return
+	globe_camera.transform.origin = camera_origin.normalized() * target_distance
 
 func _update_globe_texture() -> void:
-	if _globe_service != null:
-		_globe_service.update_globe_texture(water_level, mountain_level, scene3d_mountain_compression, scene3d_land_blend_power, globe_height_scale)
+	if globe_mesh == null or map_viewport == null:
+		return
+	var viewport_texture := map_viewport.get_texture()
+	if viewport_texture == null:
+		return
+	var globe_material := globe_mesh.material_override as ShaderMaterial
+	if globe_material == null:
+		return
+	globe_mesh.material_override = globe_material
+	globe_material.set_shader_parameter("map_texture", viewport_texture)
+	globe_material.set_shader_parameter("height_texture", _height_texture)
+	globe_material.set_shader_parameter("water_level", water_level)
+	globe_material.set_shader_parameter("mountain_level", mountain_level)
+	globe_material.set_shader_parameter("mountain_compression", scene3d_mountain_compression)
+	globe_material.set_shader_parameter("land_blend_power", scene3d_land_blend_power)
+	globe_material.set_shader_parameter("height_scale", globe_height_scale)
 
 func _update_scene3d_texture() -> void:
-	if _globe_service != null:
-		_globe_service.update_scene3d_texture(water_level, mountain_level, scene3d_mountain_compression, scene3d_land_blend_power, scene3d_height_scale)
+	if scene3d_mesh == null or map_viewport == null:
+		return
+	var viewport_texture := map_viewport.get_texture()
+	if viewport_texture == null:
+		return
+	var scene3d_material := scene3d_mesh.material_override as ShaderMaterial
+	if scene3d_material == null:
+		return
+	scene3d_material.set_shader_parameter("map_texture", viewport_texture)
+	scene3d_material.set_shader_parameter("height_texture", _height_texture)
+	scene3d_material.set_shader_parameter("water_level", water_level)
+	scene3d_material.set_shader_parameter("mountain_level", mountain_level)
+	scene3d_material.set_shader_parameter("mountain_compression", scene3d_mountain_compression)
+	scene3d_material.set_shader_parameter("land_blend_power", scene3d_land_blend_power)
+	scene3d_material.set_shader_parameter("height_scale", scene3d_height_scale)
 
 func _update_height_texture() -> void:
-	if _globe_service != null:
-		_globe_service.update_height_texture(map_size, _height_buffer, water_level)
-		_height_texture = _globe_service.height_texture
+	if map_size.x <= 0 or map_size.y <= 0:
+		_height_texture = null
+		return
+	var image := Image.create(map_size.x, map_size.y, false, Image.FORMAT_RF)
+	if _height_buffer.is_empty():
+		image.fill(Color(water_level, 0.0, 0.0, 1.0))
+	else:
+		for y in range(map_size.y):
+			for x in range(map_size.x):
+				var idx := _xy_to_index(x, y)
+				var h := clampf(float(_height_buffer[idx]), 0.0, 1.0)
+				image.set_pixel(x, y, Color(h, 0.0, 0.0, 1.0))
+	_height_texture = ImageTexture.create_from_image(image)
 
 func _configure_scene3d_mesh() -> void:
-	if _globe_service != null:
-		_globe_service.configure_scene3d_mesh(map_size)
+	if scene3d_mesh == null:
+		return
+	var plane_mesh := scene3d_mesh.mesh as PlaneMesh
+	if plane_mesh == null:
+		return
+	if map_size.y <= 0:
+		return
+	var aspect := float(map_size.x) / float(map_size.y)
+	plane_mesh.size = Vector2(maxf(2.0, 4.0 * aspect), 4.0)
 
 func _rotate_scene3d_from_drag(relative_motion: Vector2) -> void:
-	if _globe_service != null:
-		_globe_service.rotate_scene3d_from_drag(relative_motion, scene3d_drag_sensitivity)
+	if scene3d_mesh == null:
+		return
+	scene3d_mesh.rotate_y(-relative_motion.x * scene3d_drag_sensitivity)
+	scene3d_mesh.rotate_object_local(Vector3.RIGHT, -relative_motion.y * scene3d_drag_sensitivity)
 
 func _zoom_scene3d_camera(distance_delta: float) -> void:
-	if _globe_service != null:
-		_globe_service.zoom_scene3d_camera(distance_delta, scene3d_min_camera_distance, scene3d_max_camera_distance)
+	if scene3d_camera == null:
+		return
+	var camera_origin := scene3d_camera.transform.origin
+	var current_distance := camera_origin.length()
+	if current_distance <= 0.0001:
+		return
+	var target_distance := clampf(current_distance + distance_delta, scene3d_min_camera_distance, scene3d_max_camera_distance)
+	if is_equal_approx(target_distance, current_distance):
+		return
+	scene3d_camera.transform.origin = camera_origin.normalized() * target_distance
 
 func _rotate_globe(delta: float) -> void:
-	if _globe_service != null:
-		_globe_service.rotate_globe(delta, globe_rotation_speed)
+	if globe_mesh == null or globe_rotation_speed == 0.0 or _is_dragging_globe:
+		return
+	globe_mesh.rotate_y(globe_rotation_speed * delta)
 
 func _configure_tileset() -> void:
 	var tile_set := TileSet.new()
