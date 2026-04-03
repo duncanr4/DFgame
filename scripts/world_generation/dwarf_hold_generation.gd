@@ -185,13 +185,6 @@ var _npc_states: Array[Dictionary] = []
 var _hold_state := DwarfHoldStateModel.new()
 var _pending_player_spawn_cell := Vector2i(2147483647, 2147483647)
 
-const TAVERN_SPRITE_COLUMNS := 12
-const TAVERN_SPRITE_ROWS := 8
-const TAVERN_CHARACTER_COLUMNS := 3
-const TAVERN_CHARACTER_ROWS := 4
-const TAVERN_CHARACTER_SLOT_COUNT := 8
-const TAVERN_FRAME_ADVANCE_SECONDS := 0.22
-const TAVERN_WANDER_COOLDOWN_RANGE := Vector2(0.35, 1.25)
 const PLAYER_MOVE_REPEAT_INITIAL_DELAY := 0.22
 const PLAYER_MOVE_REPEAT_INTERVAL := 0.10
 const PLAYER_MOVE_SPEED := 260.0
@@ -1983,102 +1976,22 @@ func _item_abbreviation(item_name: String) -> String:
 	return DwarfHoldChestService.item_abbreviation(item_name)
 
 func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
-	var visited: Dictionary = {}
-	var overrides: Dictionary = {}
-	for key: Variant in grid.keys():
-		var start_cell := key as Vector2i
-		if _cell_at(grid, start_cell.x, start_cell.y) != CELL_HOUSE:
-			continue
-		if visited.has(start_cell):
-			continue
-
-		var queue: Array[Vector2i] = [start_cell]
-		var component: Array[Vector2i] = []
-		visited[start_cell] = true
-		var head := 0
-		while head < queue.size():
-			var current: Vector2i = queue[head]
-			head += 1
-			component.append(current)
-			for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-				var neighbor: Vector2i = current + direction
-				if visited.has(neighbor):
-					continue
-				if _cell_at(grid, neighbor.x, neighbor.y) != CELL_HOUSE:
-					continue
-				visited[neighbor] = true
-				queue.append(neighbor)
-
-		if component.is_empty():
-			continue
-		_place_house_decor_template(component, overrides)
-
-	return overrides
+	return DwarfHoldTileService.build_house_decor_layouts(grid)
 
 func _place_house_decor_template(component: Array[Vector2i], overrides: Dictionary) -> void:
-	var occupied: Dictionary = {}
-	for cell: Vector2i in component:
-		occupied[cell] = true
-
-	var min_x := component[0].x
-	var max_x := component[0].x
-	var min_y := component[0].y
-	var max_y := component[0].y
-	for cell: Vector2i in component:
-		min_x = mini(min_x, cell.x)
-		max_x = maxi(max_x, cell.x)
-		min_y = mini(min_y, cell.y)
-		max_y = maxi(max_y, cell.y)
-
-	var top_left_chest := Vector2i(min_x + 1, min_y + 1)
-	var top_left_bed := Vector2i(min_x + 2, min_y + 1)
-	var top_right_wardrobe := _find_wall_adjacent_cell(component, occupied, overrides, Vector2i(max_x - 1, min_y + 1))
-	var center_table := Vector2i((min_x + max_x) / 2, (min_y + max_y) / 2)
-	var stool_a := center_table + Vector2i(-1, 0)
-	var stool_b := center_table + Vector2i(0, -1)
-
-	_try_assign_house_decor(overrides, occupied, top_left_chest, "chest")
-	_try_assign_house_decor(overrides, occupied, top_left_bed, "bed")
-	_try_assign_house_decor(overrides, occupied, top_right_wardrobe, "wardrobe")
-	_try_assign_house_decor(overrides, occupied, center_table, "table")
-	_try_assign_house_decor(overrides, occupied, stool_a, "stool")
-	_try_assign_house_decor(overrides, occupied, stool_b, "stool")
-	_ensure_house_has_bed(component, overrides)
+	DwarfHoldTileService.place_house_decor_template(component, overrides)
 
 func _ensure_house_has_bed(component: Array[Vector2i], overrides: Dictionary) -> void:
-	for cell: Vector2i in component:
-		if overrides.get(cell, "") == "bed":
-			return
-
-	var fallback_bed_cell := component[0]
-	for cell: Vector2i in component:
-		if not overrides.has(cell):
-			fallback_bed_cell = cell
-			break
-	overrides[fallback_bed_cell] = "bed"
+	DwarfHoldTileService.ensure_house_has_bed(component, overrides)
 
 func _try_assign_house_decor(overrides: Dictionary, occupied: Dictionary, cell: Vector2i, tile_key: String) -> void:
-	if not occupied.has(cell):
-		return
-	if overrides.has(cell):
-		return
-	overrides[cell] = tile_key
+	DwarfHoldTileService.try_assign_house_decor(overrides, occupied, cell, tile_key)
 
 func _find_wall_adjacent_cell(component: Array[Vector2i], occupied: Dictionary, overrides: Dictionary, preferred_cell: Vector2i) -> Vector2i:
-	if occupied.has(preferred_cell) and not overrides.has(preferred_cell) and _is_component_wall_adjacent(preferred_cell, occupied):
-		return preferred_cell
-	for cell: Vector2i in component:
-		if overrides.has(cell):
-			continue
-		if _is_component_wall_adjacent(cell, occupied):
-			return cell
-	return preferred_cell
+	return DwarfHoldTileService.find_wall_adjacent_cell(component, occupied, overrides, preferred_cell)
 
 func _is_component_wall_adjacent(cell: Vector2i, occupied: Dictionary) -> bool:
-	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		if not occupied.has(cell + direction):
-			return true
-	return false
+	return DwarfHoldTileService.is_component_wall_adjacent(cell, occupied)
 
 func _on_city_panel_gui_input(event: InputEvent) -> void:
 	_is_panning = DwarfHoldUiInputHandler.handle_city_panel_event(
@@ -2136,51 +2049,27 @@ func _update_city_layer_transform() -> void:
 	_update_zone_overlay()
 
 func _spawn_tavern_characters(grid: Dictionary) -> void:
-	for child: Node in actor_layer.get_children():
-		child.queue_free()
-	_npc_states.clear()
 	_player_sprite = null
 	_player_control_enabled = true
 	_player_move_path.clear()
 	_player_is_moving = false
 	_player_pending_chest_interaction = Vector2i(2147483647, 2147483647)
 	_walkable_cells = _collect_walkable_cells(grid)
-	if _walkable_cells.is_empty() or _tavern_character_texture == null:
-		return
-
-	if _pending_player_spawn_cell.x != 2147483647 and _is_walkable_cell(_pending_player_spawn_cell):
-		_player_cell = _pending_player_spawn_cell
-	else:
-		_player_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
+	var result := DwarfHoldTavernService.spawn_tavern_characters(
+		actor_layer, city_layer, _npc_states, _rng, _walkable_cells,
+		_tavern_character_texture, _pending_player_spawn_cell,
+		Callable(self, "_is_walkable_cell"),
+		Callable(self, "_cell_center_position"),
+		Callable(self, "_create_player_character_sprite"),
+		Callable(self, "_actor_sprite_to_cell"),
+		tavern_npc_count, tavern_npc_speed_range,
+		_placeholder_actor_texture, tile_size
+	)
+	_player_sprite = result.get("player_sprite")
+	_player_cell = result.get("player_cell", _player_cell)
 	_pending_player_spawn_cell = Vector2i(2147483647, 2147483647)
-	_player_sprite = _create_player_character_sprite()
-	_actor_sprite_to_cell(_player_sprite, _player_cell)
-	actor_layer.add_child(_player_sprite)
-	_center_view_on_cell(_player_cell)
-
-	for i in tavern_npc_count:
-		var spawn_cell := _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
-		for _attempt in 12:
-			if _is_walkable_cell(spawn_cell):
-				break
-			spawn_cell = _walkable_cells[_rng.randi_range(0, _walkable_cells.size() - 1)]
-		if not _is_walkable_cell(spawn_cell):
-			continue
-		var npc_sprite := _create_tavern_character_sprite((i + 1) % TAVERN_CHARACTER_SLOT_COUNT)
-		_actor_sprite_to_cell(npc_sprite, spawn_cell)
-		actor_layer.add_child(npc_sprite)
-		_npc_states.append({
-			"sprite": npc_sprite,
-			"slot": (i + 1) % TAVERN_CHARACTER_SLOT_COUNT,
-			"cell": spawn_cell,
-			"facing_row": 0,
-			"frame": 1,
-			"frame_elapsed": 0.0,
-			"speed": _rng.randf_range(tavern_npc_speed_range.x, tavern_npc_speed_range.y),
-			"cooldown": _rng.randf_range(TAVERN_WANDER_COOLDOWN_RANGE.x, TAVERN_WANDER_COOLDOWN_RANGE.y),
-			"direction": Vector2.ZERO,
-			"target": _cell_center_position(spawn_cell)
-		})
+	if _player_sprite != null:
+		_center_view_on_cell(_player_cell)
 	_refresh_lighting(grid)
 
 func _collect_walkable_cells(grid: Dictionary) -> Array[Vector2i]:
@@ -2194,20 +2083,20 @@ func _seeded_shuffle(arr: Array) -> void:
 		arr[j] = tmp
 
 func _create_tavern_character_sprite(character_slot: int) -> Sprite2D:
-	return DwarfHoldActorVisuals.create_tavern_character_sprite(_placeholder_actor_texture, character_slot, tile_size)
+	return DwarfHoldTavernService.create_tavern_character_sprite(_placeholder_actor_texture, character_slot, tile_size)
 
 func _create_player_character_sprite() -> Sprite2D:
-	return DwarfHoldActorVisuals.create_player_character_sprite(
+	return DwarfHoldTavernService.create_player_character_sprite(
 		_shattered_player_texture,
 		tile_size,
 		Callable(self, "_create_tavern_character_sprite")
 	)
 
 func _create_placeholder_actor_texture() -> Texture2D:
-	return DwarfHoldActorVisuals.create_placeholder_actor_texture()
+	return DwarfHoldTavernService.create_placeholder_actor_texture()
 
 func _placeholder_actor_color(character_slot: int) -> Color:
-	return DwarfHoldActorVisuals.placeholder_actor_color(character_slot)
+	return DwarfHoldTavernService.placeholder_actor_color(character_slot)
 
 func _handle_player_click_action(mouse_position: Vector2) -> void:
 	if _player_sprite == null or not _player_control_enabled:
@@ -2348,11 +2237,7 @@ func _can_step_to_cell(from_cell: Vector2i, to_cell: Vector2i, goal_cell: Vector
 	return true
 
 func _is_cell_occupied_by_npc(cell: Vector2i) -> bool:
-	for state: Dictionary in _npc_states:
-		var npc_cell := state.get("cell", Vector2i(2147483647, 2147483647)) as Vector2i
-		if npc_cell == cell:
-			return true
-	return false
+	return DwarfHoldTavernService.is_cell_occupied_by_npc(cell, _npc_states)
 
 func _screen_position_from_cell(cell: Vector2i) -> Vector2:
 	return city_layer.position + (_cell_center_position(cell) * _zoom_level)
@@ -2382,62 +2267,18 @@ func _center_view_on_world_position(local_position: Vector2) -> void:
 	_update_city_layer_transform()
 
 func _update_npc_movement(delta: float) -> void:
-	for state: Dictionary in _npc_states:
-		var sprite := state.get("sprite") as Sprite2D
-		if sprite == null:
-			continue
-		var cooldown := float(state.get("cooldown", 0.0)) - delta
-		var direction := state.get("direction", Vector2.ZERO) as Vector2
-		var target := state.get("target", sprite.position) as Vector2
-		if direction.length_squared() <= 0.0 and cooldown <= 0.0:
-			for _attempt in 6:
-				var candidate := _pick_random_wander_direction()
-				var candidate_cell := city_layer.local_to_map(sprite.position + candidate * float(tile_size.x))
-				if _is_npc_walkable_cell(candidate_cell):
-					direction = candidate
-					target = _cell_center_position(candidate_cell)
-					state["facing_row"] = _facing_row_from_direction(candidate)
-					break
-			cooldown = _rng.randf_range(TAVERN_WANDER_COOLDOWN_RANGE.x, TAVERN_WANDER_COOLDOWN_RANGE.y)
-
-		if direction.length_squared() > 0.0:
-			var speed := float(state.get("speed", tavern_npc_speed_range.x))
-			sprite.position = sprite.position.move_toward(target, speed * delta)
-			if sprite.position.distance_to(target) <= 0.5:
-				sprite.position = target
-				state["cell"] = city_layer.local_to_map(target)
-				direction = Vector2.ZERO
-
-		var frame_elapsed := float(state.get("frame_elapsed", 0.0)) + delta
-		var frame := int(state.get("frame", 1))
-		if direction.length_squared() > 0.0 and frame_elapsed >= TAVERN_FRAME_ADVANCE_SECONDS:
-			frame_elapsed = 0.0
-			frame = (frame + 1) % TAVERN_CHARACTER_COLUMNS
-		elif direction.length_squared() <= 0.0:
-			frame = 1
-			frame_elapsed = 0.0
-
-		var facing_row := int(state.get("facing_row", 0))
-		var slot := int(state.get("slot", 1))
-		_update_character_frame(sprite, slot, frame, facing_row)
-
-		state["cooldown"] = cooldown
-		state["direction"] = direction
-		state["target"] = target
-		state["frame"] = frame
-		state["frame_elapsed"] = frame_elapsed
+	DwarfHoldTavernService.update_npc_movement(
+		delta, _npc_states, city_layer, _rng,
+		tavern_npc_speed_range, tile_size,
+		Callable(self, "_is_npc_walkable_cell"),
+		Callable(self, "_cell_center_position")
+	)
 
 func _pick_random_wander_direction() -> Vector2:
-	return DwarfHoldGenerationRules.pick_random_wander_direction(_rng)
+	return DwarfHoldTavernService.pick_random_wander_direction(_rng)
 
 func _create_placeholder_tavern_character_texture() -> Texture2D:
-	return DwarfHoldActorVisuals.create_placeholder_tavern_character_texture(
-		TAVERN_SPRITE_COLUMNS,
-		TAVERN_SPRITE_ROWS,
-		TAVERN_CHARACTER_ROWS,
-		TAVERN_CHARACTER_COLUMNS,
-		TAVERN_CHARACTER_SLOT_COUNT
-	)
+	return DwarfHoldTavernService.create_placeholder_tavern_character_texture()
 
 func _is_walkable_cell(cell: Vector2i) -> bool:
 	if _latest_grid.is_empty():
@@ -2448,32 +2289,13 @@ func _is_walkable_cell(cell: Vector2i) -> bool:
 	return _is_passable_cell_for_actor(cell)
 
 func _is_npc_walkable_cell(cell: Vector2i) -> bool:
-	if not _is_walkable_cell(cell):
-		return false
-	if decor_layer.get_cell_source_id(cell) < 0:
-		return true
-	return decor_layer.get_cell_atlas_coords(cell) != TILE_ATLAS["stone"]
+	return DwarfHoldTavernService.is_npc_walkable_cell(cell, Callable(self, "_is_walkable_cell"), decor_layer, TILE_ATLAS["stone"])
 
 func _facing_row_from_direction(direction: Vector2) -> int:
-	if absf(direction.x) > absf(direction.y):
-		return 2 if direction.x < 0.0 else 1
-	return 3 if direction.y < 0.0 else 0
+	return DwarfHoldTavernService.facing_row_from_direction(direction)
 
 func _update_character_frame(sprite: Sprite2D, character_slot: int, frame_column: int, facing_row: int) -> void:
-	if not sprite.region_enabled:
-		return
-	if sprite.texture == null:
-		return
-	var source_size := sprite.texture.get_size()
-	var frame_width := int(source_size.x / TAVERN_SPRITE_COLUMNS)
-	var frame_height := int(source_size.y / TAVERN_SPRITE_ROWS)
-	if frame_width <= 0 or frame_height <= 0:
-		return
-	var slot_column := character_slot % 4
-	var slot_row := character_slot / 4
-	var atlas_column := slot_column * TAVERN_CHARACTER_COLUMNS + (frame_column % TAVERN_CHARACTER_COLUMNS)
-	var atlas_row := slot_row * TAVERN_CHARACTER_ROWS + (facing_row % TAVERN_CHARACTER_ROWS)
-	sprite.region_rect = Rect2(atlas_column * frame_width, atlas_row * frame_height, frame_width, frame_height)
+	DwarfHoldTavernService.update_character_frame(sprite, character_slot, frame_column, facing_row)
 
 func _actor_sprite_to_cell(sprite: Sprite2D, cell: Vector2i) -> void:
 	sprite.position = _cell_center_position(cell)
@@ -2482,146 +2304,34 @@ func _cell_center_position(cell: Vector2i) -> Vector2:
 	return city_layer.map_to_local(cell)
 
 func _place_tile(target_layer: TileMapLayer, cell: Vector2i, tile_key: String) -> void:
-	var atlas_coords: Vector2i = TILE_ATLAS.get(tile_key, Vector2i(-1, -1))
-	if atlas_coords.x < 0:
-		return
-	target_layer.set_cell(cell, 0, atlas_coords, 0)
+	DwarfHoldTileService.place_tile(target_layer, cell, tile_key, TILE_ATLAS)
 
 func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
-	if _is_structural_cell(cell):
-		return _wall_or_floor_tile(grid, x, y, cell)
-	match cell:
-		CELL_HALL:
-			return "floor"
-		CELL_PLAZA:
-			return "floor"
-		CELL_ROCK:
-			if _is_hall_border_rock_cell(grid, x, y):
-				return "stone"
-			return ""
-		_:
-			return "stone"
+	return DwarfHoldTileService.pick_base_tile(grid, x, y, cell, _door_cells, TILE_ATLAS)
 
 func _is_hall_border_rock_cell(grid: Dictionary, x: int, y: int) -> bool:
-	if _cell_at(grid, x, y) != CELL_ROCK:
-		return false
-	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		var neighbor := Vector2i(x, y) + direction
-		if _is_corridor_cell(_cell_at(grid, neighbor.x, neighbor.y)):
-			return true
-	return false
+	return DwarfHoldTileService.is_hall_border_rock_cell(grid, x, y)
 
 func _wall_or_floor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
-	var current_cell := Vector2i(x, y)
-	if _door_cells.has(current_cell):
-		return "door"
-
-	var left_cell := _cell_at(grid, x - 1, y)
-	var right_cell := _cell_at(grid, x + 1, y)
-	var top_cell := _cell_at(grid, x, y - 1)
-	var bottom_cell := _cell_at(grid, x, y + 1)
-	var left_open := _is_corridor_cell(left_cell)
-	var right_open := _is_corridor_cell(right_cell)
-	var top_open := _is_corridor_cell(top_cell)
-	var bottom_open := _is_corridor_cell(bottom_cell)
-	var left_same := left_cell == cell
-	var right_same := right_cell == cell
-	var top_same := top_cell == cell
-	var bottom_same := bottom_cell == cell
-
-	if left_open:
-		return "stone"
-	if right_open:
-		return "stone"
-	if top_open or not top_same:
-		return "stone"
-	if bottom_open or not bottom_same:
-		return "stone"
-	if not left_same:
-		return "stone"
-	if not right_same:
-		return "stone"
-
-	return "floor"
+	return DwarfHoldTileService.wall_or_floor_tile(grid, x, y, cell, _door_cells)
 
 func _is_furniture_tile(tile_key: String) -> bool:
-	return tile_key in [
-		"bed", "chest", "wardrobe", "stool", "mug",
-		"workbench", "desk", "anvil", "shelf", "armor_stand", "winepress", "butcher_table", "flour",
-		"table", "table_alt", "keg", "target", "water_bucket", "grain_bag"
-	]
+	return DwarfHoldTileService.is_furniture_tile(tile_key)
 
 func _building_type_for_cell(cell: Vector2i) -> String:
 	return String(_latest_civic_building_type_map.get(cell, "workshop"))
 
 func _pick_civic_building_decor_tile(cell: Vector2i) -> String:
-	var building_type := _building_type_for_cell(cell)
-	var civic_definition := CIVIC_BUILDING_TYPES.get(building_type, CIVIC_BUILDING_TYPES["workshop"]) as Dictionary
-	var decor_pool := PackedStringArray(civic_definition.get("decor_tile_pool", ["workbench", "desk", "anvil"]))
-	if decor_pool.is_empty():
-		return ""
-	return String(decor_pool[_rng.randi_range(0, decor_pool.size() - 1)])
+	return DwarfHoldTileService.pick_civic_building_decor_tile(cell, _latest_civic_building_type_map, CIVIC_BUILDING_TYPES, _rng)
 
 func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: String, house_decor_overrides: Dictionary) -> String:
-	var key := Vector2i(x, y)
-	if house_decor_overrides.has(key):
-		var house_tile := String(house_decor_overrides[key])
-		if _is_furniture_tile(house_tile) and base_tile != "floor":
-			return ""
-		if (house_tile == "wardrobe" or house_tile == "shelf") and not _is_adjacent_to_stone_or_wall(grid, x, y):
-			return ""
-		return house_tile
-
-	if _is_corridor_cell(cell):
-		if _rng.randf() < 0.015:
-			if not _is_adjacent_to_business(grid, x, y):
-				return ""
-			var corridor_tile := "sign"
-			if _is_furniture_tile(corridor_tile) and base_tile != "floor":
-				return ""
-			return corridor_tile
-		return ""
-	if _is_structural_cell(cell):
-		if _is_corridor_cell(_cell_at(grid, x - 1, y)) or _is_corridor_cell(_cell_at(grid, x + 1, y)) or _is_corridor_cell(_cell_at(grid, x, y - 1)) or _is_corridor_cell(_cell_at(grid, x, y + 1)):
-			return ""
-		if _rng.randf() > 0.09:
-			return ""
-		if cell == CELL_HOUSE:
-			var house_random_tile: String = String(["bed", "chest", "wardrobe", "stool", "mug"][_rng.randi_range(0, 4)])
-			if _is_furniture_tile(house_random_tile) and base_tile != "floor":
-				return ""
-			if house_random_tile == "wardrobe" and not _is_adjacent_to_stone_or_wall(grid, x, y):
-				return ""
-			return house_random_tile
-		if cell == CELL_BUILDING:
-			var building_tile := _pick_civic_building_decor_tile(Vector2i(x, y))
-			if _is_furniture_tile(building_tile) and base_tile != "floor":
-				return ""
-			if building_tile == "shelf" and not _is_adjacent_to_stone_or_wall(grid, x, y):
-				return ""
-			return building_tile
-		var default_tile: String = String(["table", "mug", "water_bucket"][_rng.randi_range(0, 2)])
-		if _is_furniture_tile(default_tile) and base_tile != "floor":
-			return ""
-		return default_tile
-	return ""
+	return DwarfHoldTileService.pick_decor_tile(grid, x, y, cell, base_tile, house_decor_overrides, _latest_civic_building_type_map, CIVIC_BUILDING_TYPES, _rng, _door_cells)
 
 func _is_adjacent_to_business(grid: Dictionary, x: int, y: int) -> bool:
-	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		var neighbor := Vector2i(x, y) + direction
-		if _cell_at(grid, neighbor.x, neighbor.y) == CELL_BUILDING:
-			return true
-	return false
+	return DwarfHoldTileService.is_adjacent_to_business(grid, x, y)
 
 func _is_adjacent_to_stone_or_wall(grid: Dictionary, x: int, y: int) -> bool:
-	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-		var neighbor := Vector2i(x, y) + direction
-		var neighbor_cell := _cell_at(grid, neighbor.x, neighbor.y)
-		if neighbor_cell == CELL_ROCK:
-			return true
-		if _is_structural_cell(neighbor_cell) and _wall_or_floor_tile(grid, neighbor.x, neighbor.y, neighbor_cell) == "stone":
-			return true
-	return false
+	return DwarfHoldTileService.is_adjacent_to_stone_or_wall(grid, x, y, _door_cells)
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var bounds := _find_bounds(grid)
@@ -2696,62 +2406,19 @@ func _hide_hover_tooltip() -> void:
 	_hover_tooltip_layer = null
 
 func _tile_name_from_atlas(atlas_coords: Vector2i) -> String:
-	for tile_key: String in TILE_ATLAS.keys():
-		if TILE_ATLAS[tile_key] == atlas_coords:
-			return tile_key.replace("_", " ").capitalize()
-	return "Unknown"
+	return DwarfHoldTileService.tile_name_from_atlas(atlas_coords, TILE_ATLAS)
 
 func _zone_name_for_cell(cell: Vector2i) -> String:
-	if _latest_grid.is_empty():
-		return "Unknown"
-
-	var zone := _cell_at(_latest_grid, cell.x, cell.y)
-	match zone:
-		CELL_HALL:
-			return "Hall"
-		CELL_PLAZA:
-			return "Plaza"
-		CELL_HOUSE:
-			return "House"
-		CELL_BUILDING:
-			var subtype := _building_type_for_cell_or_empty(cell)
-			if subtype.is_empty():
-				return "Building"
-			return "Building (%s)" % _display_name_for_building_type(subtype)
-		_:
-			return "Rock"
+	return DwarfHoldTileService.zone_name_for_cell(cell, _latest_grid, _latest_civic_building_type_map)
 
 func _building_type_for_cell_or_empty(cell: Vector2i) -> String:
-	if not _latest_civic_building_type_map.has(cell):
-		return ""
-	return String(_latest_civic_building_type_map[cell])
+	return DwarfHoldTileService.building_type_for_cell_or_empty(cell, _latest_civic_building_type_map)
 
 func _display_name_for_building_type(building_type: String) -> String:
-	var words := building_type.split("_", false)
-	for i in range(words.size()):
-		words[i] = String(words[i]).capitalize()
-	return " ".join(words)
+	return DwarfHoldTileService.display_name_for_building_type(building_type)
 
 func _building_subtype_summary_text() -> String:
-	if _latest_civic_buildings_by_id.is_empty():
-		return ""
-
-	var subtype_counts: Dictionary = {}
-	for building_id: String in _latest_civic_buildings_by_id.keys():
-		var payload := _latest_civic_buildings_by_id[building_id] as Dictionary
-		var subtype := String(payload.get("type", "workshop"))
-		subtype_counts[subtype] = int(subtype_counts.get(subtype, 0)) + 1
-
-	var sorted_subtypes := subtype_counts.keys()
-	sorted_subtypes.sort_custom(func(a: Variant, b: Variant) -> bool:
-		return String(a) < String(b)
-	)
-
-	var entries: PackedStringArray = []
-	for subtype_variant: Variant in sorted_subtypes:
-		var subtype := String(subtype_variant)
-		entries.append("%s: %d" % [_display_name_for_building_type(subtype), int(subtype_counts[subtype])])
-	return ", ".join(entries)
+	return DwarfHoldTileService.building_subtype_summary_text(_latest_civic_buildings_by_id)
 
 func _clamp_tooltip_position(desired_position: Vector2) -> Vector2:
 	var tooltip_size := tile_hover_tooltip.size
