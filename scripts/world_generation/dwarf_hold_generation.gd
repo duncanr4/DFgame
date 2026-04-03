@@ -668,8 +668,8 @@ func _update_zone_legend() -> void:
 	zone_legend.text = "\n".join(lines)
 
 func _configure_tile_layer() -> void:
-	if not _validate_tile_mapping():
-		return
+	if OS.is_debug_build():
+		TILE_ATLAS_DEFS.validate_all_atlases()
 	if not FileAccess.file_exists(tilesheet_path):
 		push_error("Missing dwarf hold tilesheet at %s" % tilesheet_path)
 		return
@@ -712,9 +712,6 @@ func _configure_tile_layer() -> void:
 
 	city_layer.tile_set = tile_set
 	decor_layer.tile_set = tile_set
-
-func _validate_tile_mapping() -> bool:
-	return TILE_ATLAS_DEFS.validate_all_atlases()
 
 func _is_passable_atlas_tile(atlas_coords: Vector2i) -> bool:
 	for tile_key: String in PASSABLE_TILE_KEYS:
