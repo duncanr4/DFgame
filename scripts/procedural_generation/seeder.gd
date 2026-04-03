@@ -30,7 +30,8 @@ func _enter_tree() -> void:
 	instance = self
 
 func _ready() -> void:
-	recreate_seed.connect(create_seed)
+	if not recreate_seed.is_connected(create_seed):
+		recreate_seed.connect(create_seed)
 	create_seed()
 
 func create_seed() -> void:

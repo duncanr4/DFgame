@@ -42,11 +42,16 @@ static func line_coords(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	var array: Array[Vector2i]
 	var relative := to - from
 
-	var ratio := float(relative.y) / float(relative.x)
-
-	for curr_x in range(from.x, to.x):
-		var curr_y := roundi(ratio * (curr_x - from.x) + from.y)
-		array.append(Vector2i(curr_x, curr_y))
+	if relative.x == 0:
+		var step := 1 if relative.y >= 0 else -1
+		for curr_y in range(from.y, to.y, step):
+			array.append(Vector2i(from.x, curr_y))
+	else:
+		var ratio := float(relative.y) / float(relative.x)
+		var step := 1 if relative.x > 0 else -1
+		for curr_x in range(from.x, to.x, step):
+			var curr_y := roundi(ratio * (curr_x - from.x) + from.y)
+			array.append(Vector2i(curr_x, curr_y))
 
 	return array
 

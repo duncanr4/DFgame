@@ -302,6 +302,5 @@ func _apply_cached_world_settings() -> void:
 	var chronology := settings.get("chronology", {}) as Dictionary
 	if chronology.has("year"):
 		year_input.value = int(chronology.get("year", 1485))
-	var age_text := str(chronology.get("age", ""))
-	if age_text.begins_with("Age "):
-		age_input.value = max(1, int(age_text.trim_prefix("Age ")))
+	if chronology.has("age"):
+		age_input.value = max(1, int(chronology.get("age", 18)))

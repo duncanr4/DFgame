@@ -27,7 +27,7 @@ func set_scale_display(pixels_per_km: float) -> void:
 
 func get_distance_label() -> String:
 	if _display_distance_km >= 1000.0:
-		return "%s km" % _format_number(_display_distance_km)
+		return "%s km" % _format_number(snapped(_display_distance_km, 1.0))
 	return "%s km" % _format_number(_display_distance_km)
 
 func _draw() -> void:
