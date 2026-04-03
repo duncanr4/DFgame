@@ -157,9 +157,6 @@ const SHATTERED_VISIBLE_ALPHA := 0.0
 const CHEST_SLOT_COLUMNS := 8
 const CHEST_SLOT_ROWS := 4
 const BACKPACK_SLOT_ROWS := 3
-const ENABLE_DEV_BFS_BENCHMARK := false
-const DEV_BFS_BENCHMARK_GRID_SIZE := 220
-const DEV_BFS_BENCHMARK_ITERATIONS := 4
 
 
 const DWARFHOLD_SCENE_SEED_KEY := "dwarfhold_scene_seed"
@@ -555,8 +552,6 @@ func _ready() -> void:
 	_lighting_enabled = lighting_toggle.button_pressed
 	_apply_lighting_state()
 	_clear_chest_selection()
-	if ENABLE_DEV_BFS_BENCHMARK and OS.is_debug_build():
-		_run_dev_bfs_queue_benchmark()
 	_generate_city()
 
 func _process(delta: float) -> void:
@@ -1269,21 +1264,6 @@ func _pick_structure_door_cell(center: Vector2i, footprint: Vector2i) -> Vector2
 			var right_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
 			return Vector2i(to_cell.x, right_y)
 
-func _pick_structure_door_cell_facing(center: Vector2i, footprint: Vector2i, outward_dir: Vector2i) -> Vector2i:
-	var from_cell := center - footprint
-	var to_cell := center + footprint
-	if outward_dir == Vector2i.UP:
-		var top_x := center.x if from_cell.x + 1 > to_cell.x - 1 else _rng.randi_range(from_cell.x + 1, to_cell.x - 1)
-		return Vector2i(top_x, from_cell.y)
-	if outward_dir == Vector2i.DOWN:
-		var bottom_x := center.x if from_cell.x + 1 > to_cell.x - 1 else _rng.randi_range(from_cell.x + 1, to_cell.x - 1)
-		return Vector2i(bottom_x, to_cell.y)
-	if outward_dir == Vector2i.LEFT:
-		var left_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
-		return Vector2i(from_cell.x, left_y)
-	var right_y := center.y if from_cell.y + 1 > to_cell.y - 1 else _rng.randi_range(from_cell.y + 1, to_cell.y - 1)
-	return Vector2i(to_cell.x, right_y)
-
 func _pick_side_center_door_cell_facing(center: Vector2i, footprint: Vector2i, outward_dir: Vector2i) -> Vector2i:
 	var from_cell := center - footprint
 	var to_cell := center + footprint
@@ -1557,16 +1537,6 @@ func _dig_corridor_at(grid: Dictionary, origin: Vector2i, tile: int, horizontal:
 			_set_cell(grid, Vector2i(origin.x, origin.y + offset), tile)
 		else:
 			_set_cell(grid, Vector2i(origin.x + offset, origin.y), tile)
-
-func _nearest_point(target: Vector2i, points: Array[Vector2i]) -> Vector2i:
-	var nearest := points[0]
-	var nearest_distance := target.distance_squared_to(nearest)
-	for point in points:
-		var candidate := target.distance_squared_to(point)
-		if candidate < nearest_distance:
-			nearest = point
-			nearest_distance = candidate
-	return nearest
 
 func _set_cell(grid: Dictionary, cell: Vector2i, tile: int) -> void:
 	var existing := _cell_at(grid, cell.x, cell.y)
@@ -1889,21 +1859,6 @@ func _item_abbreviation(item_name: String) -> String:
 func _build_house_decor_layouts(grid: Dictionary) -> Dictionary:
 	return DwarfHoldTileService.build_house_decor_layouts(grid)
 
-func _place_house_decor_template(component: Array[Vector2i], overrides: Dictionary) -> void:
-	DwarfHoldTileService.place_house_decor_template(component, overrides)
-
-func _ensure_house_has_bed(component: Array[Vector2i], overrides: Dictionary) -> void:
-	DwarfHoldTileService.ensure_house_has_bed(component, overrides)
-
-func _try_assign_house_decor(overrides: Dictionary, occupied: Dictionary, cell: Vector2i, tile_key: String) -> void:
-	DwarfHoldTileService.try_assign_house_decor(overrides, occupied, cell, tile_key)
-
-func _find_wall_adjacent_cell(component: Array[Vector2i], occupied: Dictionary, overrides: Dictionary, preferred_cell: Vector2i) -> Vector2i:
-	return DwarfHoldTileService.find_wall_adjacent_cell(component, occupied, overrides, preferred_cell)
-
-func _is_component_wall_adjacent(cell: Vector2i, occupied: Dictionary) -> bool:
-	return DwarfHoldTileService.is_component_wall_adjacent(cell, occupied)
-
 func _on_city_panel_gui_input(event: InputEvent) -> void:
 	_is_panning = DwarfHoldUiInputHandler.handle_city_panel_event(
 		event,
@@ -2005,9 +1960,6 @@ func _create_player_character_sprite() -> Sprite2D:
 
 func _create_placeholder_actor_texture() -> Texture2D:
 	return DwarfHoldTavernService.create_placeholder_actor_texture()
-
-func _placeholder_actor_color(character_slot: int) -> Color:
-	return DwarfHoldTavernService.placeholder_actor_color(character_slot)
 
 func _handle_player_click_action(mouse_position: Vector2) -> void:
 	if _player_sprite == null or not _player_control_enabled:
@@ -2185,9 +2137,6 @@ func _update_npc_movement(delta: float) -> void:
 		Callable(self, "_cell_center_position")
 	)
 
-func _pick_random_wander_direction() -> Vector2:
-	return DwarfHoldTavernService.pick_random_wander_direction(_rng)
-
 func _create_placeholder_tavern_character_texture() -> Texture2D:
 	return DwarfHoldTavernService.create_placeholder_tavern_character_texture()
 
@@ -2201,12 +2150,6 @@ func _is_walkable_cell(cell: Vector2i) -> bool:
 
 func _is_npc_walkable_cell(cell: Vector2i) -> bool:
 	return DwarfHoldTavernService.is_npc_walkable_cell(cell, Callable(self, "_is_walkable_cell"), decor_layer, TILE_ATLAS["stone"])
-
-func _facing_row_from_direction(direction: Vector2) -> int:
-	return DwarfHoldTavernService.facing_row_from_direction(direction)
-
-func _update_character_frame(sprite: Sprite2D, character_slot: int, frame_column: int, facing_row: int) -> void:
-	DwarfHoldTavernService.update_character_frame(sprite, character_slot, frame_column, facing_row)
 
 func _actor_sprite_to_cell(sprite: Sprite2D, cell: Vector2i) -> void:
 	sprite.position = _cell_center_position(cell)
@@ -2223,26 +2166,12 @@ func _pick_base_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
 func _is_hall_border_rock_cell(grid: Dictionary, x: int, y: int) -> bool:
 	return DwarfHoldTileService.is_hall_border_rock_cell(grid, x, y)
 
-func _wall_or_floor_tile(grid: Dictionary, x: int, y: int, cell: int) -> String:
-	return DwarfHoldTileService.wall_or_floor_tile(grid, x, y, cell, _door_cells)
-
-func _is_furniture_tile(tile_key: String) -> bool:
-	return DwarfHoldTileService.is_furniture_tile(tile_key)
-
 func _building_type_for_cell(cell: Vector2i) -> String:
 	return String(_latest_civic_building_type_map.get(cell, "workshop"))
-
-func _pick_civic_building_decor_tile(cell: Vector2i) -> String:
-	return DwarfHoldTileService.pick_civic_building_decor_tile(cell, _latest_civic_building_type_map, CIVIC_BUILDING_TYPES, _rng)
 
 func _pick_decor_tile(grid: Dictionary, x: int, y: int, cell: int, base_tile: String, house_decor_overrides: Dictionary) -> String:
 	return DwarfHoldTileService.pick_decor_tile(grid, x, y, cell, base_tile, house_decor_overrides, _latest_civic_building_type_map, CIVIC_BUILDING_TYPES, _rng, _door_cells)
 
-func _is_adjacent_to_business(grid: Dictionary, x: int, y: int) -> bool:
-	return DwarfHoldTileService.is_adjacent_to_business(grid, x, y)
-
-func _is_adjacent_to_stone_or_wall(grid: Dictionary, x: int, y: int) -> bool:
-	return DwarfHoldTileService.is_adjacent_to_stone_or_wall(grid, x, y, _door_cells)
 
 func _update_summary(grid: Dictionary, seed_text: String) -> void:
 	var bounds := _find_bounds(grid)
@@ -2339,65 +2268,3 @@ func _clamp_tooltip_position(desired_position: Vector2) -> Vector2:
 		clampf(desired_position.y, 0.0, maxf(panel_size.y - tooltip_size.y, 0.0))
 	)
 
-func _run_dev_bfs_queue_benchmark() -> void:
-	if not ENABLE_DEV_BFS_BENCHMARK or not OS.is_debug_build():
-		return
-
-	var benchmark_grid_size := maxi(8, DEV_BFS_BENCHMARK_GRID_SIZE)
-	var dense_grid: Dictionary = {}
-	for y in range(benchmark_grid_size):
-		for x in range(benchmark_grid_size):
-			dense_grid[Vector2i(x, y)] = CELL_HALL
-
-	var start_cell := Vector2i(benchmark_grid_size / 2, benchmark_grid_size / 2)
-	var pop_front_total_usec := 0
-	var head_index_total_usec := 0
-	for _iteration in range(maxi(1, DEV_BFS_BENCHMARK_ITERATIONS)):
-		var start_tick := Time.get_ticks_usec()
-		_dev_benchmark_walkable_reachable_pop_front(dense_grid, start_cell)
-		pop_front_total_usec += Time.get_ticks_usec() - start_tick
-
-		start_tick = Time.get_ticks_usec()
-		_dev_benchmark_walkable_reachable_head_index(dense_grid, start_cell)
-		head_index_total_usec += Time.get_ticks_usec() - start_tick
-
-	print("[DEV BFS BENCH] pop_front us=%d head_index us=%d (size=%d iterations=%d)" % [
-		pop_front_total_usec,
-		head_index_total_usec,
-		benchmark_grid_size,
-		maxi(1, DEV_BFS_BENCHMARK_ITERATIONS)
-	])
-
-
-func _dev_benchmark_walkable_reachable_pop_front(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
-	var reachable: Dictionary = {start_cell: true}
-	var queue: Array[Vector2i] = [start_cell]
-	while not queue.is_empty():
-		var current: Vector2i = queue.pop_front()
-		for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var neighbor := current + direction
-			if reachable.has(neighbor):
-				continue
-			if not grid.has(neighbor):
-				continue
-			reachable[neighbor] = true
-			queue.append(neighbor)
-	return reachable
-
-
-func _dev_benchmark_walkable_reachable_head_index(grid: Dictionary, start_cell: Vector2i) -> Dictionary:
-	var reachable: Dictionary = {start_cell: true}
-	var queue: Array[Vector2i] = [start_cell]
-	var head := 0
-	while head < queue.size():
-		var current: Vector2i = queue[head]
-		head += 1
-		for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var neighbor := current + direction
-			if reachable.has(neighbor):
-				continue
-			if not grid.has(neighbor):
-				continue
-			reachable[neighbor] = true
-			queue.append(neighbor)
-	return reachable
